@@ -1,0 +1,154 @@
+rules_version = '2';
+
+// =============================================================================
+// PHASE 1 — Foundation Security Rules
+// Full production-hardened rules will be finalized in Phase 3 alongside
+// Cloud Functions. These rules are strict-by-default: all writes are denied
+// unless explicitly allowed; reads are open only for public-facing data.
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helpers ----------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function claims() {
+      return request.auth.token;
+    }
+
+    function role() {
+      return claims().role;
+    }
+
+    function companyId() {
+      return claims().companyId;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && role() == 'super_admin';
+    }
+
+    function isCompanyMember(cid) {
+      return isSignedIn() && companyId() == cid;
+    }
+
+    function hasPermission(perm) {
+      return isSignedIn()
+        && claims().permissions is list
+        && perm in claims().permissions;
+    }
+
+    // ---------- Companies ----------
+    match /companies/{cid} {
+      // Public profile readable by anyone (for landing pages)
+      allow read: if true;
+
+      // Only super admin or company owner can update the company doc
+      allow create: if isSuperAdmin();
+      allow update: if isSuperAdmin()
+                    || (isCompanyMember(cid) && hasPermission('company_settings_access'));
+      allow delete: if isSuperAdmin();
+
+      // Settings (branding, theme, integrations)
+      match /settings/{docId} {
+        allow read: if true;
+        allow write: if isSuperAdmin()
+                     || (isCompanyMember(cid) && hasPermission('company_settings_access'));
+      }
+
+      // Employees — only internal users
+      match /employees/{uid} {
+        allow read: if isSuperAdmin() || isCompanyMember(cid);
+        allow create, update: if isSuperAdmin()
+                              || (isCompanyMember(cid) && hasPermission('create_employee'));
+        allow delete: if isSuperAdmin()
+                      || (isCompanyMember(cid) && hasPermission('remove_employee'));
+      }
+
+      // Listings — published listings are public-readable, drafts are internal
+      match /listings/{lid} {
+        allow read: if resource.data.status == 'published'
+                    || isSuperAdmin()
+                    || isCompanyMember(cid);
+        allow create: if isCompanyMember(cid) && hasPermission('create_listing');
+        allow update: if isSuperAdmin()
+                      || (isCompanyMember(cid) && hasPermission('edit_listing'));
+        allow delete: if isSuperAdmin()
+                      || (isCompanyMember(cid) && hasPermission('delete_listing'));
+      }
+
+      // Leads — public can CREATE (contact form), only internal can read/update
+      match /leads/{leadId} {
+        allow read: if isSuperAdmin()
+                    || (isCompanyMember(cid) && hasPermission('manage_leads'));
+        allow create: if true; // public submission
+        allow update: if isSuperAdmin()
+                      || (isCompanyMember(cid) && hasPermission('manage_leads'));
+        allow delete: if isSuperAdmin() || isCompanyMember(cid);
+      }
+
+      // Tasks — internal only
+      match /tasks/{tid} {
+        allow read: if isCompanyMember(cid);
+        allow create, update: if isCompanyMember(cid) && hasPermission('assign_tasks');
+        allow delete: if isCompanyMember(cid) && hasPermission('assign_tasks');
+      }
+
+      // KPI snapshots — read by company members, write by Cloud Functions only
+      match /kpi_snapshots/{snapId} {
+        allow read: if isCompanyMember(cid) && hasPermission('view_kpi');
+        allow write: if false;
+      }
+
+      // Activity logs — read by admins, write by Cloud Functions only
+      match /activity_logs/{logId} {
+        allow read: if isSuperAdmin() || (isCompanyMember(cid) && hasPermission('company_settings_access'));
+        allow write: if false;
+      }
+
+      // Notifications — recipient reads
+      match /notifications/{notifId} {
+        allow read: if isCompanyMember(cid);
+        allow write: if false;
+      }
+    }
+
+    // ---------- Platform admins ----------
+    match /platform_admins/{uid} {
+      allow read: if isSuperAdmin() || request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // ---------- Global listings (denormalized public marketplace) ----------
+    match /global_listings/{lid} {
+      allow read: if true;
+      allow write: if false; // only Cloud Functions sync
+    }
+
+    // ---------- Invitations ----------
+    match /invitations/{invId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ---------- Platform-level audit logs ----------
+    match /audit_logs/{logId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    // ---------- Subscription plans (public catalog) ----------
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // ---------- Deny by default ----------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

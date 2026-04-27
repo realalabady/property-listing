@@ -1,0 +1,51 @@
+{
+  "common": {
+    "appName": "RealEstateSaaS",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "loading": "Loading...",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signUp": "Sign up",
+    "dashboard": "Dashboard",
+    "email": "Email",
+    "password": "Password",
+    "name": "Name",
+    "phone": "Phone"
+  },
+  "landing": {
+    "heroTitle": "Run your entire real estate business",
+    "heroSubtitle": "from one premium platform.",
+    "heroBody": "Branded landing pages, CRM, listings, leads, KPI dashboards, and automation — built for companies that want to scale.",
+    "startCompany": "Start your company",
+    "browseMarketplace": "Browse marketplace"
+  },
+  "dashboard": {
+    "overview": "Overview",
+    "listings": "Listings",
+    "leads": "Leads",
+    "employees": "Employees",
+    "tasks": "Tasks",
+    "kpi": "KPI",
+    "settings": "Settings"
+  },
+  "listings": {
+    "addListing": "Add listing",
+    "title": "Title",
+    "description": "Description",
+    "price": "Price",
+    "location": "Location",
+    "bedrooms": "Bedrooms",
+    "bathrooms": "Bathrooms",
+    "area": "Area"
+  },
+  "leads": {
+    "contactUs": "Contact us",
+    "submit": "Submit inquiry",
+    "message": "Message"
+  }
+}

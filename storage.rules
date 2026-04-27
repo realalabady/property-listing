@@ -1,0 +1,77 @@
+rules_version = '2';
+
+// =============================================================================
+// Storage Rules — Company-scoped paths
+// Pattern: companies/{companyId}/listings/{listingId}/{file}
+//          companies/{companyId}/branding/{file}
+//          companies/{companyId}/employees/{uid}/{file}
+// =============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return request.auth.token.role;
+    }
+
+    function companyId() {
+      return request.auth.token.companyId;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && role() == 'super_admin';
+    }
+
+    function isCompanyMember(cid) {
+      return isSignedIn() && companyId() == cid;
+    }
+
+    function hasPermission(perm) {
+      return isSignedIn()
+        && request.auth.token.permissions is list
+        && perm in request.auth.token.permissions;
+    }
+
+    function isValidImage() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    function isValidVideo() {
+      return request.resource.size < 100 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*');
+    }
+
+    // Public listing media
+    match /companies/{cid}/listings/{lid}/{file=**} {
+      allow read: if true;
+      allow write: if (isCompanyMember(cid) && hasPermission('create_listing'))
+                   && (isValidImage() || isValidVideo());
+      allow delete: if isSuperAdmin()
+                    || (isCompanyMember(cid) && hasPermission('delete_listing'));
+    }
+
+    // Company branding (logo, hero image)
+    match /companies/{cid}/branding/{file=**} {
+      allow read: if true;
+      allow write: if isSuperAdmin()
+                   || (isCompanyMember(cid) && hasPermission('company_settings_access'));
+    }
+
+    // Employee avatars / docs (internal)
+    match /companies/{cid}/employees/{uid}/{file=**} {
+      allow read: if isSuperAdmin() || isCompanyMember(cid);
+      allow write: if isSuperAdmin()
+                   || (isCompanyMember(cid) && (request.auth.uid == uid || hasPermission('edit_employee')));
+    }
+
+    // Deny all else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
