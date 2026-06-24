@@ -7,12 +7,51 @@ import type {
 
 export interface ListingLocation {
   country: string;
+  region?: string;
   city: string;
   district?: string;
   address?: string;
   lat?: number;
   lng?: number;
   geohash?: string;
+}
+
+/** Optional contact people attached to a listing (alphanumeric inputs only). */
+export interface ListingContact {
+  name: string;
+  role?: string;
+  phone?: string;
+  note?: string;
+}
+
+/** Optional, deed/registry-style metadata captured in the listing form. */
+export interface ListingDetails {
+  usageType?: string;
+  propertyTypeName?: string;
+  propertyNumber?: string;
+  titleEn?: string;
+  deedType?: string;
+  deedNumber?: string;
+  deedIssueDate?: string; // Gregorian ISO date (yyyy-mm-dd)
+  propertyArea?: number;
+  additionalNumber1?: string;
+  additionalNumber2?: string;
+  parcelNumber?: string;
+  blockNumber?: string;
+  buildDate?: string; // Gregorian ISO date (yyyy-mm-dd)
+  floorsCount?: number;
+  unitsPerFloor?: number;
+  electricityMeterNumber?: string;
+  electricitySubscriptionNumber?: string;
+  waterMeterNumber?: string;
+  waterSubscriptionNumber?: string;
+  streetName?: string;
+  postalCode?: string;
+  buildingNumber?: string;
+  deedReference?: string;
+  // Rent-specific
+  paymentCycle?: "monthly" | "quarterly" | "semiannual" | "annual";
+  deposit?: number;
 }
 
 export interface ListingMedia {
@@ -64,7 +103,7 @@ export interface Listing {
   category: ListingCategory;
 
   price: number;
-  currency: string; // ISO 4217 (e.g. "AED", "SAR", "USD")
+  currency: string; // ISO 4217 (e.g. "SAR", "USD")
   priceNegotiable?: boolean;
   rentPeriod?: "monthly" | "yearly" | "daily";
 
@@ -79,6 +118,9 @@ export interface Listing {
   totalFloors?: number;
 
   amenities: ListingAmenities;
+
+  contacts?: ListingContact[];
+  details?: ListingDetails;
 
   media: ListingMedia[];
   coverImage?: string; // denormalized first image URL
@@ -114,10 +156,14 @@ export interface GlobalListing {
   category: ListingCategory;
   price: number;
   currency: string;
+  rentPeriod?: string | null;
 
   city: string;
   country: string;
+  region?: string;
   district?: string;
+  lat?: number;
+  lng?: number;
 
   bedrooms?: number;
   bathrooms?: number;

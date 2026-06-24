@@ -1,10 +1,8 @@
 rules_version = '2';
 
 // =============================================================================
-// PHASE 1 — Foundation Security Rules
-// Full production-hardened rules will be finalized in Phase 3 alongside
-// Cloud Functions. These rules are strict-by-default: all writes are denied
-// unless explicitly allowed; reads are open only for public-facing data.
+// PHASE 3 — Hardened Security Rules
+// Strict-by-default rules with scoped access by company and permission claims.
 // =============================================================================
 
 service cloud.firestore {
@@ -13,6 +11,10 @@ service cloud.firestore {
     // ---------- Helpers ----------
     function isSignedIn() {
       return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
     }
 
     function claims() {
@@ -41,6 +43,27 @@ service cloud.firestore {
         && perm in claims().permissions;
     }
 
+    function isListingOwnerOrAssignee() {
+      return resource.data.createdBy == uid()
+             || resource.data.assignedEmployeeId == uid();
+    }
+
+    function isLeadCreatePayload(cid) {
+      return request.resource.data.companyId == cid
+             && request.resource.data.status == 'new'
+             && request.resource.data.assignedTo == null
+             && request.resource.data.assignedToName == null
+             && request.resource.data.firstResponseAt == null
+             && request.resource.data.responseTimeMinutes == null
+             && request.resource.data.name is string
+             && request.resource.data.name.size() > 0
+             && request.resource.data.phone is string
+             && request.resource.data.phone.size() > 0
+             && request.resource.data.source is string
+             && request.resource.data.createdAt is timestamp
+             && request.resource.data.updatedAt is timestamp;
+    }
+
     // ---------- Companies ----------
     match /companies/{cid} {
       // Public profile readable by anyone (for landing pages)
@@ -49,7 +72,11 @@ service cloud.firestore {
       // Only super admin or company owner can update the company doc
       allow create: if isSuperAdmin();
       allow update: if isSuperAdmin()
-                    || (isCompanyMember(cid) && hasPermission('company_settings_access'));
+                    || (isCompanyMember(cid)
+                        && (
+                          hasPermission('company_settings_access')
+                          || hasPermission('manage_branding')
+                        ));
       allow delete: if isSuperAdmin();
 
       // Settings (branding, theme, integrations)
@@ -62,10 +89,56 @@ service cloud.firestore {
       // Employees — only internal users
       match /employees/{uid} {
         allow read: if isSuperAdmin() || isCompanyMember(cid);
-        allow create, update: if isSuperAdmin()
-                              || (isCompanyMember(cid) && hasPermission('create_employee'));
+        allow create: if isSuperAdmin()
+                      || (isCompanyMember(cid)
+                          && hasPermission('create_employee'));
+        allow update: if isSuperAdmin()
+                      || (isCompanyMember(cid)
+                          && hasPermission('edit_employee'));
         allow delete: if isSuperAdmin()
                       || (isCompanyMember(cid) && hasPermission('remove_employee'));
+      }
+
+      // Invitations — employee invite workflow
+      match /invitations/{invitationId} {
+        allow read: if isSuperAdmin()
+                    || (isCompanyMember(cid)
+                        && (
+                          hasPermission('view_employees')
+                          || hasPermission('create_employee')
+                          || hasPermission('edit_employee')
+                          || hasPermission('remove_employee')
+                        ));
+        allow create: if isSuperAdmin()
+                      || (isCompanyMember(cid)
+                          && hasPermission('create_employee')
+                          && request.resource.data.companyId == cid
+                          && request.resource.data.email is string
+                          && request.resource.data.role is string
+                          && request.resource.data.status == 'pending');
+        allow update, delete: if isSuperAdmin()
+                              || (isCompanyMember(cid)
+                                  && (
+                                    hasPermission('create_employee')
+                                    || hasPermission('edit_employee')
+                                    || hasPermission('remove_employee')
+                                  ));
+      }
+
+      // Permission groups — reusable grouped permissions for employees
+      match /permission_groups/{groupId} {
+        allow read: if isSuperAdmin() || isCompanyMember(cid);
+        allow create, update: if isSuperAdmin()
+                              || (isCompanyMember(cid)
+                                  && hasPermission('manage_permission_groups')
+                                  && request.resource.data.companyId == cid
+                                  && request.resource.data.nameEn is string
+                                  && request.resource.data.nameAr is string
+                                  && request.resource.data.permissions is list
+                                  && request.resource.data.permissions.size() > 0);
+        allow delete: if isSuperAdmin()
+                      || (isCompanyMember(cid)
+                          && hasPermission('manage_permission_groups'));
       }
 
       // Listings — published listings are public-readable, drafts are internal
@@ -73,9 +146,16 @@ service cloud.firestore {
         allow read: if resource.data.status == 'published'
                     || isSuperAdmin()
                     || isCompanyMember(cid);
-        allow create: if isCompanyMember(cid) && hasPermission('create_listing');
+        allow create: if isCompanyMember(cid)
+                      && hasPermission('create_listing')
+                      && request.resource.data.companyId == cid;
         allow update: if isSuperAdmin()
-                      || (isCompanyMember(cid) && hasPermission('edit_listing'));
+                      || (isCompanyMember(cid)
+                          && request.resource.data.companyId == cid
+                          && (
+                            hasPermission('edit_listing')
+                            || (hasPermission('edit_own_listing') && isListingOwnerOrAssignee())
+                          ));
         allow delete: if isSuperAdmin()
                       || (isCompanyMember(cid) && hasPermission('delete_listing'));
       }
@@ -83,23 +163,57 @@ service cloud.firestore {
       // Leads — public can CREATE (contact form), only internal can read/update
       match /leads/{leadId} {
         allow read: if isSuperAdmin()
-                    || (isCompanyMember(cid) && hasPermission('manage_leads'));
-        allow create: if true; // public submission
+                    || (isCompanyMember(cid)
+                        && (
+                          hasPermission('manage_leads')
+                          || (hasPermission('view_own_leads') && resource.data.assignedTo == uid())
+                        ));
+        allow create: if isLeadCreatePayload(cid);
         allow update: if isSuperAdmin()
+                      || (isCompanyMember(cid)
+                          && hasPermission('manage_leads')
+                          && request.resource.data.companyId == cid
+                          && request.resource.data.createdAt == resource.data.createdAt);
+        allow delete: if isSuperAdmin()
                       || (isCompanyMember(cid) && hasPermission('manage_leads'));
-        allow delete: if isSuperAdmin() || isCompanyMember(cid);
       }
 
       // Tasks — internal only
       match /tasks/{tid} {
-        allow read: if isCompanyMember(cid);
-        allow create, update: if isCompanyMember(cid) && hasPermission('assign_tasks');
-        allow delete: if isCompanyMember(cid) && hasPermission('assign_tasks');
+        allow read: if isSuperAdmin() || isCompanyMember(cid);
+        allow create: if isCompanyMember(cid)
+                      && hasPermission('assign_tasks')
+                      && request.resource.data.companyId == cid;
+        allow update: if isSuperAdmin()
+                      || (isCompanyMember(cid)
+                          && request.resource.data.companyId == cid
+                          && (
+                            hasPermission('assign_tasks')
+                            || (hasPermission('complete_tasks')
+                                && resource.data.assignedTo == uid())
+                          ));
+        allow delete: if isSuperAdmin()
+                      || (isCompanyMember(cid) && hasPermission('assign_tasks'));
+      }
+
+      // Live KPI overview — written by Cloud Functions only
+      match /kpi/{docId} {
+        allow read: if isCompanyMember(cid)
+                    && (
+                      hasPermission('view_kpi')
+                      || hasPermission('view_own_kpi')
+                    );
+        allow write: if false;
       }
 
       // KPI snapshots — read by company members, write by Cloud Functions only
       match /kpi_snapshots/{snapId} {
-        allow read: if isCompanyMember(cid) && hasPermission('view_kpi');
+        allow read: if isCompanyMember(cid)
+                    && (
+                      hasPermission('view_kpi')
+                      || (hasPermission('view_own_kpi')
+                          && resource.data.employeeId == uid())
+                    );
         allow write: if false;
       }
 
@@ -126,6 +240,14 @@ service cloud.firestore {
     match /global_listings/{lid} {
       allow read: if true;
       allow write: if false; // only Cloud Functions sync
+    }
+
+    // ---------- Broadcast lead requests ----------
+    // Customer "property request" inbox shared across all companies. All access
+    // is mediated by Admin SDK API routes (/api/lead-requests*), so clients are
+    // denied entirely here.
+    match /lead_requests/{requestId} {
+      allow read, write: if false;
     }
 
     // ---------- Invitations ----------

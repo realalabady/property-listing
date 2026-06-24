@@ -1,9 +1,11 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { getSessionUser, type SessionUser } from "./session";
 import { ROUTES } from "@/constants/routes";
 import { ROLES, type Role } from "@/constants/roles";
 import { hasAnyPermission, type Permission } from "@/constants/permissions";
+import { adminDb } from "@/lib/firebase/admin";
 
 /**
  * Server-side route guards for Next.js App Router layouts & pages.
@@ -20,9 +22,30 @@ import { hasAnyPermission, type Permission } from "@/constants/permissions";
 
 export async function requireAuth(): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user) redirect(ROUTES.LOGIN);
+  if (!user) redirect(`${ROUTES.LOGIN}?reauth=1`);
   return user;
 }
+
+const getCompanyAccessState = cache(async (companyId: string) => {
+  const snap = await adminDb().doc(`companies/${companyId}`).get();
+  if (!snap.exists) {
+    return {
+      exists: false,
+      isDeleted: false,
+      status: null as string | null,
+    };
+  }
+
+  const data = snap.data() as Record<string, unknown>;
+  const status = typeof data.status === "string" ? data.status : null;
+  const isDeleted = data.isDeleted === true || Boolean(data.deletedAt);
+
+  return {
+    exists: true,
+    isDeleted,
+    status,
+  };
+});
 
 export async function requireCompanyMember(): Promise<SessionUser> {
   const user = await requireAuth();
@@ -32,6 +55,15 @@ export async function requireCompanyMember(): Promise<SessionUser> {
   if (!user.companyId) {
     redirect(ROUTES.ONBOARDING);
   }
+
+  const company = await getCompanyAccessState(user.companyId);
+  const blockedByStatus =
+    company.status === "suspended" || company.status === "cancelled";
+
+  if (!company.exists || company.isDeleted || blockedByStatus) {
+    redirect(`${ROUTES.LOGIN}?reauth=1&blocked=company_inactive`);
+  }
+
   return user;
 }
 

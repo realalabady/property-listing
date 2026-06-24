@@ -46,10 +46,31 @@ service firebase.storage {
         && request.resource.contentType.matches('video/.*');
     }
 
+    function isValidBrandAsset() {
+      return request.resource.size < 20 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('image/.*')
+          || request.resource.contentType == 'image/svg+xml'
+        );
+    }
+
+    function isValidEmployeeAsset() {
+      return request.resource.size < 10 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('image/.*')
+          || request.resource.contentType == 'application/pdf'
+        );
+    }
+
     // Public listing media
     match /companies/{cid}/listings/{lid}/{file=**} {
       allow read: if true;
-      allow write: if (isCompanyMember(cid) && hasPermission('create_listing'))
+      allow write: if (isCompanyMember(cid)
+                      && (
+                        hasPermission('create_listing')
+                        || hasPermission('edit_listing')
+                        || hasPermission('edit_own_listing')
+                      ))
                    && (isValidImage() || isValidVideo());
       allow delete: if isSuperAdmin()
                     || (isCompanyMember(cid) && hasPermission('delete_listing'));
@@ -59,14 +80,18 @@ service firebase.storage {
     match /companies/{cid}/branding/{file=**} {
       allow read: if true;
       allow write: if isSuperAdmin()
-                   || (isCompanyMember(cid) && hasPermission('company_settings_access'));
+                   || (isCompanyMember(cid)
+                       && hasPermission('company_settings_access')
+                       && isValidBrandAsset());
     }
 
     // Employee avatars / docs (internal)
     match /companies/{cid}/employees/{uid}/{file=**} {
       allow read: if isSuperAdmin() || isCompanyMember(cid);
       allow write: if isSuperAdmin()
-                   || (isCompanyMember(cid) && (request.auth.uid == uid || hasPermission('edit_employee')));
+                   || (isCompanyMember(cid)
+                       && (request.auth.uid == uid || hasPermission('edit_employee'))
+                       && isValidEmployeeAsset());
     }
 
     // Deny all else

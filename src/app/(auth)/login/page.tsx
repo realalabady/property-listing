@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 import LoginForm from "./LoginForm";
+import { t } from "@/lib/i18n";
 
 export const metadata = {
-  title: "Sign in",
+  title: t("auth.signInTitle"),
 };
 
 export default function LoginPage() {

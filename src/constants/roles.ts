@@ -20,15 +20,15 @@ export const ROLES = {
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
 export const ROLE_LABELS: Record<Role, string> = {
-  [ROLES.SUPER_ADMIN]: "Super Admin",
-  [ROLES.COMPANY_OWNER]: "Company Owner",
-  [ROLES.COMPANY_ADMIN]: "Company Admin",
-  [ROLES.MANAGER]: "Manager",
-  [ROLES.SALES]: "Sales",
-  [ROLES.MARKETING]: "Marketing",
-  [ROLES.DATA_ENTRY]: "Data Entry",
-  [ROLES.ACCOUNTANT]: "Accountant",
-  [ROLES.VIEWER]: "Viewer",
+  [ROLES.SUPER_ADMIN]: "مدير المنصة",
+  [ROLES.COMPANY_OWNER]: "مالك الشركة",
+  [ROLES.COMPANY_ADMIN]: "مدير الشركة",
+  [ROLES.MANAGER]: "مدير",
+  [ROLES.SALES]: "مبيعات",
+  [ROLES.MARKETING]: "تسويق",
+  [ROLES.DATA_ENTRY]: "إدخال بيانات",
+  [ROLES.ACCOUNTANT]: "محاسب",
+  [ROLES.VIEWER]: "مشاهد",
 };
 
 export const ASSIGNABLE_ROLES: Role[] = [

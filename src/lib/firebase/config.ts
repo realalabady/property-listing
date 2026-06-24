@@ -15,14 +15,16 @@ export const firebaseConfig = {
 };
 
 export function assertClientFirebaseEnv(): void {
-  const required = [
-    "NEXT_PUBLIC_FIREBASE_API_KEY",
-    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-    "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-    "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
-    "NEXT_PUBLIC_FIREBASE_APP_ID",
-  ];
-  const missing = required.filter((k) => !process.env[k]);
+  const requiredValues: Record<string, string | undefined> = {
+    NEXT_PUBLIC_FIREBASE_API_KEY: firebaseConfig.apiKey,
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: firebaseConfig.authDomain,
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID: firebaseConfig.projectId,
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: firebaseConfig.storageBucket,
+    NEXT_PUBLIC_FIREBASE_APP_ID: firebaseConfig.appId,
+  };
+  const missing = Object.entries(requiredValues)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
   if (missing.length > 0) {
     // Log but don't throw during build — app shell may still render.
     // Individual SDK calls will fail fast with clear errors.

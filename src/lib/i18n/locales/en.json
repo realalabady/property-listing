@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "RealEstateSaaS",
+    "appName": "Dar",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -15,7 +15,17 @@
     "email": "Email",
     "password": "Password",
     "name": "Name",
-    "phone": "Phone"
+    "phone": "Phone",
+    "add": "Add",
+    "saving": "Saving...",
+    "requiredInformation": "Required information",
+    "optionalDetails": "Optional details",
+    "optionalDetailsHint": "Extra, non-mandatory fields",
+    "fixErrors": "Please fix the required fields before saving.",
+    "invalidPhone": "Invalid Saudi mobile number (e.g. 05XXXXXXXX).",
+    "invalidNationalId": "National ID must be exactly 10 digits.",
+    "invalidEmail": "Invalid email address.",
+    "fieldRequired": "This field is required"
   },
   "landing": {
     "heroTitle": "Run your entire real estate business",
@@ -28,10 +38,21 @@
     "overview": "Overview",
     "listings": "Listings",
     "leads": "Leads",
+    "leadsArrived": "Leads Arrived",
     "employees": "Employees",
     "tasks": "Tasks",
     "kpi": "KPI",
-    "settings": "Settings"
+    "settings": "Settings",
+    "permissionGroupsNav": "Permission Groups",
+    "navProperty": "Property Management",
+    "navCrm": "Leads & Tasks",
+    "navTeam": "Team",
+    "navInsights": "Insights",
+    "viewAll": "View all",
+    "addNew": "Add",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "account": "Account"
   },
   "listings": {
     "addListing": "Add listing",

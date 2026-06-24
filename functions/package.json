@@ -1,0 +1,25 @@
+{
+  "name": "listing-property-functions",
+  "private": true,
+  "main": "lib/index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc -w",
+    "clean": "rimraf lib"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.1",
+    "firebase-functions": "^6.0.1",
+    "listing-property": "file:..",
+    "nodemailer": "^8.0.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/nodemailer": "^8.0.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.2"
+  }
+}

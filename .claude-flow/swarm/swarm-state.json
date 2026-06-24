@@ -1,0 +1,29 @@
+{
+  "swarms": {
+    "swarm-1782228413088-1wyfqa": {
+      "swarmId": "swarm-1782228413088-1wyfqa",
+      "topology": "hierarchical",
+      "maxAgents": 8,
+      "status": "terminated",
+      "agents": [
+        "agent-1782228681837-2l8sjp",
+        "agent-1782228682813-9t0rf5",
+        "agent-1782228683620-5gpb7q"
+      ],
+      "tasks": [],
+      "config": {
+        "topology": "hierarchical",
+        "maxAgents": 8,
+        "strategy": "specialized",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-06-23T15:26:53.088Z",
+      "updatedAt": "2026-06-23T15:31:21.839Z",
+      "pid": 18848,
+      "terminationReason": "host process 18848 exited"
+    }
+  },
+  "version": "3.0.0"
+}

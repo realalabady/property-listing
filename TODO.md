@@ -107,8 +107,36 @@
 
 ---
 
-## PHASE 2 — Public Website + Dashboard UI + Listings CRUD + Leads (PENDING)
+## PHASE 2 — Public Website + Dashboard UI + Listings CRUD + Leads (COMPLETE CORE)
 
-## PHASE 3 — KPI + Tasks + Cloud Functions + Security Rules Hardening (PENDING)
+## PHASE 3 — KPI + Tasks + Cloud Functions + Security Rules Hardening (IN PROGRESS)
 
-## PHASE 4 — Launch Checklist + Scaling (PENDING)
+### Phase 3 Progress
+
+- [x] Cloud Functions workspace scaffolded (`functions/` TypeScript project)
+- [x] Listing publish/unpublish sync to `global_listings`
+- [x] Lead auto-assignment (round robin)
+- [x] Employee role/permission claim sync
+- [x] Task escalation scheduler (`every 15 minutes`)
+- [x] KPI overview scheduler (`every 30 minutes`)
+- [x] KPI/tasks dashboard pages switched from static mock data to Firestore-backed reads
+- [x] Firestore/Storage rules hardened for role + permission constraints
+- [ ] Cloud Functions deployment and production verification
+- [x] KPI employee snapshot automation
+- [ ] Notification delivery channels (email/WhatsApp) for escalations
+
+## PHASE 4 — Launch Checklist + Scaling (COMPLETE ✓)
+
+- [x] Security headers (CSP, HSTS, X-Frame-Options, Permissions-Policy) in next.config.ts
+- [x] Global error page (500) and not-found page (404)
+- [x] Dashboard overview with real Firestore data (active listings, new leads, pending tasks, team members)
+- [x] Admin overview with real Firestore data (companies, published listings, users)
+- [x] Admin companies page with real Firestore data (live list from companies collection)
+- [x] Tasks CRUD API (GET/POST collection + PUT/DELETE single) with permission-aware access
+- [x] DashboardTasksClient — interactive task board (create, status update, delete, filter)
+- [x] Per-employee KPI snapshot automation (Cloud Function: refreshEmployeeKpiSnapshots every 60min)
+- [x] Email notifications for lead submissions (onLeadCreatedSendEmail) with SMTP via env vars
+- [x] Email notifications for task escalations (onTaskEscalationSendEmail) via notifications trigger
+- [x] Rate limiting on auth session endpoint (10 req/min per IP) with Retry-After header
+- [x] In-process rate limiter utility (src/lib/utils/rate-limit.ts)
+- [x] Final verification: typecheck PASS, build PASS, functions:build PASS

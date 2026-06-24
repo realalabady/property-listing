@@ -14,8 +14,8 @@ import {
   getApps,
   initializeApp,
   cert,
+  applicationDefault,
   type App,
-  getApp,
 } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
@@ -27,24 +27,48 @@ function createAdminApp(): App {
   const existing = getApps().find((a) => a.name === APP_NAME);
   if (existing) return existing;
 
-  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+  const explicitProjectId = process.env.FIREBASE_ADMIN_PROJECT_ID?.trim();
+  const projectId =
+    explicitProjectId || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim();
+  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL?.trim();
   // Private keys often stored with literal \n — normalize:
   const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(
     /\\n/g,
     "\n",
-  );
+  )?.trim();
 
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error(
-      "[firebase/admin] Missing FIREBASE_ADMIN_* env vars. " +
-        "Set FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, FIREBASE_ADMIN_PRIVATE_KEY.",
+  const hasServiceAccountEnv =
+    Boolean(explicitProjectId) && Boolean(clientEmail) && Boolean(privateKey);
+
+  if (hasServiceAccountEnv) {
+    return initializeApp(
+      {
+        credential: cert({
+          projectId: explicitProjectId,
+          clientEmail,
+          privateKey,
+        }),
+        projectId: explicitProjectId,
+        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      },
+      APP_NAME,
     );
   }
 
+  if (!projectId) {
+    throw new Error(
+      "[firebase/admin] Missing FIREBASE_ADMIN_PROJECT_ID and NEXT_PUBLIC_FIREBASE_PROJECT_ID. " +
+        "Set one project id value in .env.local and restart the Next.js server.",
+    );
+  }
+
+  // Local fallback when service-account keys are not available (for orgs that block key creation).
+  // Requires gcloud ADC, for example:
+  //   - gcloud auth application-default login
+  //   - or gcloud auth application-default login --impersonate-service-account=...
   return initializeApp(
     {
-      credential: cert({ projectId, clientEmail, privateKey }),
+      credential: applicationDefault(),
       projectId,
       storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     },
@@ -54,14 +78,19 @@ function createAdminApp(): App {
 
 let cachedApp: App | null = null;
 function adminApp(): App {
-  if (!cachedApp) {
-    try {
-      cachedApp = createAdminApp();
-    } catch {
-      cachedApp = getApp(APP_NAME);
+  if (cachedApp) return cachedApp;
+
+  try {
+    cachedApp = createAdminApp();
+    return cachedApp;
+  } catch (error) {
+    const existing = getApps().find((a) => a.name === APP_NAME);
+    if (existing) {
+      cachedApp = existing;
+      return existing;
     }
+    throw error;
   }
-  return cachedApp;
 }
 
 export function adminAuth(): Auth {

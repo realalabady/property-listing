@@ -1,5 +1,8 @@
 import type { Timestamp } from "firebase/firestore";
-import type { LeadStatus } from "@/constants/listing-categories";
+import type {
+  LeadStatus,
+  ListingCategory,
+} from "@/constants/listing-categories";
 
 export type LeadSource =
   | "website_form"
@@ -10,6 +13,25 @@ export type LeadSource =
   | "referral"
   | "marketplace"
   | "other";
+
+/** Whether the lead is worth pursuing (qualified) or noise (junk). */
+export type LeadQuality = "qualified" | "junk" | "unrated";
+
+export type LeadIntent = "buy" | "rent" | "invest" | "sell";
+
+/** What the lead is actually looking for — drives inventory matching. */
+export interface LeadRequirement {
+  intent?: LeadIntent;
+  propertyType?: ListingCategory;
+  region?: string;
+  city?: string;
+  district?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  bedrooms?: number;
+  financing?: "cash" | "mortgage";
+  timeline?: "immediate" | "1_3_months" | "browsing";
+}
 
 export interface LeadNote {
   id: string;
@@ -33,6 +55,8 @@ export interface Lead {
   listingTitle?: string; // denormalized
 
   source: LeadSource;
+  quality?: LeadQuality;
+  requirement?: LeadRequirement;
   assignedTo?: string | null; // employee uid
   assignedToName?: string; // denormalized
   assignedAt?: Timestamp | Date | null;

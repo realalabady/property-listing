@@ -18,7 +18,7 @@ const PROTECTED_PREFIXES = ["/dashboard", "/admin", "/onboarding"];
 const AUTH_PAGES = ["/login", "/signup"];
 
 export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const { pathname, searchParams } = req.nextUrl;
   const hasSession = !!req.cookies.get(SESSION_COOKIE)?.value;
 
   // Protect private routes
@@ -33,6 +33,12 @@ export function middleware(req: NextRequest) {
 
   // If already authenticated, redirect away from auth pages
   if (AUTH_PAGES.some((p) => pathname === p) && hasSession) {
+    // Allow auth pages during forced re-authentication to avoid redirect loops
+    // when a stale cookie exists but server verification fails.
+    if (searchParams.get("reauth") === "1") {
+      return NextResponse.next();
+    }
+
     const dashUrl = req.nextUrl.clone();
     dashUrl.pathname = "/dashboard";
     return NextResponse.redirect(dashUrl);

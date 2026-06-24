@@ -59,6 +59,18 @@ export const LISTING_STATUSES = {
 export type ListingStatus =
   (typeof LISTING_STATUSES)[keyof typeof LISTING_STATUSES];
 
+export const LISTING_STATUS_LABELS: Record<
+  ListingStatus,
+  { en: string; ar: string }
+> = {
+  [LISTING_STATUSES.DRAFT]: { en: "Draft", ar: "مسودة" },
+  [LISTING_STATUSES.PUBLISHED]: { en: "Published", ar: "منشور" },
+  [LISTING_STATUSES.PENDING_REVIEW]: { en: "Pending Review", ar: "قيد المراجعة" },
+  [LISTING_STATUSES.SOLD]: { en: "Sold", ar: "تم البيع" },
+  [LISTING_STATUSES.RENTED]: { en: "Rented", ar: "تم التأجير" },
+  [LISTING_STATUSES.ARCHIVED]: { en: "Archived", ar: "مؤرشف" },
+};
+
 export const LEAD_STATUSES = {
   NEW: "new",
   CONTACTED: "contacted",
@@ -68,6 +80,17 @@ export const LEAD_STATUSES = {
 } as const;
 
 export type LeadStatus = (typeof LEAD_STATUSES)[keyof typeof LEAD_STATUSES];
+
+export const LEAD_STATUS_LABELS: Record<
+  LeadStatus,
+  { en: string; ar: string }
+> = {
+  [LEAD_STATUSES.NEW]: { en: "New", ar: "جديد" },
+  [LEAD_STATUSES.CONTACTED]: { en: "Contacted", ar: "تم التواصل" },
+  [LEAD_STATUSES.QUALIFIED]: { en: "Qualified", ar: "مؤهل" },
+  [LEAD_STATUSES.DEAL]: { en: "Deal", ar: "صفقة" },
+  [LEAD_STATUSES.LOST]: { en: "Lost", ar: "مفقود" },
+};
 
 export const TASK_PRIORITIES = {
   LOW: "low",
@@ -79,6 +102,16 @@ export const TASK_PRIORITIES = {
 export type TaskPriority =
   (typeof TASK_PRIORITIES)[keyof typeof TASK_PRIORITIES];
 
+export const TASK_PRIORITY_LABELS: Record<
+  TaskPriority,
+  { en: string; ar: string }
+> = {
+  [TASK_PRIORITIES.LOW]: { en: "Low", ar: "منخفضة" },
+  [TASK_PRIORITIES.MEDIUM]: { en: "Medium", ar: "متوسطة" },
+  [TASK_PRIORITIES.HIGH]: { en: "High", ar: "عالية" },
+  [TASK_PRIORITIES.URGENT]: { en: "Urgent", ar: "عاجلة" },
+};
+
 export const TASK_STATUSES = {
   TODO: "todo",
   IN_PROGRESS: "in_progress",
@@ -87,3 +120,13 @@ export const TASK_STATUSES = {
 } as const;
 
 export type TaskStatus = (typeof TASK_STATUSES)[keyof typeof TASK_STATUSES];
+
+export const TASK_STATUS_LABELS: Record<
+  TaskStatus,
+  { en: string; ar: string }
+> = {
+  [TASK_STATUSES.TODO]: { en: "To Do", ar: "قيد الانتظار" },
+  [TASK_STATUSES.IN_PROGRESS]: { en: "In Progress", ar: "قيد التنفيذ" },
+  [TASK_STATUSES.DONE]: { en: "Done", ar: "مكتملة" },
+  [TASK_STATUSES.CANCELLED]: { en: "Cancelled", ar: "ملغاة" },
+};

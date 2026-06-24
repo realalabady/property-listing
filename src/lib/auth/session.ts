@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { adminAuth } from "@/lib/firebase/admin";
 import type { Role } from "@/constants/roles";
@@ -52,15 +53,17 @@ export async function clearSessionCookie(): Promise<void> {
 
 /**
  * Verify the session cookie and return the authenticated user + claims.
- * Returns null if no cookie, expired, or revoked.
+ * Returns null if no cookie, expired, or invalid.
  */
-export async function getSessionUser(): Promise<SessionUser | null> {
+const getSessionUserCached = cache(async (): Promise<SessionUser | null> => {
   try {
     const store = await cookies();
     const sessionCookie = store.get(SESSION_COOKIE)?.value;
     if (!sessionCookie) return null;
 
-    const decoded = await adminAuth().verifySessionCookie(sessionCookie, true);
+    // Avoid revocation check on every request to keep navigation fast.
+    // Revocation checks can be done on explicit security-sensitive actions.
+    const decoded = await adminAuth().verifySessionCookie(sessionCookie);
 
     const claims: AppClaims = {
       role: (decoded.role as Role) ?? null,
@@ -78,6 +81,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   } catch {
     return null;
   }
+});
+
+export async function getSessionUser(): Promise<SessionUser | null> {
+  return getSessionUserCached();
 }
 
 export async function requireSessionUser(): Promise<SessionUser> {

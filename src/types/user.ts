@@ -40,6 +40,7 @@ export interface Employee {
   avatar?: string;
   role: Role;
   permissions: Permission[]; // may include custom overrides beyond role defaults
+  permissionGroupIds?: string[];
   active: boolean;
   department?: string;
   title?: string;
