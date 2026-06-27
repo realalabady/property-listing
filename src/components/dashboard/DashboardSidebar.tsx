@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   ListChecks,
   Inbox,
+  Target,
   BarChart3,
   Settings,
   ChevronDown,
@@ -82,6 +83,12 @@ function buildGroups(): NavGroup[] {
           href: ROUTES.DASHBOARD_LEADS_ARRIVED,
           label: t("dashboard.leadsArrived"),
           icon: Inbox,
+          exact: true,
+        },
+        {
+          href: ROUTES.DASHBOARD_MATCHED_LEADS,
+          label: t("dashboard.matchedLeads"),
+          icon: Target,
           exact: true,
         },
         {

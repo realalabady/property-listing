@@ -250,6 +250,24 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ---------- Marketplace customers ----------
+    // Self-registered customer profiles. Created by the Admin SDK at signup
+    // (so the role claim stays trustworthy); the owner may read/update their
+    // own profile fields. No one else can read a customer's PII directly.
+    match /customers/{customerUid} {
+      allow read: if isSuperAdmin() || (isSignedIn() && uid() == customerUid);
+      allow update: if isSignedIn() && uid() == customerUid;
+      allow create, delete: if false; // Admin SDK only
+    }
+
+    // ---------- Customer searches (matched-lead signals) ----------
+    // Written by the Admin SDK (/api/customer/searches) and read by companies
+    // only through the authenticated /api/companies/{cid}/matched-leads route.
+    // Clients are denied entirely to protect customer PII.
+    match /customer_searches/{searchId} {
+      allow read, write: if false;
+    }
+
     // ---------- Invitations ----------
     match /invitations/{invId} {
       allow read: if isSignedIn();

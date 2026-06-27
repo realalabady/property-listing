@@ -15,6 +15,7 @@ import {
 } from "@/constants/roles";
 import { ROUTES } from "@/constants/routes";
 import {
+  isValidNationalId,
   isValidSaudiPhone,
   normalizeSaudiPhone,
 } from "@/lib/utils/validation";
@@ -39,6 +40,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const initialDirect = {
   name: "",
   email: "",
+  nationalId: "",
   title: "",
   department: "",
   phone: "",
@@ -111,13 +113,23 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
   );
 
   const directErrors = useMemo(() => {
-    const e: { name?: string; email?: string; group?: string; phone?: string } =
-      {};
+    const e: {
+      name?: string;
+      email?: string;
+      group?: string;
+      phone?: string;
+      nationalId?: string;
+    } = {};
     if (direct.name.trim().length < 2) e.name = t("common.fieldRequired");
     if (!direct.email.trim() || !EMAIL_RE.test(direct.email.trim())) {
       e.email = !direct.email.trim()
         ? t("common.fieldRequired")
         : t("common.invalidEmail");
+    }
+    if (!direct.nationalId.trim()) {
+      e.nationalId = t("common.fieldRequired");
+    } else if (!isValidNationalId(direct.nationalId)) {
+      e.nationalId = t("common.invalidNationalId");
     }
     if (!selectedGroupId) e.group = t("common.fieldRequired");
     if (direct.phone.trim() && !isValidSaudiPhone(direct.phone)) {
@@ -169,6 +181,7 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
         body: JSON.stringify({
           name: direct.name.trim(),
           email: direct.email.trim(),
+          nationalId: direct.nationalId.trim(),
           role: ROLES.VIEWER,
           title: direct.title.trim() || undefined,
           department: direct.department.trim() || undefined,
@@ -409,6 +422,22 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
                   }
                   placeholder={t("employeesDash.employeeEmailPlaceholder")}
                   aria-invalid={Boolean(submitted && directErrors.email)}
+                />
+              </Field>
+              <Field
+                label={t("employeesDash.nationalId")}
+                required
+                error={submitted ? directErrors.nationalId : undefined}
+              >
+                <Input
+                  value={direct.nationalId}
+                  onChange={(e) =>
+                    setDirect((p) => ({ ...p, nationalId: e.target.value }))
+                  }
+                  placeholder={t("employeesDash.nationalIdPlaceholder")}
+                  inputMode="numeric"
+                  maxLength={10}
+                  aria-invalid={Boolean(submitted && directErrors.nationalId)}
                 />
               </Field>
               <Field

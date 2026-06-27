@@ -15,6 +15,11 @@ export const ROLES = {
   DATA_ENTRY: "data_entry",
   ACCOUNTANT: "accountant",
   VIEWER: "viewer",
+  /**
+   * Marketplace customer — a self-registered end user who searches for property.
+   * NOT a company member: has no `companyId` and no company permissions.
+   */
+  CUSTOMER: "customer",
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
@@ -29,6 +34,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   [ROLES.DATA_ENTRY]: "إدخال بيانات",
   [ROLES.ACCOUNTANT]: "محاسب",
   [ROLES.VIEWER]: "مشاهد",
+  [ROLES.CUSTOMER]: "عميل",
 };
 
 export const ASSIGNABLE_ROLES: Role[] = [

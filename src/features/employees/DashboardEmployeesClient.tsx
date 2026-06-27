@@ -395,9 +395,12 @@ export function DashboardEmployeesClient({
                 return (
                   <tr key={employee.id}>
                     <td className="px-4 py-4">
-                      <p className="font-medium text-foreground">
+                      <Link
+                        href={ROUTES.DASHBOARD_EMPLOYEE_DETAIL(employee.id)}
+                        className="font-medium text-foreground transition-colors hover:text-primary hover:underline"
+                      >
                         {employee.name}
-                      </p>
+                      </Link>
                       <p className="text-xs text-muted-foreground">
                         {employee.email}
                       </p>
@@ -434,18 +437,24 @@ export function DashboardEmployeesClient({
                       {dateOrDash(employee.joinedAt)}
                     </td>
                     <td className="px-4 py-4">
-                      {canDeactivate ? (
-                        <button
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() => deactivateEmployee(employee.id)}
-                          className="rounded-md border border-destructive/40 px-2 py-1 text-xs text-destructive transition hover:bg-destructive/10 disabled:opacity-50"
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={ROUTES.DASHBOARD_EMPLOYEE_DETAIL(employee.id)}
+                          className="rounded-md border border-border px-2 py-1 text-xs text-foreground transition hover:bg-muted"
                         >
-                          {t("employeesDash.deactivate")}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
+                          {t("employeesDash.viewDetails")}
+                        </Link>
+                        {canDeactivate ? (
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => deactivateEmployee(employee.id)}
+                            className="rounded-md border border-destructive/40 px-2 py-1 text-xs text-destructive transition hover:bg-destructive/10 disabled:opacity-50"
+                          >
+                            {t("employeesDash.deactivate")}
+                          </button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 );

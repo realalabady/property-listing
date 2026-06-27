@@ -13,6 +13,8 @@ import {
   parseLeadStatus,
   serializeDate,
 } from "@/lib/api/company-leads";
+import { isFieldValueTaken } from "@/lib/api/uniqueness";
+import { isValidNationalId, normalizeSaudiPhone } from "@/lib/utils/validation";
 import { adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -260,10 +262,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
     );
   }
 
-  const phone = normalizeText(body.phone);
-  if (phone.length < 4 || phone.length > 40) {
+  const phone = normalizeSaudiPhone(normalizeText(body.phone));
+  if (!phone) {
     return NextResponse.json(
-      { error: "Lead phone must be between 4 and 40 characters." },
+      { error: "رقم جوال سعودي غير صالح." },
       { status: 400 },
     );
   }
@@ -285,10 +287,25 @@ export async function POST(req: NextRequest, context: RouteContext) {
   }
 
   const nationalId = normalizeText(body.nationalId);
-  if (nationalId && !/^\d{10}$/.test(nationalId)) {
+  if (nationalId && !isValidNationalId(nationalId)) {
     return NextResponse.json(
-      { error: "National ID must be exactly 10 digits." },
+      { error: "رقم الهوية يجب أن يكون 10 أرقام." },
       { status: 400 },
+    );
+  }
+
+  // Enforce unique, non-dummy contact data within this company's leads.
+  const leadsPath = `companies/${companyId}/leads`;
+  if (await isFieldValueTaken(leadsPath, "phone", phone)) {
+    return NextResponse.json(
+      { error: "رقم الجوال مستخدم بالفعل لعميل آخر." },
+      { status: 409 },
+    );
+  }
+  if (nationalId && (await isFieldValueTaken(leadsPath, "nationalId", nationalId))) {
+    return NextResponse.json(
+      { error: "رقم الهوية مستخدم بالفعل لعميل آخر." },
+      { status: 409 },
     );
   }
 

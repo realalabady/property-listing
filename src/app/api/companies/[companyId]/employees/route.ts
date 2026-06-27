@@ -18,6 +18,8 @@ import {
   parsePermissionOverrides,
   serializeDate,
 } from "@/lib/api/company-employees";
+import { isFieldValueTaken } from "@/lib/api/uniqueness";
+import { isValidNationalId, normalizeSaudiPhone } from "@/lib/utils/validation";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -37,6 +39,7 @@ interface CreateEmployeeBody {
   title?: string;
   active?: boolean;
   temporaryPassword?: string;
+  nationalId?: string;
 }
 
 function isEmailLike(value: string): boolean {
@@ -180,6 +183,15 @@ export async function POST(req: NextRequest, context: RouteContext) {
     );
   }
 
+  // National ID is a required, unique identifier for staff (real data).
+  const nationalId = normalizeOptionalText(body.nationalId) ?? "";
+  if (!isValidNationalId(nationalId)) {
+    return NextResponse.json(
+      { error: "رقم الهوية يجب أن يكون 10 أرقام." },
+      { status: 400 },
+    );
+  }
+
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
   const providedEmail = normalizeEmail(body.email);
   if (!uid && !providedEmail) {
@@ -275,10 +287,32 @@ export async function POST(req: NextRequest, context: RouteContext) {
     normalizeName(body.name) ||
     normalizeName(authUser.displayName) ||
     fallbackName(email);
-  const phone = normalizeOptionalText(body.phone);
+  const rawPhone = normalizeOptionalText(body.phone);
+  const phone = rawPhone ? normalizeSaudiPhone(rawPhone) : null;
+  if (rawPhone && !phone) {
+    return NextResponse.json(
+      { error: "رقم جوال سعودي غير صالح." },
+      { status: 400 },
+    );
+  }
   const department = normalizeOptionalText(body.department);
   const title = normalizeOptionalText(body.title);
   const active = body.active !== false;
+
+  // Enforce unique national ID + phone among this company's employees.
+  const employeesPath = `companies/${companyId}/employees`;
+  if (await isFieldValueTaken(employeesPath, "nationalId", nationalId, authUser.uid)) {
+    return NextResponse.json(
+      { error: "رقم الهوية مستخدم بالفعل لموظف آخر." },
+      { status: 409 },
+    );
+  }
+  if (phone && (await isFieldValueTaken(employeesPath, "phone", phone, authUser.uid))) {
+    return NextResponse.json(
+      { error: "رقم الجوال مستخدم بالفعل لموظف آخر." },
+      { status: 409 },
+    );
+  }
 
   const payload: Record<string, unknown> = {
     companyId,
@@ -287,6 +321,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     role,
     permissions,
     active,
+    nationalId,
     updatedAt: FieldValue.serverTimestamp(),
   };
 

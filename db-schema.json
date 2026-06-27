@@ -1,0 +1,551 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "meta": {
+    "title": "Property Listing Platform — Firestore Data Model",
+    "project": "property-listing-7f3db",
+    "databaseType": "Google Cloud Firestore (NoSQL, document-oriented)",
+    "generatedOn": "2026-06-26",
+    "generatedFrom": "TypeScript domain types (src/types/*), firestore.rules, and Cloud Functions",
+    "important_notes": [
+      "Firestore is NOT relational. There are no tables/rows/columns or foreign keys.",
+      "Hierarchy: Collection -> Document -> Fields. A 'collection' below ~= a table; a 'document' ~= a row; a 'field' ~= a column.",
+      "Subcollections are nested under a parent document path, e.g. companies/{companyId}/listings/{listingId}.",
+      "'Relationships' are by stored ID strings (path references), enforced in application code, not by the database.",
+      "Many fields are denormalized (copied) for read performance, e.g. listing.assignedEmployeeName duplicates the employee's name.",
+      "timestamp = Firestore server Timestamp (date-time). Field marked optional may be absent on a given document.",
+      "This file documents STRUCTURE ONLY — it contains no real customer data."
+    ],
+    "fieldTypeLegend": {
+      "string": "UTF-8 text",
+      "number": "integer or float",
+      "boolean": "true/false",
+      "timestamp": "Firestore Timestamp (date-time)",
+      "array<T>": "ordered list of T",
+      "map{...}": "nested object with the listed sub-fields",
+      "enum(...)": "string constrained to the listed values",
+      "ref->path": "string holding the ID of a document in the referenced collection"
+    }
+  },
+
+  "enums": {
+    "Role": ["super_admin", "company_owner", "company_admin", "manager", "sales", "marketing", "data_entry", "accountant", "viewer", "customer"],
+    "ListingType": ["rent", "sale", "off_plan"],
+    "ListingCategory": ["apartment", "villa", "land", "commercial", "building", "office", "warehouse", "townhouse", "penthouse", "studio"],
+    "ListingStatus": ["draft", "published", "pending_review", "sold", "rented", "archived"],
+    "LeadStatus": ["new", "contacted", "qualified", "deal", "lost"],
+    "LeadSource": ["website_form", "whatsapp", "phone", "walk_in", "social_media", "referral", "marketplace", "other"],
+    "LeadQuality": ["qualified", "junk", "unrated"],
+    "LeadIntent": ["buy", "rent", "invest", "sell"],
+    "TaskStatus": ["todo", "in_progress", "done", "cancelled"],
+    "TaskPriority": ["low", "medium", "high", "urgent"],
+    "SubscriptionPlanId": ["free", "starter", "pro", "enterprise"],
+    "CompanyStatus": ["active", "suspended", "trial", "cancelled"],
+    "LeadAutoAssignStrategy": ["round_robin", "least_busy", "manual"],
+    "ContactMethod": ["phone", "whatsapp", "email"]
+  },
+
+  "collections": {
+    "companies": {
+      "path": "companies/{companyId}",
+      "scope": "top-level",
+      "documentId": "auto-generated companyId",
+      "description": "A real-estate agency tenant. Root of almost all other data (multi-tenant model).",
+      "fields": {
+        "id": { "type": "string", "description": "Document ID (companyId)." },
+        "name": { "type": "string" },
+        "nameAr": { "type": "string", "optional": true },
+        "slug": { "type": "string", "description": "Unique URL-safe handle used for public company pages." },
+        "description": { "type": "string", "optional": true },
+        "descriptionAr": { "type": "string", "optional": true },
+        "logo": { "type": "string", "optional": true },
+        "theme": { "type": "map{primaryColor:string, secondaryColor:string, accentColor?:string, fontFamily?:string, logoUrl?:string, heroImageUrl?:string, darkMode?:boolean}" },
+        "subscriptionPlan": { "type": "enum(SubscriptionPlanId)" },
+        "ownerId": { "type": "ref->users / companies/{companyId}/employees", "description": "uid of the company_owner." },
+        "status": { "type": "enum(CompanyStatus)" },
+        "contact": { "type": "map{phone?, whatsapp?, email?, address?, city?, country?, mapUrl?, website?, socials?{facebook?,instagram?,twitter?,linkedin?,tiktok?,youtube?}}" },
+        "supportedLanguages": { "type": "array<enum(en|ar)>" },
+        "defaultLanguage": { "type": "enum(en|ar)" },
+        "listingsCount": { "type": "number", "description": "Denormalized counter." },
+        "activeEmployeesCount": { "type": "number", "description": "Denormalized counter." },
+        "trialEndsAt": { "type": "timestamp", "optional": true },
+        "lastSignInAt": { "type": "timestamp", "optional": true, "description": "Updated on member sign-in." },
+        "lastSignInBy": { "type": "ref->employees", "optional": true },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+
+    "companies/settings": {
+      "path": "companies/{companyId}/settings/{docId}",
+      "scope": "subcollection",
+      "parent": "companies/{companyId}",
+      "documentId": "fixed: 'default'",
+      "description": "Per-company operational settings (lead auto-assign + task escalation + notifications).",
+      "fields": {
+        "id": { "type": "string" },
+        "companyId": { "type": "ref->companies" },
+        "leadAutoAssign": { "type": "boolean" },
+        "leadAutoAssignStrategy": { "type": "enum(LeadAutoAssignStrategy)" },
+        "leadRoundRobinCursor": { "type": "number", "optional": true, "description": "Rotation cursor for round-robin assignment." },
+        "taskEscalationHours": { "type": "number", "description": "Hours overdue before a task auto-escalates." },
+        "whatsappCtaNumber": { "type": "string", "optional": true },
+        "notificationEmails": { "type": "array<string>" },
+        "integrations": { "type": "map{googleAnalyticsId?:string, metaPixelId?:string, recaptchaSiteKey?:string}" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+
+    "companies/employees": {
+      "path": "companies/{companyId}/employees/{uid}",
+      "scope": "subcollection",
+      "parent": "companies/{companyId}",
+      "documentId": "Firebase Auth uid of the employee",
+      "description": "A staff member of a company. Document ID equals the user's auth uid.",
+      "fields": {
+        "id": { "type": "string", "description": "== Firebase Auth uid." },
+        "companyId": { "type": "ref->companies" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string", "optional": true },
+        "avatar": { "type": "string", "optional": true },
+        "role": { "type": "enum(Role)" },
+        "permissions": { "type": "array<string>", "description": "Effective permission keys (role defaults + custom overrides)." },
+        "permissionGroupIds": { "type": "array<ref->companies/{companyId}/permission_groups>", "optional": true },
+        "active": { "type": "boolean" },
+        "department": { "type": "string", "optional": true },
+        "title": { "type": "string", "optional": true },
+        "kpi": { "type": "map{listingsCreated:number, listingsActive:number, callsMade:number, leadsAssigned:number, leadsConverted:number, dealsClosed:number, avgResponseMinutes:number, tasksCompleted:number, tasksOverdue:number, lastUpdatedAt?:timestamp}", "description": "Live denormalized KPI counters." },
+        "invitedBy": { "type": "ref->employees", "optional": true },
+        "invitedAt": { "type": "timestamp", "optional": true },
+        "joinedAt": { "type": "timestamp", "optional": true },
+        "lastActiveAt": { "type": "timestamp", "optional": true },
+        "lastSignInAt": { "type": "timestamp", "optional": true },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+
+    "companies/permission_groups": {
+      "path": "companies/{companyId}/permission_groups/{groupId}",
+      "scope": "subcollection",
+      "parent": "companies/{companyId}",
+      "documentId": "auto-generated groupId",
+      "description": "Reusable named bundles of permissions assignable to employees.",
+      "fields": {
+        "id": { "type": "string" },
+        "companyId": { "type": "ref->companies" },
+        "nameEn": { "type": "string" },
+        "nameAr": { "type": "string" },
+        "permissions": { "type": "array<string>" },
+        "active": { "type": "boolean" },
+        "createdBy": { "type": "ref->employees" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+
+    "companies/invitations": {
+      "path": "companies/{companyId}/invitations/{invitationId}",
+      "scope": "subcollection",
+      "parent": "companies/{companyId}",
+      "documentId": "auto-generated invitationId",
+      "description": "Pending employee invitations for a company.",
+      "fields": {
+        "id": { "type": "string" },
+        "companyId": { "type": "ref->companies" },
+        "email": { "type": "string" },
+        "role": { "type": "enum(Role)" },
+        "permissions": { "type": "array<string>", "optional": true },
+        "invitedBy": { "type": "ref->employees" },
+        "token": { "type": "string", "description": "One-time invitation token." },
+        "status": { "type": "enum(pending|accepted|expired|revoked)" },
+        "expiresAt": { "type": "timestamp" },
+        "createdAt": { "type": "timestamp" }
+      }
+    },
+
+    "companies/listings": {
+      "path": "companies/{companyId}/listings/{listingId}",
+      "scope": "subcollection",
+      "parent": "companies/{companyId}",
+      "documentId": "auto-generated listingId",
+      "description": "A property listing owned by a company. Core inventory entity.",
+      "fields": {
+        "id": { "type": "string" },
+        "companyId": { "type": "ref->companies" },
+        "title": { "type": "string" },
+        "titleAr": { "type": "string", "optional": true },
+        "description": { "type": "string" },
+        "descriptionAr": { "type": "string", "optional": true },
+        "type": { "type": "enum(ListingType)" },
+        "category": { "type": "enum(ListingCategory)" },
+        "price": { "type": "number" },
+        "currency": { "type": "string", "description": "ISO 4217, e.g. SAR." },
+        "priceNegotiable": { "type": "boolean", "optional": true },
+        "rentPeriod": { "type": "enum(monthly|yearly|daily)", "optional": true },
+        "location": { "type": "map{country:string, region?:string, city:string, district?:string, address?:string, lat?:number, lng?:number, geohash?:string}" },
+        "bedrooms": { "type": "number", "optional": true },
+        "bathrooms": { "type": "number", "optional": true },
+        "area": { "type": "number" },
+        "areaUnit": { "type": "enum(sqm|sqft)" },
+        "yearBuilt": { "type": "number", "optional": true },
+        "floorNumber": { "type": "number", "optional": true },
+        "totalFloors": { "type": "number", "optional": true },
+        "amenities": { "type": "map{parking?:number, furnished?:boolean, balcony?:boolean, garden?:boolean, pool?:boolean, gym?:boolean, security?:boolean, elevator?:boolean, ac?:boolean, heating?:boolean, petFriendly?:boolean, [k]:boolean|number}" },
+        "contacts": { "type": "array<map{name:string, role?:string, phone?:string, note?:string}>", "optional": true },
+        "details": { "type": "map{usageType?, propertyTypeName?, propertyNumber?, titleEn?, deedType?, deedNumber?, deedIssueDate?, propertyArea?:number, additionalNumber1?, additionalNumber2?, parcelNumber?, blockNumber?, buildDate?, floorsCount?:number, unitsPerFloor?:number, electricityMeterNumber?, electricitySubscriptionNumber?, waterMeterNumber?, waterSubscriptionNumber?, streetName?, postalCode?, buildingNumber?, deedReference?, paymentCycle?:enum(monthly|quarterly|semiannual|annual), deposit?:number}", "optional": true, "description": "Deed/registry-style metadata." },
+        "media": { "type": "array<map{url:string, path:string, type:enum(image|video), width?:number, height?:number, order:number, alt?:string, isCover?:boolean}>", "description": "Uploaded images/videos. 'path' is the Cloud Storage object path." },
+        "coverImage": { "type": "string", "optional": true, "description": "Denormalized cover image URL." },
+        "assignedEmployeeId": { "type": "ref->companies/{companyId}/employees", "optional": true, "nullable": true },
+        "assignedEmployeeName": { "type": "string", "optional": true, "description": "Denormalized." },
+        "status": { "type": "enum(ListingStatus)" },
+        "featured": { "type": "boolean" },
+        "publishedAt": { "type": "timestamp", "optional": true, "nullable": true },
+        "analytics": { "type": "map{views:number, uniqueViews:number, inquiries:number, whatsappClicks:number, phoneClicks:number, favorites:number, lastViewedAt?:timestamp}" },
+        "createdBy": { "type": "ref->employees" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+
+    "companies/leads": {
+      "path": "companies/{companyId}/leads/{leadId}",
+      "scope": "subcollection",
+      "parent": "companies/{companyId}",
+      "documentId": "auto-generated leadId",
+      "description": "A potential customer/inquiry captured by a company. Drives the sales funnel.",
+      "fields": {
+        "id": { "type": "string" },
+        "companyId": { "type": "ref->companies" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "optional": true },
+        "message": { "type": "string", "optional": true },
+        "preferredContactMethod": { "type": "enum(ContactMethod)", "optional": true },
+        "listingId": { "type": "ref->companies/{companyId}/listings", "optional": true, "nullable": true },
+        "listingTitle": { "type": "string", "optional": true, "description": "Denormalized." },
+        "source": { "type": "enum(LeadSource)" },
+        "quality": { "type": "enum(LeadQuality)", "optional": true },
+        "requirement": { "type": "map{intent?:enum(LeadIntent), propertyType?:enum(ListingCategory), region?, city?, district?, budgetMin?:number, budgetMax?:number, bedrooms?:number, financing?:enum(cash|mortgage), timeline?:enum(immediate|1_3_months|browsing)}", "optional": true },
+        "assignedTo": { "type": "ref->companies/{companyId}/employees", "optional": true, "nullable": true },
+        "assignedToName": { "type": "string", "optional": true, "description": "Denormalized." },
+        "assignedAt": { "type": "timestamp", "optional": true, "nullable": true },
+        "status": { "type": "enum(LeadStatus)" },
+        "firstResponseAt": { "type": "timestamp", "optional": true, "nullable": true },
+        "responseTimeMinutes": { "type": "number", "optional": true, "nullable": true, "description": "Computed when first response logged." },
+        "notes": { "type": "array<map{id:string, authorId:ref->employees, authorName:string, text:string, createdAt:timestamp}>", "optional": true },
+        "tags": { "type": "array<string>", "optional": true },
+        "utm": { "type": "map{source?, medium?, campaign?, term?, content?}", "optional": true },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+
+    "companies/tasks": {
+      "path": "companies/{companyId}/tasks/{taskId}",
+      "scope": "subcollection",
+      "parent": "companies/{companyId}",
+      "documentId": "auto-generated taskId",
+      "description": "A to-do assigned to an employee; auto-escalates when overdue past settings.taskEscalationHours.",
+      "fields": {
+        "id": { "type": "string" },
+        "companyId": { "type": "ref->companies" },
+        "title": { "type": "string" },
+        "description": { "type": "string", "optional": true },
+        "assignedTo": { "type": "ref->companies/{companyId}/employees" },
+        "assignedToName": { "type": "string", "optional": true, "description": "Denormalized." },
+        "createdBy": { "type": "ref->employees" },
+        "createdByName": { "type": "string", "optional": true },
+        "priority": { "type": "enum(TaskPriority)" },
+        "status": { "type": "enum(TaskStatus)" },
+        "dueDate": { "type": "timestamp" },
+        "completedAt": { "type": "timestamp", "optional": true, "nullable": true },
+        "escalated": { "type": "boolean" },
+        "escalatedAt": { "type": "timestamp", "optional": true, "nullable": true },
+        "escalatedTo": { "type": "ref->employees", "optional": true, "nullable": true },
+        "relatedListingId": { "type": "ref->companies/{companyId}/listings", "optional": true, "nullable": true },
+        "relatedLeadId": { "type": "ref->companies/{companyId}/leads", "optional": true, "nullable": true },
+        "tags": { "type": "array<string>", "optional": true },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+
+    "companies/kpi": {
+      "path": "companies/{companyId}/kpi/{docId}",
+      "scope": "subcollection",
+      "parent": "companies/{companyId}",
+      "documentId": "fixed: 'current' (company overview) and 'employees_{uid}' (per-employee live)",
+      "description": "Live KPI rollups recomputed by Cloud Functions. 'current' holds the CompanyKPIOverview.",
+      "fields": {
+        "companyId": { "type": "ref->companies" },
+        "period": { "type": "string", "description": "YYYY-MM." },
+        "totalListings": { "type": "number" },
+        "activeListings": { "type": "number" },
+        "totalLeads": { "type": "number" },
+        "newLeadsThisMonth": { "type": "number" },
+        "convertedLeads": { "type": "number" },
+        "totalRevenue": { "type": "number" },
+        "totalEmployees": { "type": "number" },
+        "avgResponseMinutes": { "type": "number" },
+        "topPerformerId": { "type": "ref->employees", "optional": true },
+        "topPerformerName": { "type": "string", "optional": true },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+
+    "companies/kpi_snapshots": {
+      "path": "companies/{companyId}/kpi_snapshots/{snapId}",
+      "scope": "subcollection",
+      "parent": "companies/{companyId}",
+      "documentId": "'{YYYY-MM}_{employeeId}' — one snapshot per employee per month",
+      "description": "Historical monthly KPI snapshot per employee, computed by a scheduled Cloud Function.",
+      "fields": {
+        "id": { "type": "string" },
+        "companyId": { "type": "ref->companies" },
+        "employeeId": { "type": "ref->companies/{companyId}/employees" },
+        "employeeName": { "type": "string", "description": "Denormalized." },
+        "period": { "type": "string", "description": "YYYY-MM." },
+        "listingsCreated": { "type": "number" },
+        "listingsActive": { "type": "number" },
+        "leadsAssigned": { "type": "number" },
+        "leadsConverted": { "type": "number" },
+        "conversionRate": { "type": "number", "description": "0..1." },
+        "dealsClosed": { "type": "number" },
+        "revenueGenerated": { "type": "number" },
+        "avgResponseMinutes": { "type": "number" },
+        "tasksCompleted": { "type": "number" },
+        "tasksOverdue": { "type": "number" },
+        "callsMade": { "type": "number" },
+        "rank": { "type": "number", "optional": true, "description": "Ranking within company that month." },
+        "score": { "type": "number", "optional": true, "description": "Composite score." },
+        "createdAt": { "type": "timestamp" }
+      }
+    },
+
+    "companies/notifications": {
+      "path": "companies/{companyId}/notifications/{notifId}",
+      "scope": "subcollection",
+      "parent": "companies/{companyId}",
+      "documentId": "auto-generated notifId",
+      "description": "In-app notifications for company members (e.g. task escalations, new leads). Fields vary by 'type'.",
+      "fields": {
+        "type": { "type": "string", "description": "e.g. 'task_escalated', 'lead_assigned'." },
+        "title": { "type": "string", "optional": true },
+        "status": { "type": "string", "optional": true },
+        "taskId": { "type": "ref->companies/{companyId}/tasks", "optional": true },
+        "leadId": { "type": "ref->companies/{companyId}/leads", "optional": true },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "timestamp" }
+      }
+    },
+
+    "companies/activity_logs": {
+      "path": "companies/{companyId}/activity_logs/{logId}",
+      "scope": "subcollection",
+      "parent": "companies/{companyId}",
+      "documentId": "auto-generated logId",
+      "description": "Per-company audit/activity trail (inferred — no dedicated TS type). Typical fields below.",
+      "inferred": true,
+      "fields": {
+        "actorId": { "type": "ref->employees", "optional": true },
+        "action": { "type": "string", "optional": true },
+        "entityType": { "type": "string", "optional": true },
+        "entityId": { "type": "string", "optional": true },
+        "createdAt": { "type": "timestamp", "optional": true }
+      }
+    },
+
+    "global_listings": {
+      "path": "global_listings/{listingId}",
+      "scope": "top-level",
+      "documentId": "same ID as companies/{companyId}/listings/{listingId}",
+      "description": "Denormalized, published-only copy of listings for the public marketplace search. Synced from company listings by a Cloud Function.",
+      "fields": {
+        "id": { "type": "string", "description": "Mirrors the source listing ID." },
+        "companyId": { "type": "ref->companies" },
+        "companyName": { "type": "string", "description": "Denormalized." },
+        "companySlug": { "type": "ref->companies(slug)" },
+        "companyLogo": { "type": "string", "optional": true },
+        "title": { "type": "string" },
+        "titleAr": { "type": "string", "optional": true },
+        "type": { "type": "enum(ListingType)" },
+        "category": { "type": "enum(ListingCategory)" },
+        "price": { "type": "number" },
+        "currency": { "type": "string" },
+        "rentPeriod": { "type": "string", "optional": true, "nullable": true },
+        "city": { "type": "string" },
+        "country": { "type": "string" },
+        "region": { "type": "string", "optional": true },
+        "district": { "type": "string", "optional": true },
+        "lat": { "type": "number", "optional": true },
+        "lng": { "type": "number", "optional": true },
+        "bedrooms": { "type": "number", "optional": true },
+        "bathrooms": { "type": "number", "optional": true },
+        "area": { "type": "number" },
+        "areaUnit": { "type": "enum(sqm|sqft)" },
+        "coverImage": { "type": "string", "optional": true },
+        "status": { "type": "enum(published)", "description": "Always 'published' (only published listings are mirrored)." },
+        "featured": { "type": "boolean" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+
+    "lead_requests": {
+      "path": "lead_requests/{requestId}",
+      "scope": "top-level",
+      "documentId": "auto-generated requestId",
+      "description": "A customer 'property request' broadcast from the public landing page, visible to ALL companies. Each company can claim it into its own leads (shared-claim model).",
+      "fields": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "optional": true, "nullable": true },
+        "message": { "type": "string", "optional": true, "nullable": true },
+        "preferredContactMethod": { "type": "enum(ContactMethod)", "optional": true, "nullable": true },
+        "requirement": { "type": "map(LeadRequirement)", "optional": true, "nullable": true },
+        "source": { "type": "enum(landing_request)" },
+        "status": { "type": "enum(new)" },
+        "claimedBy": { "type": "map{ [companyId]: {leadId:ref->companies/{companyId}/leads, byName:string, claimedAt:timestamp} }", "optional": true, "description": "Keyed by companyId; present once that company moved it to its leads." },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+
+    "customers": {
+      "path": "customers/{customerUid}",
+      "scope": "top-level",
+      "documentId": "Firebase Auth uid of the self-registered marketplace customer",
+      "description": "A self-registered marketplace customer (role: 'customer').",
+      "fields": {
+        "uid": { "type": "string", "description": "== Firebase Auth uid." },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "preferredContactMethod": { "type": "enum(ContactMethod)", "nullable": true },
+        "contactConsent": { "type": "boolean", "description": "Consent to be contacted by agencies; only consenting customers surface as matched leads." },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+
+    "customer_searches": {
+      "path": "customer_searches/{searchId}",
+      "scope": "top-level",
+      "documentId": "deterministic hash of (customerId + normalized criteria) — identical searches upsert one doc",
+      "description": "A saved/idempotent marketplace search by a customer, used to match customers to company inventory (matched-leads feature).",
+      "fields": {
+        "customerId": { "type": "ref->customers", "description": "Customer's auth uid." },
+        "customerName": { "type": "string", "description": "Denormalized." },
+        "customerPhone": { "type": "string", "description": "Denormalized." },
+        "customerEmail": { "type": "string", "description": "Denormalized." },
+        "preferredContactMethod": { "type": "enum(ContactMethod)", "nullable": true },
+        "contactConsent": { "type": "boolean" },
+        "criteria": { "type": "map{q?:string, type?:enum(ListingType), category?:enum(ListingCategory), region?, city?, district?, bedrooms?:number, minPrice?:number, maxPrice?:number}" },
+        "searchCount": { "type": "number", "description": "Incremented each time the same search is repeated." },
+        "lastSearchedAt": { "type": "timestamp" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+
+    "users": {
+      "path": "users/{uid}",
+      "scope": "top-level",
+      "documentId": "Firebase Auth uid",
+      "description": "Lightweight global user record written on sign-in (links a uid to its role/company).",
+      "fields": {
+        "uid": { "type": "string" },
+        "role": { "type": "enum(Role)", "nullable": true },
+        "companyId": { "type": "ref->companies", "nullable": true },
+        "lastSignInAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+
+    "platform_admins": {
+      "path": "platform_admins/{uid}",
+      "scope": "top-level",
+      "documentId": "Firebase Auth uid of a platform-level admin",
+      "description": "Allow-list of super-admin users who manage the whole platform (inferred shape).",
+      "inferred": true,
+      "fields": {
+        "uid": { "type": "string", "optional": true },
+        "email": { "type": "string", "optional": true },
+        "createdAt": { "type": "timestamp", "optional": true }
+      }
+    },
+
+    "invitations": {
+      "path": "invitations/{invId}",
+      "scope": "top-level",
+      "documentId": "auto-generated / token-based invId",
+      "description": "Top-level invitation lookup (mirrors company invitations; used to resolve a token before company context is known).",
+      "fields": {
+        "id": { "type": "string" },
+        "companyId": { "type": "ref->companies" },
+        "email": { "type": "string" },
+        "role": { "type": "enum(Role)" },
+        "token": { "type": "string" },
+        "status": { "type": "enum(pending|accepted|expired|revoked)" },
+        "expiresAt": { "type": "timestamp" },
+        "createdAt": { "type": "timestamp" }
+      }
+    },
+
+    "audit_logs": {
+      "path": "audit_logs/{logId}",
+      "scope": "top-level",
+      "documentId": "auto-generated logId",
+      "description": "Platform-wide audit trail (inferred — no dedicated TS type).",
+      "inferred": true,
+      "fields": {
+        "actorId": { "type": "string", "optional": true },
+        "action": { "type": "string", "optional": true },
+        "target": { "type": "string", "optional": true },
+        "createdAt": { "type": "timestamp", "optional": true }
+      }
+    },
+
+    "plans": {
+      "path": "plans/{planId}",
+      "scope": "top-level",
+      "documentId": "plan key (e.g. free|starter|pro|enterprise)",
+      "description": "Subscription plan catalog/config (inferred shape).",
+      "inferred": true,
+      "fields": {
+        "id": { "type": "string", "optional": true },
+        "name": { "type": "string", "optional": true },
+        "price": { "type": "number", "optional": true },
+        "limits": { "type": "map{...}", "optional": true }
+      }
+    }
+  },
+
+  "relationships": [
+    { "from": "companies/{companyId}/* (all subcollections)", "to": "companies/{companyId}", "kind": "parent (ownership / tenant scope)", "via": "subcollection path + companyId field" },
+    { "from": "companies.ownerId", "to": "users / companies/{companyId}/employees", "kind": "many-to-one", "via": "uid" },
+    { "from": "employees.id", "to": "users.uid", "kind": "one-to-one", "via": "shared Firebase Auth uid" },
+    { "from": "employees.permissionGroupIds[]", "to": "companies/{companyId}/permission_groups", "kind": "many-to-many", "via": "groupId" },
+    { "from": "listings.assignedEmployeeId", "to": "companies/{companyId}/employees", "kind": "many-to-one", "via": "uid" },
+    { "from": "listings.createdBy", "to": "companies/{companyId}/employees", "kind": "many-to-one", "via": "uid" },
+    { "from": "leads.listingId", "to": "companies/{companyId}/listings", "kind": "many-to-one", "via": "listingId" },
+    { "from": "leads.assignedTo", "to": "companies/{companyId}/employees", "kind": "many-to-one", "via": "uid" },
+    { "from": "tasks.assignedTo / createdBy / escalatedTo", "to": "companies/{companyId}/employees", "kind": "many-to-one", "via": "uid" },
+    { "from": "tasks.relatedListingId", "to": "companies/{companyId}/listings", "kind": "many-to-one", "via": "listingId" },
+    { "from": "tasks.relatedLeadId", "to": "companies/{companyId}/leads", "kind": "many-to-one", "via": "leadId" },
+    { "from": "kpi_snapshots.employeeId / kpi.topPerformerId", "to": "companies/{companyId}/employees", "kind": "many-to-one", "via": "uid" },
+    { "from": "global_listings.id", "to": "companies/{companyId}/listings", "kind": "one-to-one mirror", "via": "shared document ID (Cloud Function sync, published only)" },
+    { "from": "global_listings.companyId / companySlug", "to": "companies", "kind": "many-to-one", "via": "companyId / slug" },
+    { "from": "lead_requests.claimedBy[companyId].leadId", "to": "companies/{companyId}/leads", "kind": "one-per-company claim", "via": "leadId" },
+    { "from": "customer_searches.customerId", "to": "customers", "kind": "many-to-one", "via": "uid" },
+    { "from": "customers.uid", "to": "users.uid", "kind": "one-to-one", "via": "shared Firebase Auth uid" }
+  ],
+
+  "denormalization_notes": [
+    "Names are frequently copied alongside IDs (assignedToName, assignedEmployeeName, employeeName, companyName, listingTitle) to avoid extra reads. Treat the *Id field as the source of truth and the *Name as a possibly-stale cache.",
+    "Counters on companies (listingsCount, activeEmployeesCount) and employees.kpi are denormalized aggregates maintained by Cloud Functions, not transactional truth.",
+    "global_listings duplicates a subset of listings for public search; it only contains status='published' documents."
+  ]
+}

@@ -12,6 +12,8 @@ import {
   parseAssignableEmployeeRole,
   parsePermissionOverrides,
 } from "@/lib/api/company-employees";
+import { isFieldValueTaken } from "@/lib/api/uniqueness";
+import { isValidNationalId, normalizeSaudiPhone } from "@/lib/utils/validation";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -28,6 +30,7 @@ interface UpdateEmployeeBody {
   department?: string;
   title?: string;
   active?: boolean;
+  nationalId?: string;
 }
 
 async function clearEmployeeClaims(uid: string) {
@@ -67,9 +70,41 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     updates.name = nextName;
   }
 
-  const phone = normalizeOptionalText(body.phone);
-  if (phone) {
+  const employeesPath = `companies/${companyId}/employees`;
+
+  const rawPhone = normalizeOptionalText(body.phone);
+  if (rawPhone) {
+    const phone = normalizeSaudiPhone(rawPhone);
+    if (!phone) {
+      return NextResponse.json(
+        { error: "رقم جوال سعودي غير صالح." },
+        { status: 400 },
+      );
+    }
+    if (await isFieldValueTaken(employeesPath, "phone", phone, uid)) {
+      return NextResponse.json(
+        { error: "رقم الجوال مستخدم بالفعل لموظف آخر." },
+        { status: 409 },
+      );
+    }
     updates.phone = phone;
+  }
+
+  if (body.nationalId !== undefined) {
+    const nationalId = normalizeOptionalText(body.nationalId) ?? "";
+    if (!isValidNationalId(nationalId)) {
+      return NextResponse.json(
+        { error: "رقم الهوية يجب أن يكون 10 أرقام." },
+        { status: 400 },
+      );
+    }
+    if (await isFieldValueTaken(employeesPath, "nationalId", nationalId, uid)) {
+      return NextResponse.json(
+        { error: "رقم الهوية مستخدم بالفعل لموظف آخر." },
+        { status: 409 },
+      );
+    }
+    updates.nationalId = nationalId;
   }
 
   const department = normalizeOptionalText(body.department);

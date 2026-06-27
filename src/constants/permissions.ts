@@ -162,6 +162,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
 
   [ROLES.VIEWER]: [PERMISSIONS.VIEW_EMPLOYEES, PERMISSIONS.VIEW_OWN_KPI],
+
+  // Marketplace customers hold no company permissions.
+  [ROLES.CUSTOMER]: [],
 };
 
 export function permissionsForRole(role: Role): Permission[] {

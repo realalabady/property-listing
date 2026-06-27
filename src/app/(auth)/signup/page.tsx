@@ -1,11 +1,14 @@
-import { redirect } from "next/navigation";
-import { ROUTES } from "@/constants/routes";
-import { t } from "@/lib/i18n";
+import { Suspense } from "react";
+import CustomerSignupForm from "./CustomerSignupForm";
 
 export const metadata = {
-  title: t("auth.signInTitle"),
+  title: "إنشاء حساب عميل",
 };
 
 export default function SignupPage() {
-  redirect(ROUTES.LOGIN);
+  return (
+    <Suspense fallback={null}>
+      <CustomerSignupForm />
+    </Suspense>
+  );
 }

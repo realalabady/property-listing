@@ -155,7 +155,7 @@ export function cityMatches(listingCity: string, queryCity: string): boolean {
 }
 
 /** Loose, case-insensitive substring match in either direction. */
-function nameMatches(value: string, query: string): boolean {
+export function nameMatches(value: string, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
   const v = value.trim().toLowerCase();

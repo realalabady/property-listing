@@ -52,6 +52,10 @@ export async function requireCompanyMember(): Promise<SessionUser> {
   if (user.role === ROLES.SUPER_ADMIN) {
     redirect(ROUTES.ADMIN);
   }
+  // Marketplace customers have no company — keep them out of the dashboard.
+  if (user.role === ROLES.CUSTOMER) {
+    redirect(ROUTES.MARKETPLACE);
+  }
   if (!user.companyId) {
     redirect(ROUTES.ONBOARDING);
   }

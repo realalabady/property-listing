@@ -31,6 +31,9 @@ import {
 import { Combobox } from "@/components/ui/combobox";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils/cn";
+import { useAuth } from "@/hooks/useAuth";
+import { ROLES } from "@/constants/roles";
+import { logCustomerSearch } from "@/features/matching/logSearch";
 
 const SaudiClusterMap = dynamic(() => import("./SaudiClusterMap"), {
   ssr: false,
@@ -53,6 +56,7 @@ export function MarketplaceClient() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
 
   const [listings, setListings] = useState<PublicListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,6 +167,10 @@ export function MarketplaceClient() {
   function commit(event?: FormEvent) {
     event?.preventDefault();
     router.push(`${pathname}${filtersToQuery(filters)}`, { scroll: false });
+    // Registered customers' committed searches become matched-lead signals.
+    if (user?.role === ROLES.CUSTOMER) {
+      logCustomerSearch(filters);
+    }
   }
 
   function reset() {

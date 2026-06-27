@@ -5,8 +5,10 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import {
+  ArrowDown,
   ArrowLeft,
   ArrowRight,
+  ArrowUp,
   Building2,
   Globe,
   Home,
@@ -25,6 +27,9 @@ import {
 import { cn } from "@/lib/utils/cn";
 import { getGlobalListings, type PublicListing } from "@/features/public/data";
 import { ListingCard } from "@/features/public/ListingCard";
+import { useAuth } from "@/hooks/useAuth";
+import { ROLES } from "@/constants/roles";
+import { logCustomerSearch } from "@/features/matching/logSearch";
 import { PropertyRequestModal } from "./PropertyRequestModal";
 
 const SaudiClusterMap = dynamic(
@@ -136,6 +141,7 @@ const steps: Array<{ title: Localized; body: Localized }> = [
 
 export function DarHomepage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [locale, setLocale] = useState<Locale>("ar");
   const [requestOpen, setRequestOpen] = useState(false);
   const isArabic = locale === "ar";
@@ -173,14 +179,18 @@ export function DarHomepage() {
 
   function runSearch(event: FormEvent) {
     event.preventDefault();
-    const query = filtersToQuery({
+    const searchFilters: ListingFilters = {
       ...EMPTY_FILTERS,
       type,
       city,
       category: category as ListingFilters["category"],
       q: keyword,
-    });
-    router.push(`${ROUTES.MARKETPLACE}${query}`);
+    };
+    // Registered customers' committed searches become matched-lead signals.
+    if (user?.role === ROLES.CUSTOMER) {
+      logCustomerSearch(searchFilters);
+    }
+    router.push(`${ROUTES.MARKETPLACE}${filtersToQuery(searchFilters)}`);
   }
 
   return (
@@ -284,10 +294,38 @@ export function DarHomepage() {
               </p>
             </div>
 
+            {/* Two-path chooser — make "Request a property" obvious, above search */}
+            <div className="mx-auto mt-9 flex max-w-md flex-col items-center gap-2 text-center">
+              <Button
+                size="lg"
+                onClick={() => setRequestOpen(true)}
+                className="rounded-full px-8 text-base shadow-md"
+              >
+                {isArabic ? "اطلب عقارك" : "Request a property"}
+              </Button>
+              <ArrowUp className="animate-bounce-up h-5 w-5 text-primary" />
+              <p className="text-xs text-muted-foreground">
+                {isArabic
+                  ? "أخبرنا بما تريد ويصلك العرض من الشركات العقارية"
+                  : "Tell us what you need — agencies come to you"}
+              </p>
+
+              <div className="my-1 flex w-full items-center gap-3 text-sm font-bold text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                {isArabic ? "أو" : "or"}
+                <span className="h-px flex-1 bg-border" />
+              </div>
+
+              <p className="text-base font-bold text-foreground">
+                {isArabic ? "ابحث عن عقارك" : "Search for your property"}
+              </p>
+              <ArrowDown className="animate-bounce-down h-5 w-5 text-primary" />
+            </div>
+
             {/* Functional search bar (full width, like every property portal) */}
             <form
               onSubmit={runSearch}
-              className="mx-auto mt-8 max-w-5xl rounded-2xl border border-border bg-card p-3 text-start shadow-lg shadow-black/[0.04] md:mt-10 md:p-4"
+              className="mx-auto mt-4 max-w-5xl rounded-2xl border border-border bg-card p-3 text-start shadow-lg shadow-black/[0.04] md:p-4"
             >
               {/* Type tabs */}
               <div className="mb-3 flex flex-wrap gap-2">

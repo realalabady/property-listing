@@ -6,6 +6,7 @@ import {
   onIdTokenChanged,
   signOut as fbSignOut,
   signInWithEmailAndPassword,
+  signInWithCustomToken,
   type User as FirebaseUser,
 } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
@@ -161,6 +162,49 @@ export function useAuth() {
       throw new Error(
         "Self-service registration is disabled. Contact the platform owner for account access.",
       );
+    },
+    /**
+     * Marketplace customer self-signup. Creates the account server-side (with a
+     * `customer` role claim), then signs in via the returned custom token and
+     * exchanges it for a session cookie — same session model as company users.
+     */
+    signUpCustomer: async (input: {
+      name: string;
+      email: string;
+      phone: string;
+      password: string;
+      preferredContactMethod?: string | null;
+      contactConsent?: boolean;
+    }) => {
+      const res = await fetch("/api/customer/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      let payload: { customToken?: string; error?: string } | null = null;
+      try {
+        payload = (await res.json()) as {
+          customToken?: string;
+          error?: string;
+        };
+      } catch {
+        payload = null;
+      }
+      if (!res.ok || !payload?.customToken) {
+        throw new Error(payload?.error ?? "تعذّر إنشاء الحساب.");
+      }
+      const cred = await signInWithCustomToken(
+        getFirebaseAuth(),
+        payload.customToken,
+      );
+      try {
+        const idToken = await cred.user.getIdToken(true);
+        await exchangeIdTokenForSession(idToken);
+      } catch (error) {
+        await fbSignOut(getFirebaseAuth()).catch(() => undefined);
+        throw error;
+      }
+      return cred.user;
     },
     signOut: async () => {
       await fbSignOut(getFirebaseAuth());

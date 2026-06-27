@@ -64,9 +64,13 @@ export default function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      await signIn(email, password);
+      const fbUser = await signIn(email, password);
       await acceptInvitationAfterLogin();
-      router.push(next);
+      // Customers are not company members — never send them into the dashboard.
+      const { claims } = await fbUser.getIdTokenResult();
+      const destination =
+        claims.role === "customer" ? ROUTES.MARKETPLACE : next;
+      router.push(destination);
       router.refresh();
     } catch (err) {
       setError(toPublicAuthMessage(err));

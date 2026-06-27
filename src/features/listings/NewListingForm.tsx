@@ -74,6 +74,21 @@ interface FormState {
   paymentCycle: string;
   deposit: string;
   priceNegotiable: boolean;
+  // Unit specifications & amenities
+  bedrooms: string;
+  bathrooms: string;
+  parking: string;
+  yearBuilt: string;
+  furnished: boolean;
+  balcony: boolean;
+  garden: boolean;
+  pool: boolean;
+  gym: boolean;
+  security: boolean;
+  elevator: boolean;
+  ac: boolean;
+  heating: boolean;
+  petFriendly: boolean;
   // Location (cascading, official Saudi National Address ids)
   regionId: string;
   cityId: string;
@@ -115,6 +130,20 @@ const initialState: FormState = {
   paymentCycle: "monthly",
   deposit: "",
   priceNegotiable: false,
+  bedrooms: "",
+  bathrooms: "",
+  parking: "",
+  yearBuilt: "",
+  furnished: false,
+  balcony: false,
+  garden: false,
+  pool: false,
+  gym: false,
+  security: false,
+  elevator: false,
+  ac: false,
+  heating: false,
+  petFriendly: false,
   regionId: DEFAULT_REGION_ID,
   cityId: DEFAULT_CITY_ID,
   districtId: "",
@@ -145,6 +174,47 @@ const initialState: FormState = {
 };
 
 const USAGE_TYPES = ["سكني", "تجاري", "زراعي", "صناعي", "مكتبي"];
+
+type AmenityKey =
+  | "furnished"
+  | "balcony"
+  | "garden"
+  | "pool"
+  | "gym"
+  | "security"
+  | "elevator"
+  | "ac"
+  | "heating"
+  | "petFriendly";
+
+const AMENITY_TOGGLES: Array<{ key: AmenityKey; label: string }> = [
+  { key: "furnished", label: "مفروش" },
+  { key: "ac", label: "تكييف" },
+  { key: "elevator", label: "مصعد" },
+  { key: "balcony", label: "شرفة" },
+  { key: "garden", label: "حديقة" },
+  { key: "pool", label: "مسبح" },
+  { key: "gym", label: "صالة رياضية" },
+  { key: "security", label: "أمن وحراسة" },
+  { key: "heating", label: "تدفئة" },
+  { key: "petFriendly", label: "يسمح بالحيوانات الأليفة" },
+];
+
+// Constrained numeric option lists — dropdowns instead of free text so the
+// stored values are clean integers (no typos, searchable, matchable).
+const BEDROOM_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const BATHROOM_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+const PARKING_OPTIONS = [0, 1, 2, 3, 4, 5, 6];
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from(
+  { length: CURRENT_YEAR - 1970 + 1 },
+  (_, i) => CURRENT_YEAR - i,
+);
+
+/** Label for a capped numeric option: the max entry renders as "N+". */
+function countLabel(value: number, options: number[]): string {
+  return value === options[options.length - 1] ? `${value}+` : String(value);
+}
 
 interface Errors {
   title?: string;
@@ -291,6 +361,33 @@ export function NewListingForm({ companyId, userId }: NewListingFormProps) {
     return details;
   }
 
+  // Amenities: store only the toggles that are ON, plus a parking count when > 0.
+  function buildAmenities(): Record<string, boolean | number> {
+    const amenities: Record<string, boolean | number> = {};
+    for (const { key } of AMENITY_TOGGLES) {
+      if (form[key]) amenities[key] = true;
+    }
+    const parking = Number(form.parking);
+    if (form.parking.trim() && Number.isFinite(parking) && parking > 0) {
+      amenities.parking = parking;
+    }
+    return amenities;
+  }
+
+  // Top-level numeric specs: only include fields the user actually filled in
+  // (Firestore client SDK rejects `undefined`, so we omit empties entirely).
+  function buildSpecs(): Record<string, number> {
+    const specs: Record<string, number> = {};
+    const num = (key: string, value: string) => {
+      const n = Number(value);
+      if (value.trim() && Number.isFinite(n) && n >= 0) specs[key] = n;
+    };
+    num("bedrooms", form.bedrooms);
+    num("bathrooms", form.bathrooms);
+    num("yearBuilt", form.yearBuilt);
+    return specs;
+  }
+
   async function handleSubmit() {
     setSubmitted(true);
     const found = validate();
@@ -356,7 +453,8 @@ export function NewListingForm({ companyId, userId }: NewListingFormProps) {
         },
         area: Number(form.area),
         areaUnit: "sqm",
-        amenities: {},
+        ...buildSpecs(),
+        amenities: buildAmenities(),
         contacts: cleanContacts,
         details,
         media: [],
@@ -535,6 +633,90 @@ export function NewListingForm({ companyId, userId }: NewListingFormProps) {
                 </label>
               </Field>
             )}
+          </div>
+        </AccordionSection>
+
+        {/* Unit specifications & amenities */}
+        <AccordionSection
+          title="مواصفات ومرافق الوحدة"
+          description="عدد الغرف ودورات المياه والمرافق المتوفرة في العقار"
+          defaultOpen
+        >
+          <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">
+            <Field label="عدد الغرف">
+              <Select
+                value={form.bedrooms}
+                onChange={(e) => set("bedrooms")(e.target.value)}
+              >
+                <option value="">— غير محدد —</option>
+                {BEDROOM_OPTIONS.map((n) => (
+                  <option key={n} value={String(n)}>
+                    {n === 0 ? "استوديو (بدون غرف)" : countLabel(n, BEDROOM_OPTIONS)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="عدد دورات المياه">
+              <Select
+                value={form.bathrooms}
+                onChange={(e) => set("bathrooms")(e.target.value)}
+              >
+                <option value="">— غير محدد —</option>
+                {BATHROOM_OPTIONS.map((n) => (
+                  <option key={n} value={String(n)}>
+                    {countLabel(n, BATHROOM_OPTIONS)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="عدد المواقف">
+              <Select
+                value={form.parking}
+                onChange={(e) => set("parking")(e.target.value)}
+              >
+                <option value="">— غير محدد —</option>
+                {PARKING_OPTIONS.map((n) => (
+                  <option key={n} value={String(n)}>
+                    {n === 0 ? "لا توجد" : countLabel(n, PARKING_OPTIONS)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="سنة البناء">
+              <Select
+                value={form.yearBuilt}
+                onChange={(e) => set("yearBuilt")(e.target.value)}
+              >
+                <option value="">— غير محدد —</option>
+                {YEAR_OPTIONS.map((y) => (
+                  <option key={y} value={String(y)}>
+                    {y}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+
+          <div className="mt-5">
+            <p className="mb-2.5 text-sm font-medium text-foreground">
+              المرافق والمميزات
+            </p>
+            <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
+              {AMENITY_TOGGLES.map((amenity) => (
+                <label
+                  key={amenity.key}
+                  className="flex h-11 cursor-pointer items-center gap-2.5 rounded-lg border border-input bg-card px-3.5 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={form[amenity.key]}
+                    onChange={(e) => set(amenity.key)(e.target.checked)}
+                    className="h-4 w-4 cursor-pointer accent-[hsl(var(--primary))]"
+                  />
+                  {amenity.label}
+                </label>
+              ))}
+            </div>
           </div>
         </AccordionSection>
 
