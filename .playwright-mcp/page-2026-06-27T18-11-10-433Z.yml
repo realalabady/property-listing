@@ -1,0 +1,229 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - link "شعار Elite Elite" [ref=e5] [cursor=pointer]:
+        - /url: /dashboard
+        - img "شعار Elite" [ref=e6]
+        - generic [ref=e7]: Elite
+      - navigation [ref=e9]:
+        - link "نظرة عامة" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e12]
+          - generic [ref=e17]: نظرة عامة
+        - generic [ref=e18]:
+          - paragraph [ref=e19]: إدارة العقارات
+          - generic [ref=e21]:
+            - link "العقارات" [ref=e22] [cursor=pointer]:
+              - /url: /dashboard/listings
+              - img [ref=e23]
+              - generic [ref=e27]: العقارات
+            - button "فتح القائمة" [ref=e28] [cursor=pointer]:
+              - img [ref=e29]
+        - generic [ref=e31]:
+          - paragraph [ref=e32]: العملاء والمهام
+          - generic [ref=e34]:
+            - link "العملاء المحتملون" [ref=e35] [cursor=pointer]:
+              - /url: /dashboard/leads
+              - img [ref=e36]
+              - generic [ref=e40]: العملاء المحتملون
+            - button "فتح القائمة" [ref=e41] [cursor=pointer]:
+              - img [ref=e42]
+          - link "الطلبات الواردة" [ref=e44] [cursor=pointer]:
+            - /url: /dashboard/leads/arrived
+            - img [ref=e45]
+            - generic [ref=e48]: الطلبات الواردة
+          - link "العملاء المطابقون" [ref=e49] [cursor=pointer]:
+            - /url: /dashboard/matched-leads
+            - img [ref=e50]
+            - generic [ref=e54]: العملاء المطابقون
+          - link "المهام" [ref=e55] [cursor=pointer]:
+            - /url: /dashboard/tasks
+            - img [ref=e56]
+            - generic [ref=e59]: المهام
+        - generic [ref=e60]:
+          - paragraph [ref=e61]: الفريق
+          - generic [ref=e63]:
+            - link "الموظفون" [ref=e64] [cursor=pointer]:
+              - /url: /dashboard/employees
+              - img [ref=e65]
+              - generic [ref=e77]: الموظفون
+            - button "فتح القائمة" [ref=e78] [cursor=pointer]:
+              - img [ref=e79]
+          - link "مجموعات الصلاحيات" [ref=e81] [cursor=pointer]:
+            - /url: /dashboard/employees/permissions
+            - img [ref=e82]
+            - generic [ref=e85]: مجموعات الصلاحيات
+        - generic [ref=e86]:
+          - paragraph [ref=e87]: التحليلات
+          - link "مؤشرات الأداء" [ref=e88] [cursor=pointer]:
+            - /url: /dashboard/kpi
+            - img [ref=e89]
+            - generic [ref=e91]: مؤشرات الأداء
+          - link "الإعدادات" [ref=e92] [cursor=pointer]:
+            - /url: /dashboard/settings
+            - img [ref=e93]
+            - generic [ref=e96]: الإعدادات
+    - generic [ref=e97]:
+      - banner [ref=e98]:
+        - generic [ref=e99]:
+          - generic [ref=e100]: A
+          - generic [ref=e101]:
+            - paragraph [ref=e102]: Ahmed Ali
+            - paragraph [ref=e103]: مالك
+        - generic [ref=e104]:
+          - button "فتح الإشعارات" [ref=e106] [cursor=pointer]:
+            - img [ref=e107]
+          - button "تسجيل الخروج" [ref=e110] [cursor=pointer]
+      - main [ref=e111]:
+        - generic [ref=e112]:
+          - generic [ref=e113]:
+            - heading "ادارة مجموعات الصلاحيات" [level=2] [ref=e114]
+            - paragraph [ref=e115]: انشئ مجموعات قابلة لاعادة الاستخدام ثم اسندها للموظفين مع تحكم هرمي كامل.
+          - generic [ref=e116]:
+            - heading "مجموعة صلاحيات جديدة" [level=3] [ref=e118]
+            - generic [ref=e120]:
+              - generic [ref=e121]:
+                - generic [ref=e122]:
+                  - text: اسم المجموعة بالعربية
+                  - textbox "اسم المجموعة بالعربية" [ref=e123]:
+                    - /placeholder: "مثال: فريق المبيعات"
+                - generic [ref=e124]:
+                  - text: Group Name (English)
+                  - textbox "Group Name (English)" [ref=e125]:
+                    - /placeholder: "Example: Sales Team"
+              - generic [ref=e126]:
+                - generic [ref=e127]:
+                  - checkbox "تحديد كل الصلاحيات" [ref=e128]
+                  - generic [ref=e129]: تحديد كل الصلاحيات
+                - generic [ref=e130]:
+                  - checkbox "لوحة التحكم" [ref=e131]
+                  - generic [ref=e132]: لوحة التحكم
+                - generic [ref=e133]:
+                  - checkbox "صلاحيات العرض" [ref=e134]
+                  - generic [ref=e135]: صلاحيات العرض
+              - generic [ref=e136]:
+                - generic [ref=e137]:
+                  - generic [ref=e139]:
+                    - checkbox [ref=e140]
+                    - heading "لوحة التحكم والتقارير" [level=3] [ref=e141]
+                  - generic [ref=e143]:
+                    - generic [ref=e144]:
+                      - checkbox "عرض مؤشرات الاداء" [ref=e145]
+                      - generic [ref=e146]: عرض مؤشرات الاداء
+                    - generic [ref=e147]:
+                      - checkbox "عرض مؤشراتي" [ref=e148]
+                      - generic [ref=e149]: عرض مؤشراتي
+                    - generic [ref=e150]:
+                      - checkbox "تصدير التقارير" [ref=e151]
+                      - generic [ref=e152]: تصدير التقارير
+                - generic [ref=e153]:
+                  - generic [ref=e155]:
+                    - checkbox [ref=e156]
+                    - heading "العقارات والمخزون" [level=3] [ref=e157]
+                  - generic [ref=e159]:
+                    - generic [ref=e160]:
+                      - checkbox "انشاء عقار" [ref=e161]
+                      - generic [ref=e162]: انشاء عقار
+                    - generic [ref=e163]:
+                      - checkbox "تعديل العقار" [ref=e164]
+                      - generic [ref=e165]: تعديل العقار
+                    - generic [ref=e166]:
+                      - checkbox "تعديل عقاري" [ref=e167]
+                      - generic [ref=e168]: تعديل عقاري
+                    - generic [ref=e169]:
+                      - checkbox "حذف العقار" [ref=e170]
+                      - generic [ref=e171]: حذف العقار
+                    - generic [ref=e172]:
+                      - checkbox "نشر العقار" [ref=e173]
+                      - generic [ref=e174]: نشر العقار
+                    - generic [ref=e175]:
+                      - checkbox "اسناد العقار" [ref=e176]
+                      - generic [ref=e177]: اسناد العقار
+                    - generic [ref=e178]:
+                      - checkbox "تمييز العقار" [ref=e179]
+                      - generic [ref=e180]: تمييز العقار
+                - generic [ref=e181]:
+                  - generic [ref=e183]:
+                    - checkbox [ref=e184]
+                    - heading "العملاء المحتملون وادارة العلاقات" [level=3] [ref=e185]
+                  - generic [ref=e187]:
+                    - generic [ref=e188]:
+                      - checkbox "ادارة العملاء المحتملين" [ref=e189]
+                      - generic [ref=e190]: ادارة العملاء المحتملين
+                    - generic [ref=e191]:
+                      - checkbox "عرض عملائي" [ref=e192]
+                      - generic [ref=e193]: عرض عملائي
+                    - generic [ref=e194]:
+                      - checkbox "اسناد العملاء" [ref=e195]
+                      - generic [ref=e196]: اسناد العملاء
+                - generic [ref=e197]:
+                  - generic [ref=e199]:
+                    - checkbox [ref=e200]
+                    - heading "الموظفون والصلاحيات" [level=3] [ref=e201]
+                  - generic [ref=e203]:
+                    - generic [ref=e204]:
+                      - checkbox "عرض الموظفين" [ref=e205]
+                      - generic [ref=e206]: عرض الموظفين
+                    - generic [ref=e207]:
+                      - checkbox "انشاء موظف" [ref=e208]
+                      - generic [ref=e209]: انشاء موظف
+                    - generic [ref=e210]:
+                      - checkbox "تعديل الموظف" [ref=e211]
+                      - generic [ref=e212]: تعديل الموظف
+                    - generic [ref=e213]:
+                      - checkbox "حذف الموظف" [ref=e214]
+                      - generic [ref=e215]: حذف الموظف
+                    - generic [ref=e216]:
+                      - checkbox "ادارة مجموعات الصلاحيات" [ref=e217]
+                      - generic [ref=e218]: ادارة مجموعات الصلاحيات
+                - generic [ref=e219]:
+                  - generic [ref=e221]:
+                    - checkbox [ref=e222]
+                    - heading "المهام والعمليات" [level=3] [ref=e223]
+                  - generic [ref=e225]:
+                    - generic [ref=e226]:
+                      - checkbox "انشاء مهمة" [ref=e227]
+                      - generic [ref=e228]: انشاء مهمة
+                    - generic [ref=e229]:
+                      - checkbox "اسناد المهام" [ref=e230]
+                      - generic [ref=e231]: اسناد المهام
+                    - generic [ref=e232]:
+                      - checkbox "تصعيد المهام" [ref=e233]
+                      - generic [ref=e234]: تصعيد المهام
+                    - generic [ref=e235]:
+                      - checkbox "اكمال المهام" [ref=e236]
+                      - generic [ref=e237]: اكمال المهام
+                - generic [ref=e238]:
+                  - generic [ref=e240]:
+                    - checkbox [ref=e241]
+                    - heading "الشركة والفوترة" [level=3] [ref=e242]
+                  - generic [ref=e244]:
+                    - generic [ref=e245]:
+                      - checkbox "الوصول لاعدادات الشركة" [ref=e246]
+                      - generic [ref=e247]: الوصول لاعدادات الشركة
+                    - generic [ref=e248]:
+                      - checkbox "الوصول للفوترة" [ref=e249]
+                      - generic [ref=e250]: الوصول للفوترة
+                    - generic [ref=e251]:
+                      - checkbox "ادارة الهوية" [ref=e252]
+                      - generic [ref=e253]: ادارة الهوية
+              - generic [ref=e254]:
+                - button "اعادة تعيين" [ref=e255] [cursor=pointer]
+                - button "حفظ المجموعة" [ref=e256] [cursor=pointer]
+          - generic [ref=e257]:
+            - heading "اسناد المجموعات للموظفين" [level=3] [ref=e259]
+            - generic [ref=e260]:
+              - generic [ref=e261]:
+                - text: اختر الموظف
+                - combobox "اختر الموظف" [ref=e262]:
+                  - option "Ahmed Ali (company_owner)" [selected]
+                  - option "ahmed for leads (data_entry)"
+              - paragraph [ref=e263]: انشئ مجموعة صلاحيات واحدة على الاقل قبل الاسناد.
+              - generic [ref=e264]:
+                - button "حفظ اسناد الموظف" [disabled]
+          - generic [ref=e265]:
+            - heading "المجموعات المحفوظة" [level=3] [ref=e267]
+            - paragraph [ref=e269]: جاري تحميل المجموعات...
+  - button "Open Next.js Dev Tools" [ref=e275] [cursor=pointer]:
+    - img [ref=e276]
+  - alert [ref=e279]

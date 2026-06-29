@@ -1,0 +1,130 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - link "شعار Elite Elite" [ref=e5] [cursor=pointer]:
+      - /url: /dashboard
+      - img "شعار Elite" [ref=e6]
+      - generic [ref=e7]: Elite
+    - navigation [ref=e9]:
+      - link "نظرة عامة" [ref=e11] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e12]
+        - generic [ref=e17]: نظرة عامة
+      - generic [ref=e18]:
+        - paragraph [ref=e19]: إدارة العقارات
+        - generic [ref=e21]:
+          - link "العقارات" [ref=e22] [cursor=pointer]:
+            - /url: /dashboard/listings
+            - img [ref=e23]
+            - generic [ref=e27]: العقارات
+          - button "فتح القائمة" [ref=e28] [cursor=pointer]:
+            - img [ref=e29]
+      - generic [ref=e31]:
+        - paragraph [ref=e32]: العملاء والمهام
+        - generic [ref=e34]:
+          - link "العملاء المحتملون" [ref=e35] [cursor=pointer]:
+            - /url: /dashboard/leads
+            - img [ref=e36]
+            - generic [ref=e40]: العملاء المحتملون
+          - button "فتح القائمة" [ref=e41] [cursor=pointer]:
+            - img [ref=e42]
+        - link "الطلبات الواردة" [ref=e44] [cursor=pointer]:
+          - /url: /dashboard/leads/arrived
+          - img [ref=e45]
+          - generic [ref=e48]: الطلبات الواردة
+        - link "العملاء المطابقون" [ref=e49] [cursor=pointer]:
+          - /url: /dashboard/matched-leads
+          - img [ref=e50]
+          - generic [ref=e54]: العملاء المطابقون
+        - link "المهام" [ref=e55] [cursor=pointer]:
+          - /url: /dashboard/tasks
+          - img [ref=e56]
+          - generic [ref=e59]: المهام
+      - generic [ref=e60]:
+        - paragraph [ref=e61]: الفريق
+        - generic [ref=e63]:
+          - link "الموظفون" [ref=e64] [cursor=pointer]:
+            - /url: /dashboard/employees
+            - img [ref=e65]
+            - generic [ref=e77]: الموظفون
+          - button "فتح القائمة" [ref=e78] [cursor=pointer]:
+            - img [ref=e79]
+        - link "مجموعات الصلاحيات" [ref=e81] [cursor=pointer]:
+          - /url: /dashboard/employees/permissions
+          - img [ref=e82]
+          - generic [ref=e85]: مجموعات الصلاحيات
+      - generic [ref=e86]:
+        - paragraph [ref=e87]: التحليلات
+        - link "مؤشرات الأداء" [ref=e88] [cursor=pointer]:
+          - /url: /dashboard/kpi
+          - img [ref=e89]
+          - generic [ref=e91]: مؤشرات الأداء
+        - link "الإعدادات" [ref=e92] [cursor=pointer]:
+          - /url: /dashboard/settings
+          - img [ref=e93]
+          - generic [ref=e96]: الإعدادات
+  - generic [ref=e97]:
+    - banner [ref=e98]:
+      - generic [ref=e99]:
+        - generic [ref=e100]: A
+        - generic [ref=e101]:
+          - paragraph [ref=e102]: Ahmed Ali
+          - paragraph [ref=e103]: مالك
+      - generic [ref=e104]:
+        - button "فتح الإشعارات" [ref=e106] [cursor=pointer]:
+          - img [ref=e107]
+        - button "تسجيل الخروج" [ref=e110] [cursor=pointer]
+    - main [ref=e111]:
+      - generic [ref=e112]:
+        - generic [ref=e113]:
+          - heading "إعدادات الشركة" [level=2] [ref=e114]
+          - paragraph [ref=e115]: حدّث الهوية البصرية وبيانات التواصل وإعدادات معالجة العملاء الافتراضية.
+        - generic [ref=e116]:
+          - heading "الهوية البصرية والتواصل" [level=3] [ref=e117]
+          - generic [ref=e118]:
+            - generic [ref=e119]:
+              - generic [ref=e120]: اسم الشركة
+              - textbox "اسم الشركة" [ref=e121]: Elite
+            - generic [ref=e122]:
+              - generic [ref=e123]: رابط الشعار
+              - generic [ref=e124]:
+                - textbox "رابط الشعار Choose File" [ref=e125]:
+                  - /placeholder: https://...
+                  - text: https://firebasestorage.googleapis.com/v0/b/property-listing-7f3db.firebasestorage.app/o/companies%2FxaCIPPm2aXQa7bvKIsXM%2Fbranding%2Flogo-1778095140652-cypher-green-logo.png?alt=media&token=546e2cf5-6561-44d8-9d68-00a0a6631ebb
+                - button "Choose File" [ref=e127]
+            - generic [ref=e128]:
+              - generic [ref=e129]: هاتف التواصل
+              - textbox "هاتف التواصل" [ref=e130]:
+                - /placeholder: +966...
+                - text: "05321456789"
+            - generic [ref=e131]:
+              - generic [ref=e132]: واتساب
+              - textbox "واتساب" [ref=e133]:
+                - /placeholder: +966...
+            - generic [ref=e134]:
+              - generic [ref=e135]: البريد الإلكتروني للتواصل
+              - textbox "البريد الإلكتروني للتواصل" [ref=e136]:
+                - /placeholder: hello@company.com
+                - text: fakealabady+1@gmail.com
+          - generic [ref=e137]:
+            - generic [ref=e138]: الوصف
+            - textbox "الوصف" [ref=e139]
+        - generic [ref=e140]:
+          - heading "إعدادات العملاء والتصعيد الافتراضية" [level=3] [ref=e141]
+          - generic [ref=e142]:
+            - generic [ref=e143]:
+              - generic [ref=e144]: استراتيجية الإسناد التلقائي للعملاء
+              - combobox "استراتيجية الإسناد التلقائي للعملاء" [ref=e145]:
+                - option "بالتناوب"
+                - option "الأقل انشغالاً"
+                - option "يدوي" [selected]
+            - generic [ref=e146]:
+              - generic [ref=e147]: ساعات تصعيد المهام
+              - textbox "ساعات تصعيد المهام" [ref=e148]:
+                - /placeholder: "24"
+                - text: "24"
+            - generic [ref=e149]:
+              - generic [ref=e150]: بريد الإشعارات (مفصول بفواصل)
+              - textbox "بريد الإشعارات (مفصول بفواصل)" [ref=e151]:
+                - /placeholder: ops@company.com, leads@company.com
+                - text: fakealabady+1@gmail.com
+        - button "حفظ الإعدادات" [ref=e153] [cursor=pointer]

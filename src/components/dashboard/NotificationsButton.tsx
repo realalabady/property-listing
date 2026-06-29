@@ -103,7 +103,7 @@ export function NotificationsButton({ companyId }: { companyId: string }) {
 
     const timer = window.setInterval(() => {
       void loadNotifications();
-    }, 30000);
+    }, 180000);
 
     return () => {
       window.clearInterval(timer);

@@ -1,0 +1,242 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - link "شعار Elite Elite" [ref=e5] [cursor=pointer]:
+        - /url: /dashboard
+        - img "شعار Elite" [ref=e6]
+        - generic [ref=e7]: Elite
+      - navigation [ref=e9]:
+        - link "نظرة عامة" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e12]
+          - generic [ref=e17]: نظرة عامة
+        - generic [ref=e18]:
+          - paragraph [ref=e19]: إدارة العقارات
+          - generic [ref=e21]:
+            - link "العقارات" [ref=e22] [cursor=pointer]:
+              - /url: /dashboard/listings
+              - img [ref=e23]
+              - generic [ref=e27]: العقارات
+            - button "فتح القائمة" [ref=e28] [cursor=pointer]:
+              - img [ref=e29]
+        - generic [ref=e31]:
+          - paragraph [ref=e32]: العملاء والمهام
+          - generic [ref=e33]:
+            - generic [ref=e34]:
+              - link "العملاء المحتملون" [ref=e35] [cursor=pointer]:
+                - /url: /dashboard/leads
+                - img [ref=e36]
+                - generic [ref=e40]: العملاء المحتملون
+              - button "إغلاق القائمة" [expanded] [ref=e41] [cursor=pointer]:
+                - img [ref=e42]
+            - generic [ref=e44]:
+              - link "عرض الكل" [ref=e45] [cursor=pointer]:
+                - /url: /dashboard/leads
+                - img [ref=e46]
+                - generic [ref=e49]: عرض الكل
+              - link "إضافة" [ref=e50] [cursor=pointer]:
+                - /url: /dashboard/leads/new
+                - img [ref=e51]
+                - generic [ref=e52]: إضافة
+          - link "الطلبات الواردة" [ref=e53] [cursor=pointer]:
+            - /url: /dashboard/leads/arrived
+            - img [ref=e54]
+            - generic [ref=e57]: الطلبات الواردة
+          - link "العملاء المطابقون" [ref=e58] [cursor=pointer]:
+            - /url: /dashboard/matched-leads
+            - img [ref=e59]
+            - generic [ref=e63]: العملاء المطابقون
+          - link "المهام" [ref=e64] [cursor=pointer]:
+            - /url: /dashboard/tasks
+            - img [ref=e65]
+            - generic [ref=e68]: المهام
+        - generic [ref=e69]:
+          - paragraph [ref=e70]: الفريق
+          - generic [ref=e72]:
+            - link "الموظفون" [ref=e73] [cursor=pointer]:
+              - /url: /dashboard/employees
+              - img [ref=e74]
+              - generic [ref=e86]: الموظفون
+            - button "فتح القائمة" [ref=e87] [cursor=pointer]:
+              - img [ref=e88]
+          - link "مجموعات الصلاحيات" [ref=e90] [cursor=pointer]:
+            - /url: /dashboard/employees/permissions
+            - img [ref=e91]
+            - generic [ref=e94]: مجموعات الصلاحيات
+        - generic [ref=e95]:
+          - paragraph [ref=e96]: التحليلات
+          - link "مؤشرات الأداء" [ref=e97] [cursor=pointer]:
+            - /url: /dashboard/kpi
+            - img [ref=e98]
+            - generic [ref=e100]: مؤشرات الأداء
+          - link "الإعدادات" [ref=e101] [cursor=pointer]:
+            - /url: /dashboard/settings
+            - img [ref=e102]
+            - generic [ref=e105]: الإعدادات
+    - generic [ref=e106]:
+      - banner [ref=e107]:
+        - generic [ref=e108]:
+          - generic [ref=e109]: A
+          - generic [ref=e110]:
+            - paragraph [ref=e111]: Ahmed Ali
+            - paragraph [ref=e112]: مالك
+        - generic [ref=e113]:
+          - button "فتح الإشعارات" [ref=e115] [cursor=pointer]:
+            - img [ref=e116]
+          - button "تسجيل الخروج" [ref=e119] [cursor=pointer]
+      - main [ref=e120]:
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - generic [ref=e123]:
+              - heading "العملاء المحتملون" [level=1] [ref=e124]
+              - paragraph [ref=e125]: تابع استقبال العملاء، وحركة مسار المبيعات، وسرعة الاستجابة الأولى.
+            - link "إضافة عميل" [ref=e127] [cursor=pointer]:
+              - /url: /dashboard/leads/new
+              - img [ref=e128]
+              - text: إضافة عميل
+          - generic [ref=e129]:
+            - generic [ref=e130]:
+              - generic [ref=e131]:
+                - paragraph [ref=e132]: إجمالي العملاء
+                - paragraph [ref=e133]: "3"
+              - generic [ref=e134]:
+                - paragraph [ref=e135]: جدد
+                - paragraph [ref=e136]: "1"
+              - generic [ref=e137]:
+                - paragraph [ref=e138]: مؤهلون
+                - paragraph [ref=e139]: "1"
+              - generic [ref=e140]:
+                - paragraph [ref=e141]: صفقات
+                - paragraph [ref=e142]: "0"
+            - generic [ref=e144]:
+              - generic [ref=e145]:
+                - heading "مسار العملاء المحتملين" [level=3] [ref=e146]
+                - paragraph [ref=e147]: تابع الاستفسارات، والملكية، ونشاط الجدول الزمني، وسرعة الاستجابة الأولى.
+              - generic [ref=e148]:
+                - generic [ref=e149]: الحالة
+                - combobox [ref=e150]:
+                  - option "الكل" [selected]
+                  - option "جديد"
+                  - option "تم التواصل"
+                  - option "مؤهل"
+                  - option "صفقة"
+                  - option "مفقود"
+                - textbox "ابحث عن عميل، عقار، مصدر" [ref=e151]
+                - button "تحديث" [ref=e152] [cursor=pointer]
+            - generic [ref=e153]:
+              - heading "إجراءات جماعية" [level=4] [ref=e154]
+              - paragraph [ref=e155]: "العملاء المحددون: 0"
+              - generic [ref=e156]:
+                - generic [ref=e157]:
+                  - generic [ref=e158]: تعيين الحالة
+                  - generic [ref=e159]:
+                    - combobox [ref=e160]:
+                      - option "جديد"
+                      - option "تم التواصل" [selected]
+                      - option "مؤهل"
+                      - option "صفقة"
+                      - option "مفقود"
+                    - button "تطبيق" [disabled] [ref=e161]
+                - generic [ref=e162]:
+                  - generic [ref=e163]: إسناد إلى موظف
+                  - generic [ref=e164]:
+                    - combobox [ref=e165]:
+                      - option "غير مُسند" [selected]
+                      - option "Ahmed Ali"
+                      - option "ahmed for leads"
+                    - button "تطبيق" [disabled] [ref=e166]
+            - table [ref=e169]:
+              - rowgroup [ref=e170]:
+                - row "0 العميل رقم الهوية المصدر العقار المسؤول الحالة الاستجابة (دقيقة) تاريخ الإنشاء إجراءات" [ref=e171]:
+                  - columnheader "0" [ref=e172]:
+                    - generic [ref=e173]:
+                      - checkbox "0" [ref=e174]
+                      - generic [ref=e175]: "0"
+                  - columnheader "العميل" [ref=e176]
+                  - columnheader "رقم الهوية" [ref=e177]
+                  - columnheader "المصدر" [ref=e178]
+                  - columnheader "العقار" [ref=e179]
+                  - columnheader "المسؤول" [ref=e180]
+                  - columnheader "الحالة" [ref=e181]
+                  - columnheader "الاستجابة (دقيقة)" [ref=e182]
+                  - columnheader "تاريخ الإنشاء" [ref=e183]
+                  - columnheader "إجراءات" [ref=e184]
+              - rowgroup [ref=e185]:
+                - row "gg +966534955842 • dasdva@cds.adc 1234567898 phone General inquiry غير مُسند مؤهل 1 26 Jun 2026 النشاط" [ref=e198]:
+                  - cell [ref=e199]:
+                    - checkbox [ref=e200]
+                  - cell "gg +966534955842 • dasdva@cds.adc" [ref=e201]:
+                    - paragraph [ref=e202]: gg
+                    - paragraph [ref=e203]: +966534955842 • dasdva@cds.adc
+                  - cell "1234567898" [ref=e204]
+                  - cell "phone" [ref=e205]
+                  - cell "General inquiry" [ref=e206]
+                  - cell "غير مُسند" [ref=e207]:
+                    - combobox [ref=e208]:
+                      - option "غير مُسند" [selected]
+                      - option "Ahmed Ali"
+                      - option "ahmed for leads"
+                  - cell "مؤهل" [ref=e209]:
+                    - combobox [ref=e210]:
+                      - option "جديد"
+                      - option "تم التواصل"
+                      - option "مؤهل" [selected]
+                      - option "صفقة"
+                      - option "مفقود"
+                  - cell "1" [ref=e211]
+                  - cell "26 Jun 2026" [ref=e212]
+                  - cell "النشاط" [ref=e213]:
+                    - button "النشاط" [ref=e214] [cursor=pointer]
+                - row "ahmed 0534955842 - landing_request طلب عقار من العميل غير مُسند تم التواصل 1 24 Jun 2026 النشاط" [ref=e215]:
+                  - cell [ref=e216]:
+                    - checkbox [ref=e217]
+                  - cell "ahmed 0534955842" [ref=e218]:
+                    - paragraph [ref=e219]: ahmed
+                    - paragraph [ref=e220]: "0534955842"
+                  - cell "-" [ref=e221]
+                  - cell "landing_request" [ref=e222]
+                  - cell "طلب عقار من العميل" [ref=e223]
+                  - cell "غير مُسند" [ref=e224]:
+                    - combobox [ref=e225]:
+                      - option "غير مُسند" [selected]
+                      - option "Ahmed Ali"
+                      - option "ahmed for leads"
+                  - cell "تم التواصل" [ref=e226]:
+                    - combobox [ref=e227]:
+                      - option "جديد"
+                      - option "تم التواصل" [selected]
+                      - option "مؤهل"
+                      - option "صفقة"
+                      - option "مفقود"
+                  - cell "1" [ref=e228]
+                  - cell "24 Jun 2026" [ref=e229]
+                  - cell "النشاط" [ref=e230]:
+                    - button "النشاط" [ref=e231] [cursor=pointer]
+                - row "lead 0534955842 • fake@gmail.com - website_form General inquiry Ahmed Ali جديد - 06 May 2026 النشاط" [ref=e232]:
+                  - cell [ref=e233]:
+                    - checkbox [ref=e234]
+                  - cell "lead 0534955842 • fake@gmail.com" [ref=e235]:
+                    - paragraph [ref=e236]: lead
+                    - paragraph [ref=e237]: 0534955842 • fake@gmail.com
+                  - cell "-" [ref=e238]
+                  - cell "website_form" [ref=e239]
+                  - cell "General inquiry" [ref=e240]
+                  - cell "Ahmed Ali" [ref=e241]:
+                    - combobox [ref=e242]:
+                      - option "غير مُسند"
+                      - option "Ahmed Ali" [selected]
+                      - option "ahmed for leads"
+                  - cell "جديد" [ref=e243]:
+                    - combobox [ref=e244]:
+                      - option "جديد" [selected]
+                      - option "تم التواصل"
+                      - option "مؤهل"
+                      - option "صفقة"
+                      - option "مفقود"
+                  - cell "-" [ref=e245]
+                  - cell "06 May 2026" [ref=e246]
+                  - cell "النشاط" [ref=e247]:
+                    - button "النشاط" [ref=e248] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e193] [cursor=pointer]:
+    - img [ref=e194]
+  - alert [ref=e197]

@@ -1,0 +1,224 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "Dar Find your next property" [ref=e312] [cursor=pointer]:
+          - /url: /
+          - img [ref=e7]
+          - generic [ref=e10]:
+            - generic [ref=e11]: Dar
+            - generic [ref=e12]: Find your next property
+        - navigation [ref=e13]:
+          - link "Properties" [ref=e313] [cursor=pointer]:
+            - /url: /properties
+          - link "How it works" [ref=e314] [cursor=pointer]:
+            - /url: "#how"
+          - link "For agencies" [ref=e315] [cursor=pointer]:
+            - /url: "#companies"
+        - generic [ref=e17]:
+          - button "AR" [active] [ref=e316] [cursor=pointer]:
+            - img [ref=e19]
+            - text: AR
+          - link "Sign in" [ref=e317] [cursor=pointer]:
+            - /url: /login
+          - link "List property" [ref=e318] [cursor=pointer]:
+            - /url: /login
+          - button "Request property" [ref=e319] [cursor=pointer]
+    - main [ref=e25]:
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - img [ref=e31]
+            - text: Saudi Arabia's trusted property platform
+          - heading "Your perfect property starts with one search" [level=1] [ref=e320]
+          - paragraph [ref=e35]: Browse thousands of verified homes for sale and rent across Saudi Arabia — simple search, clear results.
+        - generic [ref=e36]:
+          - button "Request a property" [ref=e321] [cursor=pointer]
+          - img [ref=e38]
+          - paragraph [ref=e40]: Tell us what you need — agencies come to you
+          - generic [ref=e41]: or
+          - paragraph [ref=e44]: Search for your property
+          - img [ref=e45]
+        - generic [ref=e47]:
+          - generic [ref=e48]:
+            - button "For Sale" [ref=e322] [cursor=pointer]
+            - button "For Rent" [ref=e323] [cursor=pointer]
+            - button "Off-Plan" [ref=e324] [cursor=pointer]
+          - generic [ref=e52]:
+            - generic [ref=e53]:
+              - img [ref=e54]
+              - generic [ref=e57]: City
+              - combobox "City" [ref=e325]
+            - generic [ref=e59]:
+              - img [ref=e60]
+              - generic [ref=e64]: Property type
+              - combobox "Property type" [ref=e326] [cursor=pointer]:
+                - option "All types" [selected]
+                - option "Apartment"
+                - option "Villa"
+                - option "Land"
+                - option "Commercial"
+                - option "Building"
+                - option "Office"
+                - option "Warehouse"
+                - option "Townhouse"
+                - option "Penthouse"
+                - option "Studio"
+            - generic [ref=e66]:
+              - img [ref=e67]
+              - generic [ref=e70]: Keyword
+              - textbox "Keyword" [ref=e327]
+            - button "Search" [ref=e328] [cursor=pointer]:
+              - img [ref=e73]
+              - text: Search
+        - generic [ref=e76]:
+          - generic [ref=e77]: "Popular:"
+          - link "Riyadh" [ref=e329] [cursor=pointer]:
+            - /url: /properties?city=Riyadh
+          - link "Jeddah" [ref=e330] [cursor=pointer]:
+            - /url: /properties?city=Jeddah
+          - link "Makkah" [ref=e331] [cursor=pointer]:
+            - /url: /properties?city=Makkah
+          - link "Madinah" [ref=e332] [cursor=pointer]:
+            - /url: /properties?city=Madinah
+          - link "Dammam" [ref=e333] [cursor=pointer]:
+            - /url: /properties?city=Dammam
+      - generic [ref=e83]:
+        - generic [ref=e84]:
+          - generic [ref=e85]:
+            - heading "Featured properties" [level=2] [ref=e334]
+            - paragraph [ref=e87]: The latest properties added to the platform
+          - link "View all" [ref=e335] [cursor=pointer]:
+            - /url: /properties
+            - text: View all
+            - img [ref=e336]
+        - generic [ref=e91]:
+          - article [ref=e168]:
+            - generic [ref=e170]: لم تُرفع وسائط
+            - generic [ref=e171]:
+              - generic [ref=e173]: للإيجار
+              - generic [ref=e174]:
+                - heading "شقة فاخرة في العقيق" [level=3] [ref=e175]
+                - paragraph [ref=e176]: الرياض
+              - generic [ref=e177]:
+                - generic [ref=e178]: 4 غرفة
+                - generic [ref=e179]: 2 حمام
+                - generic [ref=e180]: 144 م²
+              - generic [ref=e181]:
+                - paragraph [ref=e182]:
+                  - generic [ref=e183]: ê 25,000
+                  - text: / سنوياً
+                - link "عرض التفاصيل" [ref=e184] [cursor=pointer]:
+                  - /url: /properties/kLydDz5FJ6QmRaKrbVTY_wPJFhVJG0HBREuJtLahQ
+          - article [ref=e185]:
+            - generic [ref=e187]: لم تُرفع وسائط
+            - generic [ref=e188]:
+              - generic [ref=e189]:
+                - generic [ref=e190]: للإيجار
+                - generic [ref=e191]: مميّز
+              - generic [ref=e192]:
+                - heading "test-tunisia" [level=3] [ref=e193]
+                - paragraph [ref=e194]: Ben Arous
+              - generic [ref=e195]:
+                - generic [ref=e196]: 0 غرفة
+                - generic [ref=e197]: 0 حمام
+                - generic [ref=e198]: 0 م²
+              - generic [ref=e199]:
+                - paragraph [ref=e200]:
+                  - generic [ref=e201]: ê 750
+                  - text: / شهرياً
+                - link "عرض التفاصيل" [ref=e202] [cursor=pointer]:
+                  - /url: /properties/H2JyzwSaareCova5jlF3_MgPxp9EWNeHMb6WbTI7a
+          - article [ref=e203]:
+            - img "vilas" [ref=e205]
+            - generic [ref=e206]:
+              - generic [ref=e207]:
+                - generic [ref=e208]: للإيجار
+                - generic [ref=e209]: مميّز
+              - generic [ref=e210]:
+                - heading "vilas" [level=3] [ref=e211]
+                - paragraph [ref=e212]: riyadh
+              - generic [ref=e213]:
+                - generic [ref=e214]: 0 غرفة
+                - generic [ref=e215]: 0 حمام
+                - generic [ref=e216]: 360 م²
+              - generic [ref=e217]:
+                - paragraph [ref=e218]:
+                  - generic [ref=e219]: ê 32,000
+                  - text: / شهرياً
+                - link "عرض التفاصيل" [ref=e220] [cursor=pointer]:
+                  - /url: /properties/xaCIPPm2aXQa7bvKIsXM_iLJj3BcDJQeQeXZAxSvj
+      - generic [ref=e99]:
+        - generic [ref=e100]:
+          - heading "Explore properties on the map of Saudi Arabia" [level=2] [ref=e338]
+          - paragraph [ref=e102]: Every property an agency publishes appears here automatically. Click a cluster to zoom in.
+        - application "خريطة العقارات في المملكة العربية السعودية" [ref=e221]:
+          - button "2" [ref=e222] [cursor=pointer]:
+            - generic [ref=e223]: "2"
+          - generic:
+            - generic [ref=e224]:
+              - button "Zoom in" [ref=e225] [cursor=pointer]: +
+              - button "Zoom out" [ref=e226] [cursor=pointer]: −
+            - generic [ref=e227]:
+              - text: ©
+              - link "OpenStreetMap" [ref=e228] [cursor=pointer]:
+                - /url: https://www.openstreetmap.org/copyright
+              - text: ©
+              - link "CARTO" [ref=e229] [cursor=pointer]:
+                - /url: https://carto.com/attributions
+        - link "Browse all properties" [ref=e339] [cursor=pointer]:
+          - /url: /properties
+          - text: Browse all properties
+          - img [ref=e340]
+      - generic [ref=e110]:
+        - generic [ref=e111]:
+          - img [ref=e113]
+          - heading "Verified listings" [level=3] [ref=e342]
+          - paragraph [ref=e117]: Every property is published by a registered agency.
+        - generic [ref=e118]:
+          - img [ref=e120]
+          - heading "Simple search" [level=3] [ref=e343]
+          - paragraph [ref=e124]: Pick a city, type and budget — get results instantly.
+        - generic [ref=e125]:
+          - img [ref=e127]
+          - heading "Direct contact" [level=3] [ref=e344]
+          - paragraph [ref=e131]: Reach the listing agency directly, no extra middlemen.
+      - generic [ref=e132]:
+        - generic [ref=e133]:
+          - heading "How Dar works" [level=2] [ref=e345]
+          - paragraph [ref=e135]: Three simple steps from search to contact
+        - generic [ref=e136]:
+          - generic [ref=e137]:
+            - generic [ref=e138]: "1"
+            - heading "Search" [level=3] [ref=e346]
+            - paragraph [ref=e140]: Choose a city and property type from the search bar.
+          - generic [ref=e141]:
+            - generic [ref=e142]: "2"
+            - heading "Compare" [level=3] [ref=e347]
+            - paragraph [ref=e144]: Browse matching properties with prices and areas.
+          - generic [ref=e145]:
+            - generic [ref=e146]: "3"
+            - heading "Connect" [level=3] [ref=e348]
+            - paragraph [ref=e148]: Contact the agency and close with confidence.
+      - generic [ref=e150]:
+        - heading "Run an agency? List your properties on Dar" [level=2] [ref=e349]
+        - paragraph [ref=e152]: Create your page, add listings, and manage leads from one dashboard.
+        - generic [ref=e153]:
+          - link "Start free" [ref=e350] [cursor=pointer]:
+            - /url: /signup
+          - link "Browse properties" [ref=e351] [cursor=pointer]:
+            - /url: /properties
+    - contentinfo [ref=e156]:
+      - generic [ref=e157]:
+        - generic [ref=e158]:
+          - img [ref=e160]
+          - generic [ref=e163]: Dar
+        - paragraph [ref=e164]: © 2026 Dar. All rights reserved.
+        - generic [ref=e165]:
+          - link "Properties" [ref=e352] [cursor=pointer]:
+            - /url: /properties
+          - link "Sign in" [ref=e353] [cursor=pointer]:
+            - /url: /login
+  - button "Open Next.js Dev Tools" [ref=e235] [cursor=pointer]:
+    - img [ref=e236]
+  - alert [ref=e239]

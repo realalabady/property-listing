@@ -48,22 +48,6 @@ service cloud.firestore {
              || resource.data.assignedEmployeeId == uid();
     }
 
-    function isLeadCreatePayload(cid) {
-      return request.resource.data.companyId == cid
-             && request.resource.data.status == 'new'
-             && request.resource.data.assignedTo == null
-             && request.resource.data.assignedToName == null
-             && request.resource.data.firstResponseAt == null
-             && request.resource.data.responseTimeMinutes == null
-             && request.resource.data.name is string
-             && request.resource.data.name.size() > 0
-             && request.resource.data.phone is string
-             && request.resource.data.phone.size() > 0
-             && request.resource.data.source is string
-             && request.resource.data.createdAt is timestamp
-             && request.resource.data.updatedAt is timestamp;
-    }
-
     // ---------- Companies ----------
     match /companies/{cid} {
       // Public profile readable by anyone (for landing pages)
@@ -160,7 +144,10 @@ service cloud.firestore {
                       || (isCompanyMember(cid) && hasPermission('delete_listing'));
       }
 
-      // Leads — public can CREATE (contact form), only internal can read/update
+      // Leads — created ONLY via the Admin API (/api/companies/{cid}/leads),
+      // which enforces auth, permissions, phone/national-ID validation and
+      // uniqueness. Direct client creation is denied so that validation can't
+      // be bypassed. Reads/updates stay permission-scoped below.
       match /leads/{leadId} {
         allow read: if isSuperAdmin()
                     || (isCompanyMember(cid)
@@ -168,7 +155,7 @@ service cloud.firestore {
                           hasPermission('manage_leads')
                           || (hasPermission('view_own_leads') && resource.data.assignedTo == uid())
                         ));
-        allow create: if isLeadCreatePayload(cid);
+        allow create: if false;
         allow update: if isSuperAdmin()
                       || (isCompanyMember(cid)
                           && hasPermission('manage_leads')

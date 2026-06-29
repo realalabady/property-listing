@@ -15,7 +15,8 @@ export default function CustomerSignupForm() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [preferredContactMethod, setPreferredContactMethod] = useState("phone");
-  const [contactConsent, setContactConsent] = useState(true);
+  // Opt-in: unchecked by default (affirmative consent, not pre-ticked).
+  const [contactConsent, setContactConsent] = useState(false);
   // Honeypot — bots fill it, humans never see it.
   const [company, setCompany] = useState("");
   const [loading, setLoading] = useState(false);

@@ -3,7 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  serverTimestamp,
+  updateDoc,
+} from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Accordion, AccordionSection } from "@/components/ui/accordion";
@@ -53,6 +60,9 @@ const PAYMENT_CYCLES: Array<{ value: string; label: string }> = [
 interface NewListingFormProps {
   companyId: string;
   userId: string;
+  /** "create" (default) adds a new listing; "edit" loads + updates listingId. */
+  mode?: "create" | "edit";
+  listingId?: string;
 }
 
 interface ContactRow {
@@ -216,6 +226,104 @@ function countLabel(value: number, options: number[]): string {
   return value === options[options.length - 1] ? `${value}+` : String(value);
 }
 
+/**
+ * Map a stored listing document back into editable form state (for edit mode).
+ * Location is returned as Arabic names; the cascading select IDs are resolved
+ * separately once the geo dataset has loaded.
+ */
+function listingDocToForm(data: Record<string, unknown>): {
+  form: FormState;
+  contacts: ContactRow[];
+  locationNames: { region: string; city: string; district: string };
+} {
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  const numStr = (v: unknown) =>
+    typeof v === "number" && Number.isFinite(v) ? String(v) : "";
+  const obj = (v: unknown): Record<string, unknown> =>
+    typeof v === "object" && v !== null ? (v as Record<string, unknown>) : {};
+
+  const details = obj(data.details);
+  const amenities = obj(data.amenities);
+  const location = obj(data.location);
+
+  const form: FormState = {
+    ...initialState,
+    title: str(data.title),
+    price: numStr(data.price),
+    area: numStr(data.area),
+    type: (data.type as ListingType) ?? LISTING_TYPES.SALE,
+    status: (data.status as ListingStatus) ?? LISTING_STATUSES.DRAFT,
+    category: (data.category as ListingCategory) ?? LISTING_CATEGORIES.APARTMENT,
+    rentPeriod: str(data.rentPeriod) || "monthly",
+    paymentCycle: str(details.paymentCycle) || "monthly",
+    deposit: numStr(details.deposit),
+    priceNegotiable: Boolean(data.priceNegotiable),
+    bedrooms: numStr(data.bedrooms),
+    bathrooms: numStr(data.bathrooms),
+    parking: numStr(amenities.parking),
+    yearBuilt: numStr(data.yearBuilt),
+    furnished: Boolean(amenities.furnished),
+    balcony: Boolean(amenities.balcony),
+    garden: Boolean(amenities.garden),
+    pool: Boolean(amenities.pool),
+    gym: Boolean(amenities.gym),
+    security: Boolean(amenities.security),
+    elevator: Boolean(amenities.elevator),
+    ac: Boolean(amenities.ac),
+    heating: Boolean(amenities.heating),
+    petFriendly: Boolean(amenities.petFriendly),
+    description: str(data.description),
+    usageType: str(details.usageType),
+    propertyNumber: str(details.propertyNumber),
+    titleEn: str(details.titleEn),
+    deedType: str(details.deedType),
+    deedNumber: str(details.deedNumber),
+    deedIssueDate: str(details.deedIssueDate),
+    propertyArea: numStr(details.propertyArea),
+    additionalNumber1: str(details.additionalNumber1),
+    additionalNumber2: str(details.additionalNumber2),
+    parcelNumber: str(details.parcelNumber),
+    blockNumber: str(details.blockNumber),
+    buildDate: str(details.buildDate),
+    floorsCount: numStr(details.floorsCount),
+    unitsPerFloor: numStr(details.unitsPerFloor),
+    electricityMeterNumber: str(details.electricityMeterNumber),
+    electricitySubscriptionNumber: str(details.electricitySubscriptionNumber),
+    waterMeterNumber: str(details.waterMeterNumber),
+    waterSubscriptionNumber: str(details.waterSubscriptionNumber),
+    streetName: str(details.streetName),
+    postalCode: str(details.postalCode),
+    buildingNumber: str(details.buildingNumber),
+    deedReference: str(details.deedReference),
+  };
+
+  const rawContacts = Array.isArray(data.contacts) ? data.contacts : [];
+  const contacts: ContactRow[] = rawContacts
+    .filter(
+      (c): c is Record<string, unknown> =>
+        typeof c === "object" && c !== null,
+    )
+    .map((c) => ({
+      name: str(c.name),
+      role: str(c.role),
+      phone: str(c.phone),
+      note: str(c.note),
+    }));
+
+  return {
+    form,
+    contacts:
+      contacts.length > 0
+        ? contacts
+        : [{ name: "", role: "", phone: "", note: "" }],
+    locationNames: {
+      region: str(location.region),
+      city: str(location.city),
+      district: str(location.district),
+    },
+  };
+}
+
 interface Errors {
   title?: string;
   price?: string;
@@ -228,10 +336,16 @@ const sanitizeAlnum = (value: string) =>
   value.replace(/[^\p{L}\p{N}\s]/gu, "");
 const sanitizePhone = (value: string) => value.replace(/[^\d+\-\s]/g, "");
 
-export function NewListingForm({ companyId, userId }: NewListingFormProps) {
+export function NewListingForm({
+  companyId,
+  userId,
+  mode = "create",
+  listingId,
+}: NewListingFormProps) {
   const router = useRouter();
   const { user: authUser, loading: authLoading } = useAuth();
   const authReady = !authLoading && Boolean(authUser);
+  const isEdit = mode === "edit";
 
   const [form, setForm] = useState<FormState>(initialState);
   const [contacts, setContacts] = useState<ContactRow[]>([
@@ -241,6 +355,18 @@ export function NewListingForm({ companyId, userId }: NewListingFormProps) {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Edit mode: load the existing listing once, then resolve its (Arabic)
+  // location names back into the cascading-select IDs after geo data loads.
+  const [hydrated, setHydrated] = useState(!isEdit);
+  const [pendingLoc, setPendingLoc] = useState<{
+    region: string;
+    city: string;
+    district: string;
+  } | null>(null);
+  const [originalStatus, setOriginalStatus] = useState<ListingStatus | null>(
+    null,
+  );
 
   // Official Saudi geography dataset (fetched + cached from /public/geo).
   const [regions, setRegions] = useState<GeoRegion[]>([]);
@@ -265,6 +391,62 @@ export function NewListingForm({ companyId, userId }: NewListingFormProps) {
       mounted = false;
     };
   }, []);
+
+  // Edit mode: fetch the listing once auth is ready and pre-fill the form.
+  useEffect(() => {
+    if (!isEdit || !listingId || !authReady) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const db = getFirebaseDb();
+        const snap = await getDoc(
+          doc(db, `companies/${companyId}/listings/${listingId}`),
+        );
+        if (!mounted) return;
+        if (!snap.exists()) {
+          setError(t("listings.detailNotFound"));
+          return;
+        }
+        const mapped = listingDocToForm(snap.data() as Record<string, unknown>);
+        setForm(mapped.form);
+        setContacts(mapped.contacts);
+        setPendingLoc(mapped.locationNames);
+        setOriginalStatus(mapped.form.status);
+        setHydrated(true);
+      } catch (loadError) {
+        if (mounted) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : t("listings.createFailed"),
+          );
+        }
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [isEdit, listingId, companyId, authReady]);
+
+  // Resolve the loaded location names into region/city/district select IDs
+  // once the geo dataset is available.
+  useEffect(() => {
+    if (!pendingLoc || geoLoading) return;
+    const region = regions.find((r) => r.name_ar === pendingLoc.region);
+    const regionId = region ? String(region.region_id) : DEFAULT_REGION_ID;
+    const city = cities.find(
+      (c) =>
+        c.name_ar === pendingLoc.city && String(c.region_id) === regionId,
+    );
+    const cityId = city ? String(city.city_id) : "";
+    const district = districts.find(
+      (d) =>
+        d.name_ar === pendingLoc.district && String(d.city_id) === cityId,
+    );
+    const districtId = district ? String(district.district_id) : "";
+    setForm((prev) => ({ ...prev, regionId, cityId, districtId }));
+    setPendingLoc(null);
+  }, [pendingLoc, geoLoading, regions, cities, districts]);
 
   const set =
     <K extends keyof FormState>(key: K) =>
@@ -374,13 +556,15 @@ export function NewListingForm({ companyId, userId }: NewListingFormProps) {
     return amenities;
   }
 
-  // Top-level numeric specs: only include fields the user actually filled in
-  // (Firestore client SDK rejects `undefined`, so we omit empties entirely).
-  function buildSpecs(): Record<string, number> {
-    const specs: Record<string, number> = {};
+  // Top-level numeric specs. On create we omit empties (the Firestore client
+  // SDK rejects `undefined`). On edit we write `null` for cleared fields so an
+  // unset value actually removes the previously-stored number.
+  function buildSpecs(clearEmpty: boolean): Record<string, number | null> {
+    const specs: Record<string, number | null> = {};
     const num = (key: string, value: string) => {
       const n = Number(value);
       if (value.trim() && Number.isFinite(n) && n >= 0) specs[key] = n;
+      else if (clearEmpty) specs[key] = null;
     };
     num("bedrooms", form.bedrooms);
     num("bathrooms", form.bathrooms);
@@ -433,7 +617,10 @@ export function NewListingForm({ companyId, userId }: NewListingFormProps) {
         if (form.deposit.trim() && Number.isFinite(dep)) details.deposit = dep;
       }
 
-      await addDoc(listingsRef, {
+      // Fields shared by create + edit. On edit these maps (location, details,
+      // amenities, contacts) REPLACE the stored values, so de-selected items
+      // are correctly dropped.
+      const corePayload = {
         companyId,
         title: form.title.trim(),
         description: form.description.trim(),
@@ -453,14 +640,39 @@ export function NewListingForm({ companyId, userId }: NewListingFormProps) {
         },
         area: Number(form.area),
         areaUnit: "sqm",
-        ...buildSpecs(),
+        ...buildSpecs(isEdit),
         amenities: buildAmenities(),
         contacts: cleanContacts,
         details,
+        status: form.status,
+      };
+
+      if (isEdit && listingId) {
+        const updatePayload: Record<string, unknown> = {
+          ...corePayload,
+          updatedAt: serverTimestamp(),
+        };
+        // Stamp publishedAt only on the first transition into "published".
+        if (
+          form.status === LISTING_STATUSES.PUBLISHED &&
+          originalStatus !== LISTING_STATUSES.PUBLISHED
+        ) {
+          updatePayload.publishedAt = serverTimestamp();
+        }
+        await updateDoc(
+          doc(db, `companies/${companyId}/listings/${listingId}`),
+          updatePayload,
+        );
+        router.push(ROUTES.DASHBOARD_LISTING_DETAIL(listingId));
+        router.refresh();
+        return;
+      }
+
+      await addDoc(listingsRef, {
+        ...corePayload,
         media: [],
         coverImage: null,
         assignedEmployeeId: null,
-        status: form.status,
         featured: false,
         publishedAt:
           form.status === LISTING_STATUSES.PUBLISHED ? serverTimestamp() : null,
@@ -494,6 +706,16 @@ export function NewListingForm({ companyId, userId }: NewListingFormProps) {
     "placeholder:text-muted-foreground/70 outline-none transition",
     "focus:border-primary focus:ring-4 focus:ring-primary/15",
   );
+
+  // Edit mode: hold the form until the listing has loaded to avoid a flash of
+  // empty fields (and to prevent the user editing a blank form).
+  if (isEdit && !hydrated && !error) {
+    return (
+      <p className="rounded-xl border border-border bg-card px-4 py-6 text-sm text-muted-foreground">
+        {t("listings.loadingDetail")}
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -1054,7 +1276,11 @@ export function NewListingForm({ companyId, userId }: NewListingFormProps) {
           {t("common.cancel")}
         </Button>
         <Button type="button" onClick={handleSubmit} disabled={submitting}>
-          {submitting ? t("common.saving") : t("listings.createListing")}
+          {submitting
+            ? t("common.saving")
+            : isEdit
+              ? t("common.save")
+              : t("listings.createListing")}
         </Button>
       </div>
     </div>

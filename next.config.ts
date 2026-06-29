@@ -5,7 +5,7 @@ const CSP = [
   // Firebase Auth needs these origins
   "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firebaseinstallations.googleapis.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
   // Firebase Storage
-  "img-src 'self' data: blob: https://firebasestorage.googleapis.com https://storage.googleapis.com https://lh3.googleusercontent.com https://images.unsplash.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org",
+  "img-src 'self' data: blob: https://firebasestorage.googleapis.com https://storage.googleapis.com https://lh3.googleusercontent.com https://images.unsplash.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.arcgisonline.com",
   // Next.js inline scripts + Firebase SDK
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   // Tailwind inline styles

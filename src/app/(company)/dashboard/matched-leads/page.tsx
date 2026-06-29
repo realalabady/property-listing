@@ -1,5 +1,5 @@
 import { requireCompanyMember } from "@/lib/auth/guards";
-import { canViewAssignedLeads } from "@/lib/api/company-leads";
+import { canViewMatchedLeads } from "@/lib/api/company-leads";
 import { ROUTES } from "@/constants/routes";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
@@ -12,7 +12,7 @@ export const metadata = {
 
 export default async function MatchedLeadsPage() {
   const user = await requireCompanyMember();
-  if (!canViewAssignedLeads(user, user.companyId as string)) {
+  if (!canViewMatchedLeads(user, user.companyId as string)) {
     redirect(ROUTES.DASHBOARD);
   }
 

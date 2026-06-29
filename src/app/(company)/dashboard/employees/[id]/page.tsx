@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Pencil } from "lucide-react";
 import { requireCompanyMember } from "@/lib/auth/guards";
 import { PERMISSIONS, hasAnyPermission } from "@/constants/permissions";
 import { ROUTES } from "@/constants/routes";
@@ -8,8 +8,11 @@ import { ROLE_LABELS, ROLES, isValidRole, type Role } from "@/constants/roles";
 import { adminDb } from "@/lib/firebase/admin";
 import { serializeDate } from "@/lib/api/company-leads";
 import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils/format";
+import { maskSensitive } from "@/lib/utils/validation";
 import { cn } from "@/lib/utils/cn";
+import { t } from "@/lib/i18n";
 import type { EmployeeKPIMetrics } from "@/types/user";
 
 export const metadata = {
@@ -74,6 +77,21 @@ export default async function EmployeeDetailPage({
     redirect(ROUTES.DASHBOARD);
   }
 
+  const canManage =
+    user.role === ROLES.SUPER_ADMIN ||
+    hasAnyPermission(user.permissions, [
+      PERMISSIONS.CREATE_EMPLOYEE,
+      PERMISSIONS.EDIT_EMPLOYEE,
+    ]);
+
+  const isSelf = id === user.uid;
+  // KPI is performance data: company-wide view needs VIEW_KPI; an employee may
+  // always see their own (VIEW_OWN_KPI).
+  const canViewKpi =
+    hasAnyPermission(user.permissions, [PERMISSIONS.VIEW_KPI]) ||
+    (isSelf &&
+      hasAnyPermission(user.permissions, [PERMISSIONS.VIEW_OWN_KPI]));
+
   const snap = await adminDb()
     .doc(`companies/${user.companyId}/employees/${id}`)
     .get();
@@ -108,16 +126,26 @@ export default async function EmployeeDetailPage({
         title={name}
         description={email}
         actions={
-          <span
-            className={cn(
-              "rounded-md px-2.5 py-1 text-xs font-semibold",
-              active
-                ? "bg-success/20 text-success"
-                : "bg-secondary text-secondary-foreground",
+          <div className="flex items-center gap-3">
+            <span
+              className={cn(
+                "rounded-md px-2.5 py-1 text-xs font-semibold",
+                active
+                  ? "bg-success/20 text-success"
+                  : "bg-secondary text-secondary-foreground",
+              )}
+            >
+              {active ? "نشِط" : "غير نشِط"}
+            </span>
+            {canManage && (
+              <Button asChild size="sm">
+                <Link href={ROUTES.DASHBOARD_EMPLOYEE_DETAIL(id) + "/edit"}>
+                  <Pencil className="h-4 w-4" />
+                  {t("employeesDash.editEmployee")}
+                </Link>
+              </Button>
             )}
-          >
-            {active ? "نشِط" : "غير نشِط"}
-          </span>
+          </div>
         }
       />
 
@@ -126,6 +154,16 @@ export default async function EmployeeDetailPage({
         <section className="rounded-2xl border border-border bg-card p-5 lg:col-span-1">
           <h2 className="mb-3 text-base font-semibold">المعلومات الشخصية</h2>
           <InfoRow label="الدور" value={ROLE_LABELS[role] ?? role} />
+          <InfoRow
+            label="رقم الهوية / الإقامة"
+            value={
+              typeof data.nationalId === "string" && data.nationalId
+                ? canManage
+                  ? data.nationalId
+                  : maskSensitive(data.nationalId)
+                : "—"
+            }
+          />
           <InfoRow
             label="المسمى الوظيفي"
             value={typeof data.title === "string" && data.title ? data.title : "—"}
@@ -148,7 +186,8 @@ export default async function EmployeeDetailPage({
           <InfoRow label="آخر تحديث" value={fmtDate(data.updatedAt)} />
         </section>
 
-        {/* KPI */}
+        {/* KPI — gated on VIEW_KPI (own KPI via VIEW_OWN_KPI). */}
+        {canViewKpi && (
         <section className="lg:col-span-2">
           <h2 className="mb-3 text-base font-semibold">مؤشرات الأداء</h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -192,6 +231,7 @@ export default async function EmployeeDetailPage({
             آخر تحديث للمؤشرات: {fmtDate(kpi.lastUpdatedAt)}
           </p>
         </section>
+        )}
       </div>
     </div>
   );

@@ -1,0 +1,21 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - link "دار" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e7]: دار
+        - heading "تسجيل الدخول" [level=1] [ref=e8]
+        - paragraph [ref=e9]: ادخل إلى لوحة تحكم شركتك
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - generic [ref=e12]: البريد الإلكتروني
+          - textbox "you@company.com" [ref=e13]: fakealabady+1@gmail.com
+        - generic [ref=e14]:
+          - generic [ref=e15]: كلمة المرور
+          - textbox "********" [ref=e16]: Aa1122334455@
+        - button "جارٍ تسجيل الدخول..." [disabled] [ref=e29]
+        - paragraph [ref=e18]: تُنشأ الحسابات من قبل مالك المنصة. تواصل مع المسؤول للحصول على صلاحية الوصول.
+  - button "Open Next.js Dev Tools" [ref=e24] [cursor=pointer]:
+    - img [ref=e25]
+  - alert [ref=e28]

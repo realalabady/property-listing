@@ -1,0 +1,219 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - link "شعار Elite Elite" [ref=e5] [cursor=pointer]:
+        - /url: /dashboard
+        - img "شعار Elite" [ref=e6]
+        - generic [ref=e7]: Elite
+      - navigation [ref=e9]:
+        - link "نظرة عامة" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e12]
+          - generic [ref=e17]: نظرة عامة
+        - generic [ref=e18]:
+          - paragraph [ref=e19]: إدارة العقارات
+          - generic [ref=e21]:
+            - link "العقارات" [ref=e22] [cursor=pointer]:
+              - /url: /dashboard/listings
+              - img [ref=e23]
+              - generic [ref=e27]: العقارات
+            - button "فتح القائمة" [ref=e28] [cursor=pointer]:
+              - img [ref=e29]
+        - generic [ref=e31]:
+          - paragraph [ref=e32]: العملاء والمهام
+          - generic [ref=e33]:
+            - generic [ref=e34]:
+              - link "العملاء المحتملون" [ref=e35] [cursor=pointer]:
+                - /url: /dashboard/leads
+                - img [ref=e36]
+                - generic [ref=e40]: العملاء المحتملون
+              - button "إغلاق القائمة" [expanded] [ref=e41] [cursor=pointer]:
+                - img [ref=e42]
+            - generic [ref=e44]:
+              - link "عرض الكل" [ref=e45] [cursor=pointer]:
+                - /url: /dashboard/leads
+                - img [ref=e46]
+                - generic [ref=e49]: عرض الكل
+              - link "إضافة" [ref=e50] [cursor=pointer]:
+                - /url: /dashboard/leads/new
+                - img [ref=e51]
+                - generic [ref=e52]: إضافة
+          - link "الطلبات الواردة" [ref=e53] [cursor=pointer]:
+            - /url: /dashboard/leads/arrived
+            - img [ref=e54]
+            - generic [ref=e57]: الطلبات الواردة
+          - link "العملاء المطابقون" [ref=e58] [cursor=pointer]:
+            - /url: /dashboard/matched-leads
+            - img [ref=e59]
+            - generic [ref=e63]: العملاء المطابقون
+          - link "المهام" [ref=e64] [cursor=pointer]:
+            - /url: /dashboard/tasks
+            - img [ref=e65]
+            - generic [ref=e68]: المهام
+        - generic [ref=e69]:
+          - paragraph [ref=e70]: الفريق
+          - generic [ref=e72]:
+            - link "الموظفون" [ref=e73] [cursor=pointer]:
+              - /url: /dashboard/employees
+              - img [ref=e74]
+              - generic [ref=e86]: الموظفون
+            - button "فتح القائمة" [ref=e87] [cursor=pointer]:
+              - img [ref=e88]
+          - link "مجموعات الصلاحيات" [ref=e90] [cursor=pointer]:
+            - /url: /dashboard/employees/permissions
+            - img [ref=e91]
+            - generic [ref=e94]: مجموعات الصلاحيات
+        - generic [ref=e95]:
+          - paragraph [ref=e96]: التحليلات
+          - link "مؤشرات الأداء" [ref=e97] [cursor=pointer]:
+            - /url: /dashboard/kpi
+            - img [ref=e98]
+            - generic [ref=e100]: مؤشرات الأداء
+          - link "الإعدادات" [ref=e101] [cursor=pointer]:
+            - /url: /dashboard/settings
+            - img [ref=e102]
+            - generic [ref=e105]: الإعدادات
+    - generic [ref=e106]:
+      - banner [ref=e107]:
+        - generic [ref=e108]:
+          - generic [ref=e109]: A
+          - generic [ref=e110]:
+            - paragraph [ref=e111]: Ahmed Ali
+            - paragraph [ref=e112]: مالك
+        - generic [ref=e113]:
+          - button "فتح الإشعارات" [ref=e115] [cursor=pointer]:
+            - img [ref=e116]
+          - button "تسجيل الخروج" [ref=e119] [cursor=pointer]
+      - main [ref=e120]:
+        - generic [ref=e121]:
+          - generic [ref=e123]:
+            - heading "الطلبات الواردة" [level=1] [ref=e124]
+            - paragraph [ref=e125]: طلبات العملاء القادمة من الصفحة الرئيسية — تواصل معهم وانقل المناسب إلى عملائك.
+          - generic [ref=e126]:
+            - generic [ref=e127]:
+              - paragraph [ref=e128]: 3 طلب جديد من أصل 4
+              - button "تحديث" [ref=e129] [cursor=pointer]:
+                - img [ref=e130]
+                - text: تحديث
+            - generic [ref=e145]:
+              - article [ref=e146]:
+                - generic [ref=e147]:
+                  - generic [ref=e148]:
+                    - paragraph [ref=e149]: PLAYWRIGHT TEST - delete me
+                    - paragraph [ref=e150]: 27 Jun 2026
+                  - generic [ref=e151]: جديد
+                - generic [ref=e153]: شراء
+                - paragraph [ref=e154]: 📍 منطقة الرياض
+                - generic [ref=e155]:
+                  - link "0500000000" [ref=e156] [cursor=pointer]:
+                    - /url: tel:0500000000
+                    - img [ref=e157]
+                    - text: "0500000000"
+                  - link "واتساب" [ref=e159] [cursor=pointer]:
+                    - /url: https://wa.me/0500000000
+                    - img [ref=e160]
+                    - text: واتساب
+                  - button "نقل إلى عملائي" [ref=e163] [cursor=pointer]:
+                    - img [ref=e164]
+                    - text: نقل إلى عملائي
+              - article [ref=e167]:
+                - generic [ref=e168]:
+                  - generic [ref=e169]:
+                    - paragraph [ref=e170]: amin
+                    - paragraph [ref=e171]: 27 Jun 2026
+                  - generic [ref=e172]: جديد
+                - generic [ref=e173]:
+                  - generic [ref=e174]: إيجار
+                  - generic [ref=e175]: شقة
+                  - generic [ref=e176]: 3 غرف
+                  - generic [ref=e177]: فوري
+                - paragraph [ref=e178]: 📍 منطقة مكة المكرمة • الطائف • حي السيل الكبير
+                - paragraph [ref=e179]:
+                  - text: "الإيجار:"
+                  - generic [ref=e180]: ê 1,000
+                  - text: –
+                  - generic [ref=e181]: ê 3,000
+                  - text: / شهرياً
+                - paragraph [ref=e182]: good place
+                - generic [ref=e183]:
+                  - link "05234534223" [ref=e184] [cursor=pointer]:
+                    - /url: tel:05234534223
+                    - img [ref=e185]
+                    - text: "05234534223"
+                  - link "واتساب" [ref=e187] [cursor=pointer]:
+                    - /url: https://wa.me/05234534223
+                    - img [ref=e188]
+                    - text: واتساب
+                  - button "نقل إلى عملائي" [ref=e191] [cursor=pointer]:
+                    - img [ref=e192]
+                    - text: نقل إلى عملائي
+              - article [ref=e195]:
+                - generic [ref=e196]:
+                  - generic [ref=e197]:
+                    - paragraph [ref=e198]: ahmed ali
+                    - paragraph [ref=e199]: 26 Jun 2026
+                  - generic [ref=e200]: جديد
+                - generic [ref=e201]:
+                  - generic [ref=e202]: إيجار
+                  - generic [ref=e203]: شقة
+                  - generic [ref=e204]: 4 غرف
+                  - generic [ref=e205]: فوري
+                - paragraph [ref=e206]: 📍 المنطقة الشرقية • الظهران • حي الدانة الجنوبية
+                - paragraph [ref=e207]:
+                  - text: "الإيجار:"
+                  - generic [ref=e208]: ê 1,000
+                  - text: –
+                  - generic [ref=e209]: ê 3,000
+                  - text: / شهرياً
+                - generic [ref=e210]:
+                  - link "0534955842" [ref=e211] [cursor=pointer]:
+                    - /url: tel:0534955842
+                    - img [ref=e212]
+                    - text: "0534955842"
+                  - link "واتساب" [ref=e214] [cursor=pointer]:
+                    - /url: https://wa.me/0534955842
+                    - img [ref=e215]
+                    - text: واتساب
+                  - link "بريد" [ref=e217] [cursor=pointer]:
+                    - /url: mailto:fakealabady@gmail.com
+                    - img [ref=e218]
+                    - text: بريد
+                  - button "نقل إلى عملائي" [ref=e222] [cursor=pointer]:
+                    - img [ref=e223]
+                    - text: نقل إلى عملائي
+              - article [ref=e226]:
+                - generic [ref=e227]:
+                  - generic [ref=e228]:
+                    - paragraph [ref=e229]: ahmed
+                    - paragraph [ref=e230]: 24 Jun 2026
+                  - generic [ref=e231]:
+                    - img [ref=e232]
+                    - text: تم النقل
+                - generic [ref=e235]:
+                  - generic [ref=e236]: إيجار
+                  - generic [ref=e237]: فيلا
+                  - generic [ref=e238]: 3 غرف
+                  - generic [ref=e239]: يتصفّح
+                - paragraph [ref=e240]: 📍 منطقة الرياض • الرياض • حي الهدا
+                - paragraph [ref=e241]:
+                  - text: "الإيجار:"
+                  - generic [ref=e242]: ê 8,000
+                  - text: –
+                  - generic [ref=e243]: ê 30,000
+                  - text: / شهرياً
+                - generic [ref=e244]:
+                  - link "0534955842" [ref=e245] [cursor=pointer]:
+                    - /url: tel:0534955842
+                    - img [ref=e246]
+                    - text: "0534955842"
+                  - link "واتساب" [ref=e248] [cursor=pointer]:
+                    - /url: https://wa.me/0534955842
+                    - img [ref=e249]
+                    - text: واتساب
+                  - link "في عملائي" [ref=e252] [cursor=pointer]:
+                    - /url: /dashboard/leads
+                    - img [ref=e253]
+                    - text: في عملائي
+  - button "Open Next.js Dev Tools" [ref=e140] [cursor=pointer]:
+    - img [ref=e141]
+  - alert [ref=e144]

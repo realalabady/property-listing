@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
-import { canViewAssignedLeads, serializeDate } from "@/lib/api/company-leads";
+import { canViewMatchedLeads, serializeDate } from "@/lib/api/company-leads";
 import { adminDb } from "@/lib/firebase/admin";
 import {
   bestMatch,
@@ -58,7 +58,7 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
   }
-  if (user.companyId !== companyId || !canViewAssignedLeads(user, companyId)) {
+  if (user.companyId !== companyId || !canViewMatchedLeads(user, companyId)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
@@ -91,6 +91,8 @@ export async function GET(
   const leads = searchesSnap.docs
     .map((doc) => {
       const data = doc.data() as Record<string, unknown>;
+      // Privacy: only surface customers who consented to being contacted.
+      if (data.contactConsent !== true) return null;
       const criteria = (data.criteria ?? {}) as MatchCriteria;
       const match = bestMatch(criteria, listings);
       if (!match || match.score < threshold) return null;

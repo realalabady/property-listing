@@ -11,14 +11,16 @@ export interface PermissionModule {
   permissions: Permission[];
 }
 
+// Only permissions that map to a REAL, enforced feature are assignable in the
+// Permission Groups UI. Placeholders with no backing feature
+// (assign_listing, feature_listing, escalate_tasks, export_reports,
+// billing_access) are deliberately excluded so admins aren't shown dead toggles.
 export const GROUP_ASSIGNABLE_PERMISSIONS: Permission[] = [
   PERMISSIONS.CREATE_LISTING,
   PERMISSIONS.EDIT_LISTING,
   PERMISSIONS.EDIT_OWN_LISTING,
   PERMISSIONS.DELETE_LISTING,
   PERMISSIONS.PUBLISH_LISTING,
-  PERMISSIONS.ASSIGN_LISTING,
-  PERMISSIONS.FEATURE_LISTING,
   PERMISSIONS.CREATE_EMPLOYEE,
   PERMISSIONS.EDIT_EMPLOYEE,
   PERMISSIONS.REMOVE_EMPLOYEE,
@@ -26,16 +28,14 @@ export const GROUP_ASSIGNABLE_PERMISSIONS: Permission[] = [
   PERMISSIONS.MANAGE_PERMISSION_GROUPS,
   PERMISSIONS.CREATE_TASK,
   PERMISSIONS.ASSIGN_TASKS,
-  PERMISSIONS.ESCALATE_TASKS,
   PERMISSIONS.COMPLETE_TASKS,
   PERMISSIONS.MANAGE_LEADS,
   PERMISSIONS.VIEW_OWN_LEADS,
   PERMISSIONS.ASSIGN_LEADS,
+  PERMISSIONS.VIEW_MATCHED_LEADS,
   PERMISSIONS.VIEW_KPI,
   PERMISSIONS.VIEW_OWN_KPI,
-  PERMISSIONS.EXPORT_REPORTS,
   PERMISSIONS.COMPANY_SETTINGS_ACCESS,
-  PERMISSIONS.BILLING_ACCESS,
   PERMISSIONS.MANAGE_BRANDING,
 ];
 
@@ -68,6 +68,10 @@ export const PERMISSION_LABELS: Record<Permission, LocalizedLabel> = {
   },
   [PERMISSIONS.VIEW_OWN_LEADS]: { en: "View own leads", ar: "عرض عملائي" },
   [PERMISSIONS.ASSIGN_LEADS]: { en: "Assign leads", ar: "اسناد العملاء" },
+  [PERMISSIONS.VIEW_MATCHED_LEADS]: {
+    en: "View matched leads",
+    ar: "عرض العملاء المطابقين",
+  },
 
   [PERMISSIONS.VIEW_KPI]: { en: "View KPI", ar: "عرض مؤشرات الاداء" },
   [PERMISSIONS.VIEW_OWN_KPI]: {
@@ -101,11 +105,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
   {
     id: "dashboard",
     title: { en: "Dashboard and reporting", ar: "لوحة التحكم والتقارير" },
-    permissions: [
-      PERMISSIONS.VIEW_KPI,
-      PERMISSIONS.VIEW_OWN_KPI,
-      PERMISSIONS.EXPORT_REPORTS,
-    ],
+    permissions: [PERMISSIONS.VIEW_KPI, PERMISSIONS.VIEW_OWN_KPI],
   },
   {
     id: "listings",
@@ -116,8 +116,6 @@ export const PERMISSION_MODULES: PermissionModule[] = [
       PERMISSIONS.EDIT_OWN_LISTING,
       PERMISSIONS.DELETE_LISTING,
       PERMISSIONS.PUBLISH_LISTING,
-      PERMISSIONS.ASSIGN_LISTING,
-      PERMISSIONS.FEATURE_LISTING,
     ],
   },
   {
@@ -127,6 +125,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
       PERMISSIONS.MANAGE_LEADS,
       PERMISSIONS.VIEW_OWN_LEADS,
       PERMISSIONS.ASSIGN_LEADS,
+      PERMISSIONS.VIEW_MATCHED_LEADS,
     ],
   },
   {
@@ -146,16 +145,14 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     permissions: [
       PERMISSIONS.CREATE_TASK,
       PERMISSIONS.ASSIGN_TASKS,
-      PERMISSIONS.ESCALATE_TASKS,
       PERMISSIONS.COMPLETE_TASKS,
     ],
   },
   {
     id: "company",
-    title: { en: "Company and billing", ar: "الشركة والفوترة" },
+    title: { en: "Company settings", ar: "إعدادات الشركة" },
     permissions: [
       PERMISSIONS.COMPANY_SETTINGS_ACCESS,
-      PERMISSIONS.BILLING_ACCESS,
       PERMISSIONS.MANAGE_BRANDING,
     ],
   },

@@ -279,14 +279,7 @@ export function DarHomepage() {
           <div className="container-tight pb-10 pt-16 md:pt-24">
             {/* Centered hero copy */}
             <div className="mx-auto max-w-3xl text-center">
-              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-4 py-1.5 text-xs font-semibold text-secondary-foreground">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                {isArabic
-                  ? "منصة العقارات الموثوقة في السعودية"
-                  : "Saudi Arabia's trusted property platform"}
-              </span>
-
-              <h1 className="mt-6 text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl md:text-6xl">
+              <h1 className="text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl md:text-6xl">
                 {tr(heroTitle, locale)}
               </h1>
               <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">

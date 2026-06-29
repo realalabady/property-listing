@@ -1,0 +1,34 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - heading "تواصل مع Wazi Moath" [level=1] [ref=e6]
+        - paragraph [ref=e7]: أرسل استفساراً لتصلك خيارات العقارات والتوافر.
+        - generic [ref=e8]:
+          - paragraph [ref=e9]: "الهاتف: غير متوفر"
+          - paragraph [ref=e10]: "البريد الإلكتروني: moath@wazi.sa"
+          - paragraph [ref=e11]: "واتساب: غير متوفر"
+      - generic [ref=e12]:
+        - heading "نموذج الاستفسار" [level=2] [ref=e13]
+        - generic [ref=e14]:
+          - generic [ref=e15]:
+            - generic [ref=e16]: الاسم
+            - textbox "الاسم" [ref=e17]:
+              - /placeholder: اسمك
+          - generic [ref=e18]:
+            - generic [ref=e19]: رقم الجوال
+            - textbox "رقم الجوال" [ref=e20]:
+              - /placeholder: +966...
+          - generic [ref=e21]:
+            - generic [ref=e22]: البريد الإلكتروني
+            - textbox "البريد الإلكتروني" [ref=e23]:
+              - /placeholder: you@email.com
+          - generic [ref=e24]:
+            - generic [ref=e25]: الرسالة
+            - textbox "الرسالة" [ref=e26]:
+              - /placeholder: أخبرنا بنوع العقار الذي تحتاجه
+          - paragraph [ref=e38]: تم إرسال استفسارك. سيتواصل معك الفريق قريباً.
+          - button "إرسال الاستفسار" [ref=e27] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e33] [cursor=pointer]:
+    - img [ref=e34]
+  - alert [ref=e37]

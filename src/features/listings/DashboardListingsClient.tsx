@@ -140,10 +140,18 @@ export function DashboardListingsClient({
     // DIFFERENT account than this company (e.g. a customer account from the
     // marketplace), the read would be denied — surface a clear re-login prompt
     // instead of spinning forever.
+    //
+    // BUT right after login the client Firebase user can be momentarily null
+    // while the SDK restores the session (a transient accounts:lookup race), so
+    // declaring "session expired" immediately flashes a false error. Wait out a
+    // short grace window first — when authUser arrives this effect re-runs and
+    // the timer is cleared before it can fire.
     if (!authUser) {
-      setError(t("listings.sessionExpired"));
-      setLoading(false);
-      return;
+      const graceTimer = setTimeout(() => {
+        setError(t("listings.sessionExpired"));
+        setLoading(false);
+      }, 2500);
+      return () => clearTimeout(graceTimer);
     }
     if (authUser.companyId !== companyId) {
       setError(t("listings.accountMismatch"));

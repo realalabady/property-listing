@@ -1,0 +1,127 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - link "شعار Elite Elite" [ref=e5] [cursor=pointer]:
+        - /url: /dashboard
+        - img "شعار Elite" [ref=e6]
+        - generic [ref=e7]: Elite
+      - navigation [ref=e9]:
+        - link "نظرة عامة" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e12]
+          - generic [ref=e17]: نظرة عامة
+        - generic [ref=e18]:
+          - paragraph [ref=e19]: إدارة العقارات
+          - generic [ref=e21]:
+            - link "العقارات" [ref=e22] [cursor=pointer]:
+              - /url: /dashboard/listings
+              - img [ref=e23]
+              - generic [ref=e27]: العقارات
+            - button "فتح القائمة" [ref=e28] [cursor=pointer]:
+              - img [ref=e29]
+        - generic [ref=e31]:
+          - paragraph [ref=e32]: العملاء والمهام
+          - generic [ref=e34]:
+            - link "العملاء المحتملون" [ref=e35] [cursor=pointer]:
+              - /url: /dashboard/leads
+              - img [ref=e36]
+              - generic [ref=e40]: العملاء المحتملون
+            - button "فتح القائمة" [ref=e41] [cursor=pointer]:
+              - img [ref=e42]
+          - link "الطلبات الواردة" [ref=e44] [cursor=pointer]:
+            - /url: /dashboard/leads/arrived
+            - img [ref=e45]
+            - generic [ref=e48]: الطلبات الواردة
+          - link "العملاء المطابقون" [ref=e49] [cursor=pointer]:
+            - /url: /dashboard/matched-leads
+            - img [ref=e50]
+            - generic [ref=e54]: العملاء المطابقون
+          - link "المهام" [ref=e55] [cursor=pointer]:
+            - /url: /dashboard/tasks
+            - img [ref=e56]
+            - generic [ref=e59]: المهام
+        - generic [ref=e60]:
+          - paragraph [ref=e61]: الفريق
+          - generic [ref=e63]:
+            - link "الموظفون" [ref=e64] [cursor=pointer]:
+              - /url: /dashboard/employees
+              - img [ref=e65]
+              - generic [ref=e77]: الموظفون
+            - button "فتح القائمة" [ref=e78] [cursor=pointer]:
+              - img [ref=e79]
+          - link "مجموعات الصلاحيات" [ref=e81] [cursor=pointer]:
+            - /url: /dashboard/employees/permissions
+            - img [ref=e82]
+            - generic [ref=e85]: مجموعات الصلاحيات
+        - generic [ref=e86]:
+          - paragraph [ref=e87]: التحليلات
+          - link "مؤشرات الأداء" [ref=e88] [cursor=pointer]:
+            - /url: /dashboard/kpi
+            - img [ref=e89]
+            - generic [ref=e91]: مؤشرات الأداء
+          - link "الإعدادات" [ref=e92] [cursor=pointer]:
+            - /url: /dashboard/settings
+            - img [ref=e93]
+            - generic [ref=e96]: الإعدادات
+    - generic [ref=e97]:
+      - banner [ref=e98]:
+        - generic [ref=e99]:
+          - generic [ref=e100]: A
+          - generic [ref=e101]:
+            - paragraph [ref=e102]: Ahmed Ali
+            - paragraph [ref=e103]: مالك
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - button "فتح الإشعارات" [active] [ref=e106] [cursor=pointer]:
+              - img [ref=e107]
+            - generic [ref=e198]:
+              - heading "إشعاراتك" [level=3] [ref=e200]
+              - paragraph [ref=e202]: لا توجد إشعارات بعد.
+          - button "تسجيل الخروج" [ref=e110] [cursor=pointer]
+      - main [ref=e111]:
+        - generic [ref=e112]:
+          - heading "مرحباً بعودتك" [level=2] [ref=e114]
+          - generic [ref=e115]:
+            - generic [ref=e116]:
+              - generic [ref=e117]: العقارات النشطة
+              - generic [ref=e118]: "1"
+            - generic [ref=e119]:
+              - generic [ref=e120]: عملاء محتملون جدد (30 يوماً)
+              - generic [ref=e121]: "2"
+            - generic [ref=e122]:
+              - generic [ref=e123]: المهام المعلّقة
+              - generic [ref=e124]: "1"
+            - generic [ref=e125]:
+              - generic [ref=e126]: أعضاء الفريق
+              - generic [ref=e127]: "2"
+          - generic [ref=e128]:
+            - generic [ref=e130]:
+              - heading "مسار العملاء المحتملين" [level=3] [ref=e132]: مسار العملاء المحتملين
+              - generic [ref=e150]:
+                - generic [ref=e152]:
+                  - generic [ref=e153]: جديد
+                  - generic [ref=e154]: 1 · 100%
+                - generic [ref=e158]:
+                  - generic [ref=e159]: تم التواصل
+                  - generic [ref=e160]: 1 · 100%
+                - generic [ref=e164]:
+                  - generic [ref=e165]: مؤهل
+                  - generic [ref=e166]: 1 · 100%
+                - generic [ref=e170]:
+                  - generic [ref=e171]: صفقة
+                  - generic [ref=e172]: 0 · 0%
+            - generic [ref=e137]:
+              - heading "مصادر العملاء" [level=3] [ref=e139]: مصادر العملاء
+              - generic [ref=e174]:
+                - generic [ref=e175]:
+                  - generic [ref=e176]: نموذج الموقع
+                  - generic [ref=e180]: "1"
+                - generic [ref=e181]:
+                  - generic [ref=e182]: اتصال هاتفي
+                  - generic [ref=e186]: "1"
+            - generic [ref=e144]:
+              - heading "العملاء والتحويلات عبر الأشهر" [level=3] [ref=e146]: العملاء والتحويلات عبر الأشهر
+              - generic [ref=e187]: لا توجد بيانات كافية بعد
+  - button "Open Next.js Dev Tools" [ref=e193] [cursor=pointer]:
+    - img [ref=e194]
+  - alert [ref=e197]

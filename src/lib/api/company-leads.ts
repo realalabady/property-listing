@@ -96,6 +96,25 @@ export function canViewAssignedLeads(
   ]);
 }
 
+/**
+ * Matched leads expose company-wide customer PII (not assignment-scoped), so
+ * they require the dedicated VIEW_MATCHED_LEADS permission (or full lead
+ * management) — never the "view own leads" permission.
+ */
+export function canViewMatchedLeads(
+  user: SessionUser,
+  companyId: string,
+): boolean {
+  if (!user) return false;
+  if (user.role === ROLES.SUPER_ADMIN) return true;
+  if (user.companyId !== companyId) return false;
+
+  return hasAnyPermission(user.permissions, [
+    PERMISSIONS.VIEW_MATCHED_LEADS,
+    PERMISSIONS.MANAGE_LEADS,
+  ]);
+}
+
 export function parseLeadStatus(value: unknown): LeadStatus | null {
   if (typeof value !== "string") return null;
   if (!LEAD_STATUS_VALUES.has(value as LeadStatus)) return null;

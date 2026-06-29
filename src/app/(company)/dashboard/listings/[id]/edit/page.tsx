@@ -1,9 +1,16 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { requireCompanyMember } from "@/lib/auth/guards";
+import { PERMISSIONS, hasAnyPermission } from "@/constants/permissions";
 import { ROUTES } from "@/constants/routes";
+import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@/components/ui/button";
+import { NewListingForm } from "@/features/listings/NewListingForm";
+import { t } from "@/lib/i18n";
 
 export const metadata = {
-  title: "Edit Listing",
+  title: t("listings.editListing"),
 };
 
 export default async function EditListingPage({
@@ -11,30 +18,37 @@ export default async function EditListingPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireCompanyMember();
+  const user = await requireCompanyMember();
   const { id } = await params;
+
+  const canEdit = hasAnyPermission(user.permissions, [
+    PERMISSIONS.EDIT_LISTING,
+    PERMISSIONS.EDIT_OWN_LISTING,
+  ]);
+  if (!canEdit || !user.companyId) {
+    redirect(ROUTES.DASHBOARD_LISTING_DETAIL(id));
+  }
 
   return (
     <div className="space-y-6">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Edit Listing</h2>
-        <p className="text-sm text-muted-foreground">
-          Listing ID: <span className="font-medium text-foreground">{id}</span>
-        </p>
-      </header>
-
-      <section className="rounded-xl border border-border bg-card p-6">
-        <p className="text-sm text-muted-foreground">
-          Dedicated edit screens are queued for the next sprint. You can update
-          status and feature flags from inventory right now.
-        </p>
-        <Link
-          href={ROUTES.DASHBOARD_LISTINGS}
-          className="mt-4 inline-flex rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
-        >
-          Return to listings inventory
-        </Link>
-      </section>
+      <PageHeader
+        title={t("listings.editListing")}
+        description={t("listings.addListingSubtitle")}
+        actions={
+          <Button variant="outline" asChild>
+            <Link href={ROUTES.DASHBOARD_LISTING_DETAIL(id)}>
+              <ArrowRight className="rotate-180" />
+              {t("listings.backToListings")}
+            </Link>
+          </Button>
+        }
+      />
+      <NewListingForm
+        companyId={user.companyId as string}
+        userId={user.uid}
+        mode="edit"
+        listingId={id}
+      />
     </div>
   );
 }

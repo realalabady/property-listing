@@ -1,0 +1,439 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - link "شعار Elite Elite" [ref=e5] [cursor=pointer]:
+        - /url: /dashboard
+        - img "شعار Elite" [ref=e6]
+        - generic [ref=e7]: Elite
+      - navigation [ref=e9]:
+        - link "نظرة عامة" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e12]
+          - generic [ref=e17]: نظرة عامة
+        - generic [ref=e18]:
+          - paragraph [ref=e19]: إدارة العقارات
+          - generic [ref=e20]:
+            - generic [ref=e21]:
+              - link "العقارات" [ref=e22] [cursor=pointer]:
+                - /url: /dashboard/listings
+                - img [ref=e23]
+                - generic [ref=e27]: العقارات
+              - button "إغلاق القائمة" [expanded] [ref=e28] [cursor=pointer]:
+                - img [ref=e29]
+            - generic [ref=e31]:
+              - link "عرض الكل" [ref=e32] [cursor=pointer]:
+                - /url: /dashboard/listings
+                - img [ref=e33]
+                - generic [ref=e36]: عرض الكل
+              - link "إضافة" [ref=e37] [cursor=pointer]:
+                - /url: /dashboard/listings/new
+                - img [ref=e38]
+                - generic [ref=e39]: إضافة
+        - generic [ref=e40]:
+          - paragraph [ref=e41]: العملاء والمهام
+          - generic [ref=e43]:
+            - link "العملاء المحتملون" [ref=e44] [cursor=pointer]:
+              - /url: /dashboard/leads
+              - img [ref=e45]
+              - generic [ref=e49]: العملاء المحتملون
+            - button "فتح القائمة" [ref=e50] [cursor=pointer]:
+              - img [ref=e51]
+          - link "الطلبات الواردة" [ref=e53] [cursor=pointer]:
+            - /url: /dashboard/leads/arrived
+            - img [ref=e54]
+            - generic [ref=e57]: الطلبات الواردة
+          - link "العملاء المطابقون" [ref=e58] [cursor=pointer]:
+            - /url: /dashboard/matched-leads
+            - img [ref=e59]
+            - generic [ref=e63]: العملاء المطابقون
+          - link "المهام" [ref=e64] [cursor=pointer]:
+            - /url: /dashboard/tasks
+            - img [ref=e65]
+            - generic [ref=e68]: المهام
+        - generic [ref=e69]:
+          - paragraph [ref=e70]: الفريق
+          - generic [ref=e72]:
+            - link "الموظفون" [ref=e73] [cursor=pointer]:
+              - /url: /dashboard/employees
+              - img [ref=e74]
+              - generic [ref=e86]: الموظفون
+            - button "فتح القائمة" [ref=e87] [cursor=pointer]:
+              - img [ref=e88]
+          - link "مجموعات الصلاحيات" [ref=e90] [cursor=pointer]:
+            - /url: /dashboard/employees/permissions
+            - img [ref=e91]
+            - generic [ref=e94]: مجموعات الصلاحيات
+        - generic [ref=e95]:
+          - paragraph [ref=e96]: التحليلات
+          - link "مؤشرات الأداء" [ref=e97] [cursor=pointer]:
+            - /url: /dashboard/kpi
+            - img [ref=e98]
+            - generic [ref=e100]: مؤشرات الأداء
+          - link "الإعدادات" [ref=e101] [cursor=pointer]:
+            - /url: /dashboard/settings
+            - img [ref=e102]
+            - generic [ref=e105]: الإعدادات
+    - generic [ref=e106]:
+      - banner [ref=e107]:
+        - generic [ref=e108]:
+          - generic [ref=e109]: A
+          - generic [ref=e110]:
+            - paragraph [ref=e111]: Ahmed Ali
+            - paragraph [ref=e112]: مالك
+        - generic [ref=e113]:
+          - button "فتح الإشعارات" [ref=e115] [cursor=pointer]:
+            - img [ref=e116]
+          - button "تسجيل الخروج" [ref=e119] [cursor=pointer]
+      - main [ref=e120]:
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - generic [ref=e123]:
+              - heading "إضافة عقار جديد" [level=1] [ref=e124]
+              - paragraph [ref=e125]: أدخل بيانات العقار الأساسية، ثم أضف التفاصيل الاختيارية.
+            - link "العودة لقائمة العقارات" [ref=e127] [cursor=pointer]:
+              - /url: /dashboard/listings
+              - img [ref=e128]
+              - text: العودة لقائمة العقارات
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - generic [ref=e132]:
+                - button "بيانات العقار العنوان والسعر والمساحة مطلوبة" [expanded] [ref=e133] [cursor=pointer]:
+                  - generic [ref=e135]:
+                    - generic [ref=e136]: بيانات العقار
+                    - generic [ref=e137]: العنوان والسعر والمساحة مطلوبة
+                  - img [ref=e138]
+                - generic [ref=e143]:
+                  - generic [ref=e144]:
+                    - generic [ref=e145]: العنوان *
+                    - textbox "شقة فاخرة في حي الياسمين" [ref=e146]
+                  - generic [ref=e147]:
+                    - generic [ref=e148]: نوع الإعلان
+                    - generic [ref=e149]:
+                      - combobox [ref=e150]:
+                        - option "للإيجار"
+                        - option "للبيع" [selected]
+                        - option "على الخريطة"
+                      - img
+                  - generic [ref=e151]:
+                    - generic [ref=e152]: نوع العقار
+                    - generic [ref=e153]:
+                      - combobox [ref=e154]:
+                        - option "شقة" [selected]
+                        - option "فيلا"
+                        - option "أرض"
+                        - option "تجاري"
+                        - option "عمارة"
+                        - option "مكتب"
+                        - option "مستودع"
+                        - option "تاون هاوس"
+                        - option "بنتهاوس"
+                        - option "ستوديو"
+                      - img
+                  - generic [ref=e155]:
+                    - generic [ref=e156]: السعر *
+                    - textbox "1250000" [ref=e157]
+                  - generic [ref=e158]:
+                    - generic [ref=e159]: المساحة (م²) *
+                    - textbox "165" [ref=e160]
+                  - generic [ref=e161]:
+                    - generic [ref=e162]: قابلية التفاوض
+                    - generic [ref=e163] [cursor=pointer]:
+                      - checkbox "السعر قابل للتفاوض" [ref=e164]
+                      - text: السعر قابل للتفاوض
+              - generic [ref=e165]:
+                - button "مواصفات ومرافق الوحدة عدد الغرف ودورات المياه والمرافق المتوفرة في العقار" [expanded] [ref=e166] [cursor=pointer]:
+                  - generic [ref=e168]:
+                    - generic [ref=e169]: مواصفات ومرافق الوحدة
+                    - generic [ref=e170]: عدد الغرف ودورات المياه والمرافق المتوفرة في العقار
+                  - img [ref=e171]
+                - generic [ref=e175]:
+                  - generic [ref=e176]:
+                    - generic [ref=e177]:
+                      - generic [ref=e178]: عدد الغرف
+                      - generic [ref=e179]:
+                        - combobox [ref=e180]:
+                          - option "— غير محدد —" [selected]
+                          - option "استوديو (بدون غرف)"
+                          - option "1"
+                          - option "2"
+                          - option "3"
+                          - option "4"
+                          - option "5"
+                          - option "6"
+                          - option "7"
+                          - option "8"
+                          - option "9"
+                          - option "10+"
+                        - img
+                    - generic [ref=e181]:
+                      - generic [ref=e182]: عدد دورات المياه
+                      - generic [ref=e183]:
+                        - combobox [ref=e184]:
+                          - option "— غير محدد —" [selected]
+                          - option "0"
+                          - option "1"
+                          - option "2"
+                          - option "3"
+                          - option "4"
+                          - option "5"
+                          - option "6"
+                          - option "7"
+                          - option "8+"
+                        - img
+                    - generic [ref=e185]:
+                      - generic [ref=e186]: عدد المواقف
+                      - generic [ref=e187]:
+                        - combobox [ref=e188]:
+                          - option "— غير محدد —" [selected]
+                          - option "لا توجد"
+                          - option "1"
+                          - option "2"
+                          - option "3"
+                          - option "4"
+                          - option "5"
+                          - option "6+"
+                        - img
+                    - generic [ref=e189]:
+                      - generic [ref=e190]: سنة البناء
+                      - generic [ref=e191]:
+                        - combobox [ref=e192]:
+                          - option "— غير محدد —" [selected]
+                          - option "2026"
+                          - option "2025"
+                          - option "2024"
+                          - option "2023"
+                          - option "2022"
+                          - option "2021"
+                          - option "2020"
+                          - option "2019"
+                          - option "2018"
+                          - option "2017"
+                          - option "2016"
+                          - option "2015"
+                          - option "2014"
+                          - option "2013"
+                          - option "2012"
+                          - option "2011"
+                          - option "2010"
+                          - option "2009"
+                          - option "2008"
+                          - option "2007"
+                          - option "2006"
+                          - option "2005"
+                          - option "2004"
+                          - option "2003"
+                          - option "2002"
+                          - option "2001"
+                          - option "2000"
+                          - option "1999"
+                          - option "1998"
+                          - option "1997"
+                          - option "1996"
+                          - option "1995"
+                          - option "1994"
+                          - option "1993"
+                          - option "1992"
+                          - option "1991"
+                          - option "1990"
+                          - option "1989"
+                          - option "1988"
+                          - option "1987"
+                          - option "1986"
+                          - option "1985"
+                          - option "1984"
+                          - option "1983"
+                          - option "1982"
+                          - option "1981"
+                          - option "1980"
+                          - option "1979"
+                          - option "1978"
+                          - option "1977"
+                          - option "1976"
+                          - option "1975"
+                          - option "1974"
+                          - option "1973"
+                          - option "1972"
+                          - option "1971"
+                          - option "1970"
+                        - img
+                  - generic [ref=e193]:
+                    - paragraph [ref=e194]: المرافق والمميزات
+                    - generic [ref=e195]:
+                      - generic [ref=e196] [cursor=pointer]:
+                        - checkbox "مفروش" [ref=e197]
+                        - text: مفروش
+                      - generic [ref=e198] [cursor=pointer]:
+                        - checkbox "تكييف" [ref=e199]
+                        - text: تكييف
+                      - generic [ref=e200] [cursor=pointer]:
+                        - checkbox "مصعد" [ref=e201]
+                        - text: مصعد
+                      - generic [ref=e202] [cursor=pointer]:
+                        - checkbox "شرفة" [ref=e203]
+                        - text: شرفة
+                      - generic [ref=e204] [cursor=pointer]:
+                        - checkbox "حديقة" [ref=e205]
+                        - text: حديقة
+                      - generic [ref=e206] [cursor=pointer]:
+                        - checkbox "مسبح" [ref=e207]
+                        - text: مسبح
+                      - generic [ref=e208] [cursor=pointer]:
+                        - checkbox "صالة رياضية" [ref=e209]
+                        - text: صالة رياضية
+                      - generic [ref=e210] [cursor=pointer]:
+                        - checkbox "أمن وحراسة" [ref=e211]
+                        - text: أمن وحراسة
+                      - generic [ref=e212] [cursor=pointer]:
+                        - checkbox "تدفئة" [ref=e213]
+                        - text: تدفئة
+                      - generic [ref=e214] [cursor=pointer]:
+                        - checkbox "يسمح بالحيوانات الأليفة" [ref=e215]
+                        - text: يسمح بالحيوانات الأليفة
+              - generic [ref=e216]:
+                - button "الموقع الجغرافي حدّد الدولة ثم المنطقة فالمدينة فالحي — تُحدد إحداثيات العقار تلقائيًا على الخريطة." [expanded] [ref=e217] [cursor=pointer]:
+                  - generic [ref=e219]:
+                    - generic [ref=e220]: الموقع الجغرافي
+                    - generic [ref=e221]: حدّد الدولة ثم المنطقة فالمدينة فالحي — تُحدد إحداثيات العقار تلقائيًا على الخريطة.
+                  - img [ref=e222]
+                - generic [ref=e227]:
+                  - generic [ref=e228]:
+                    - generic [ref=e229]: الدولة
+                    - generic [ref=e230]:
+                      - combobox [disabled] [ref=e231]:
+                        - option "المملكة العربية السعودية" [selected]
+                      - img
+                  - generic [ref=e232]:
+                    - generic [ref=e233]: المنطقة *
+                    - generic [ref=e234]:
+                      - combobox [disabled] [ref=e235]:
+                        - option "جارٍ التحميل…" [selected]
+                      - img
+                  - generic [ref=e236]:
+                    - generic [ref=e237]: المدينة *
+                    - generic [ref=e238]:
+                      - combobox [disabled] [ref=e239]
+                      - img
+                  - generic [ref=e240]:
+                    - generic [ref=e241]: الحي
+                    - generic [ref=e242]:
+                      - combobox [disabled] [ref=e243]:
+                        - option "— اختر الحي —" [selected]
+                      - img
+                  - generic [ref=e244]:
+                    - generic [ref=e245]: الحالة المبدئية
+                    - generic [ref=e246]:
+                      - combobox [ref=e247]:
+                        - option "مسودة" [selected]
+                        - option "منشور"
+                        - option "قيد المراجعة"
+                        - option "تم البيع"
+                        - option "تم التأجير"
+                        - option "مؤرشف"
+                      - img
+              - generic [ref=e248]:
+                - button "بيانات التواصل * إستخدم حروف وأرقام فقط" [ref=e249] [cursor=pointer]:
+                  - generic [ref=e251]:
+                    - generic [ref=e252]: بيانات التواصل
+                    - generic [ref=e253]: "* إستخدم حروف وأرقام فقط"
+                  - img [ref=e254]
+                - generic [ref=e257]:
+                  - generic [ref=e258]:
+                    - textbox "الإسم" [ref=e259]
+                    - textbox "الصفة" [ref=e260]
+                    - textbox "الهاتف" [ref=e261]
+                    - textbox "ملاحظة" [ref=e262]
+                    - button "حذف جهة الاتصال" [ref=e263] [cursor=pointer]:
+                      - img [ref=e264]
+                  - button "إضافة جهة اتصال" [ref=e267] [cursor=pointer]:
+                    - img [ref=e268]
+                    - text: إضافة جهة اتصال
+              - generic [ref=e269]:
+                - button "المدخلات الاختيارية بيانات الصك والعقار الإضافية" [ref=e270] [cursor=pointer]:
+                  - generic [ref=e272]:
+                    - generic [ref=e273]: المدخلات الاختيارية
+                    - generic [ref=e274]: بيانات الصك والعقار الإضافية
+                  - img [ref=e275]
+                - generic [ref=e278]:
+                  - generic [ref=e279]:
+                    - generic [ref=e280]: نوع الإستخدام
+                    - generic [ref=e281]:
+                      - combobox [ref=e282]:
+                        - option "— غير محدد —" [selected]
+                        - option "سكني"
+                        - option "تجاري"
+                        - option "زراعي"
+                        - option "صناعي"
+                        - option "مكتبي"
+                      - img
+                  - generic [ref=e283]:
+                    - generic [ref=e284]: رقم العقار
+                    - textbox [ref=e285]
+                  - generic [ref=e286]:
+                    - generic [ref=e287]: اسم العقار باللغة الإنجليزية
+                    - textbox "Property name in English" [ref=e288]
+                  - generic [ref=e289]:
+                    - generic [ref=e290]: نوع صك الملكية
+                    - textbox [ref=e291]
+                  - generic [ref=e292]:
+                    - generic [ref=e293]: رقم صك الملكية
+                    - textbox [ref=e294]
+                  - generic [ref=e295]:
+                    - generic [ref=e296]: تاريخ إصدار صك الملكية (ميلادي)
+                    - textbox [ref=e297]
+                  - generic [ref=e298]:
+                    - generic [ref=e299]: مساحة العقار (م²)
+                    - textbox [ref=e300]
+                  - generic [ref=e301]:
+                    - generic [ref=e302]: الرقم الإضافي
+                    - textbox [ref=e303]
+                  - generic [ref=e304]:
+                    - generic [ref=e305]: الرقم الإضافي 2
+                    - textbox [ref=e306]
+                  - generic [ref=e307]:
+                    - generic [ref=e308]: رقم قطعة العقار
+                    - textbox [ref=e309]
+                  - generic [ref=e310]:
+                    - generic [ref=e311]: رقم بلوك العقار
+                    - textbox [ref=e312]
+                  - generic [ref=e313]:
+                    - generic [ref=e314]: تاريخ بناء العقار (ميلادي)
+                    - textbox [ref=e315]
+                  - generic [ref=e316]:
+                    - generic [ref=e317]: عدد الطوابق في العقار
+                    - textbox [ref=e318]
+                  - generic [ref=e319]:
+                    - generic [ref=e320]: عدد الوحدات في كل طابق
+                    - textbox [ref=e321]
+                  - generic [ref=e322]:
+                    - generic [ref=e323]: رقم عداد الكهرباء
+                    - textbox [ref=e324]
+                  - generic [ref=e325]:
+                    - generic [ref=e326]: رقم اشتراك الكهرباء
+                    - textbox [ref=e327]
+                  - generic [ref=e328]:
+                    - generic [ref=e329]: رقم عداد المياه
+                    - textbox [ref=e330]
+                  - generic [ref=e331]:
+                    - generic [ref=e332]: رقم الاشتراك في المياه
+                    - textbox [ref=e333]
+                  - generic [ref=e334]:
+                    - generic [ref=e335]: إسم الشارع
+                    - textbox [ref=e336]
+                  - generic [ref=e337]:
+                    - generic [ref=e338]: الرمز البريدي
+                    - textbox [ref=e339]
+                  - generic [ref=e340]:
+                    - generic [ref=e341]: رقم المبنى
+                    - textbox [ref=e342]
+                  - generic [ref=e343]:
+                    - generic [ref=e344]: صك الملكية (مرجع)
+                    - textbox "رقم أو مرجع الصك" [ref=e345]
+                  - generic [ref=e346]:
+                    - generic [ref=e347]: الوصف
+                    - textbox [ref=e348]
+            - generic [ref=e349]:
+              - button "إلغاء" [ref=e350] [cursor=pointer]
+              - button "إنشاء عقار" [ref=e351] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e357] [cursor=pointer]:
+    - img [ref=e358]
+  - alert [ref=e361]

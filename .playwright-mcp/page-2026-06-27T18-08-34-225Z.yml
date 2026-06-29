@@ -1,0 +1,117 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - link "شعار Elite Elite" [ref=e5] [cursor=pointer]:
+        - /url: /dashboard
+        - img "شعار Elite" [ref=e6]
+        - generic [ref=e7]: Elite
+      - navigation [ref=e9]:
+        - link "نظرة عامة" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e12]
+          - generic [ref=e17]: نظرة عامة
+        - generic [ref=e18]:
+          - paragraph [ref=e19]: إدارة العقارات
+          - generic [ref=e20]:
+            - generic [ref=e21]:
+              - link "العقارات" [ref=e22] [cursor=pointer]:
+                - /url: /dashboard/listings
+                - img [ref=e23]
+                - generic [ref=e27]: العقارات
+              - button "إغلاق القائمة" [expanded] [ref=e28] [cursor=pointer]:
+                - img [ref=e29]
+            - generic [ref=e31]:
+              - link "عرض الكل" [ref=e32] [cursor=pointer]:
+                - /url: /dashboard/listings
+                - img [ref=e33]
+                - generic [ref=e36]: عرض الكل
+              - link "إضافة" [ref=e37] [cursor=pointer]:
+                - /url: /dashboard/listings/new
+                - img [ref=e38]
+                - generic [ref=e39]: إضافة
+        - generic [ref=e40]:
+          - paragraph [ref=e41]: العملاء والمهام
+          - generic [ref=e43]:
+            - link "العملاء المحتملون" [ref=e44] [cursor=pointer]:
+              - /url: /dashboard/leads
+              - img [ref=e45]
+              - generic [ref=e49]: العملاء المحتملون
+            - button "فتح القائمة" [ref=e50] [cursor=pointer]:
+              - img [ref=e51]
+          - link "الطلبات الواردة" [ref=e53] [cursor=pointer]:
+            - /url: /dashboard/leads/arrived
+            - img [ref=e54]
+            - generic [ref=e57]: الطلبات الواردة
+          - link "العملاء المطابقون" [ref=e58] [cursor=pointer]:
+            - /url: /dashboard/matched-leads
+            - img [ref=e59]
+            - generic [ref=e63]: العملاء المطابقون
+          - link "المهام" [ref=e64] [cursor=pointer]:
+            - /url: /dashboard/tasks
+            - img [ref=e65]
+            - generic [ref=e68]: المهام
+        - generic [ref=e69]:
+          - paragraph [ref=e70]: الفريق
+          - generic [ref=e72]:
+            - link "الموظفون" [ref=e73] [cursor=pointer]:
+              - /url: /dashboard/employees
+              - img [ref=e74]
+              - generic [ref=e86]: الموظفون
+            - button "فتح القائمة" [ref=e87] [cursor=pointer]:
+              - img [ref=e88]
+          - link "مجموعات الصلاحيات" [ref=e90] [cursor=pointer]:
+            - /url: /dashboard/employees/permissions
+            - img [ref=e91]
+            - generic [ref=e94]: مجموعات الصلاحيات
+        - generic [ref=e95]:
+          - paragraph [ref=e96]: التحليلات
+          - link "مؤشرات الأداء" [ref=e97] [cursor=pointer]:
+            - /url: /dashboard/kpi
+            - img [ref=e98]
+            - generic [ref=e100]: مؤشرات الأداء
+          - link "الإعدادات" [ref=e101] [cursor=pointer]:
+            - /url: /dashboard/settings
+            - img [ref=e102]
+            - generic [ref=e105]: الإعدادات
+    - generic [ref=e106]:
+      - banner [ref=e107]:
+        - generic [ref=e108]:
+          - generic [ref=e109]: A
+          - generic [ref=e110]:
+            - paragraph [ref=e111]: Ahmed Ali
+            - paragraph [ref=e112]: مالك
+        - generic [ref=e113]:
+          - button "فتح الإشعارات" [ref=e115] [cursor=pointer]:
+            - img [ref=e116]
+          - button "تسجيل الخروج" [ref=e119] [cursor=pointer]
+      - main [ref=e120]:
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - generic [ref=e123]:
+              - heading "العقارات" [level=1] [ref=e124]
+              - paragraph [ref=e125]: أنشئ وانشر وميّز وأدِر مخزون شركتك.
+            - link "عقار جديد" [ref=e127] [cursor=pointer]:
+              - /url: /dashboard/listings/new
+              - img [ref=e128]
+              - text: عقار جديد
+          - generic [ref=e129]:
+            - generic [ref=e130]:
+              - generic [ref=e131]:
+                - generic [ref=e132]:
+                  - heading "قائمة العقارات" [level=3] [ref=e133]
+                  - paragraph [ref=e134]: أدِر مسوداتك وعقاراتك المنشورة من لوحة واحدة.
+                - generic [ref=e135]:
+                  - generic [ref=e136]: الحالة
+                  - combobox [ref=e137]:
+                    - option "الكل" [selected]
+                    - option "مسودة"
+                    - option "منشور"
+                    - option "قيد المراجعة"
+                    - option "تم البيع"
+                    - option "تم التأجير"
+                    - option "مؤرشف"
+              - generic [ref=e138]: انتهت جلستك. يرجى تسجيل الخروج ثم تسجيل الدخول مجددًا لعرض عقاراتك.
+            - paragraph [ref=e139]: لا توجد عقارات مطابقة للتصفية الحالية.
+  - button "Open Next.js Dev Tools" [ref=e145] [cursor=pointer]:
+    - img [ref=e146]
+  - alert [ref=e149]

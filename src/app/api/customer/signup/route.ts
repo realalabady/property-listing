@@ -53,6 +53,10 @@ export async function POST(req: NextRequest) {
   const { name, email, phone, password, preferredContactMethod, contactConsent } =
     result.value;
 
+  // Track the uid WE create this call so a later-step failure can roll it back.
+  // Without this, a failed createCustomToken() leaves an orphaned Auth user +
+  // customer doc, and the next retry with the same email returns 409.
+  let createdUid: string | null = null;
   try {
     const userRecord = await adminAuth().createUser({
       email,
@@ -60,6 +64,7 @@ export async function POST(req: NextRequest) {
       displayName: name,
       phoneNumber: undefined,
     });
+    createdUid = userRecord.uid;
 
     await adminAuth().setCustomUserClaims(userRecord.uid, {
       role: ROLES.CUSTOMER,
@@ -87,6 +92,20 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, customToken }, { status: 201 });
   } catch (err) {
+    // Roll back the partial signup so the DB stays clean and retries work.
+    // (createdUid is only set once OUR createUser succeeded — an
+    // email-already-exists failure leaves it null, so we never delete an
+    // account that belongs to someone else.)
+    if (createdUid) {
+      await adminDb()
+        .doc(`customers/${createdUid}`)
+        .delete()
+        .catch(() => undefined);
+      await adminAuth()
+        .deleteUser(createdUid)
+        .catch(() => undefined);
+    }
+
     const code =
       typeof err === "object" && err !== null && "code" in err
         ? String((err as { code: unknown }).code)

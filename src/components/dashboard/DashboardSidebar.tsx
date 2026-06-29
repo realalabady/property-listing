@@ -22,6 +22,12 @@ import {
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils/cn";
 import { t } from "@/lib/i18n";
+import { useAuthStore } from "@/store/auth.store";
+import {
+  hasAnyPermission,
+  PERMISSIONS,
+  type Permission,
+} from "@/constants/permissions";
 
 interface NavItem {
   href: string;
@@ -29,6 +35,8 @@ interface NavItem {
   icon: LucideIcon;
   /** Exact match instead of prefix match. */
   exact?: boolean;
+  /** Hide this item unless the user holds at least one of these permissions. */
+  requiredAnyPermission?: Permission[];
   /** Sub-pages (e.g. View / Add) revealed when the group is expanded. */
   children?: NavItem[];
 }
@@ -90,6 +98,10 @@ function buildGroups(): NavGroup[] {
           label: t("dashboard.matchedLeads"),
           icon: Target,
           exact: true,
+          requiredAnyPermission: [
+            PERMISSIONS.VIEW_MATCHED_LEADS,
+            PERMISSIONS.MANAGE_LEADS,
+          ],
         },
         {
           href: ROUTES.DASHBOARD_TASKS,
@@ -162,7 +174,19 @@ function itemClasses(active: boolean): string {
 
 export function DashboardSidebar() {
   const pathname = usePathname() || "";
-  const groups = React.useMemo(buildGroups, []);
+  const permissions = useAuthStore((s) => s.user?.permissions);
+  const groups = React.useMemo(() => {
+    return buildGroups()
+      .map((group) => ({
+        ...group,
+        items: group.items.filter(
+          (item) =>
+            !item.requiredAnyPermission ||
+            hasAnyPermission(permissions, item.requiredAnyPermission),
+        ),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [permissions]);
   // Manual expand overrides; undefined => follow active state.
   const [overrides, setOverrides] = React.useState<Record<string, boolean>>({});
 

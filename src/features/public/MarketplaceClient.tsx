@@ -61,6 +61,7 @@ export function MarketplaceClient() {
   const [listings, setListings] = useState<PublicListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
 
   // Filters are seeded from (and committed back to) the URL so links from the
   // landing-page search bar arrive pre-filtered and results stay shareable.
@@ -191,16 +192,40 @@ export function MarketplaceClient() {
         </p>
       </header>
 
-      {/* Saudi cluster map — every published unit appears here automatically */}
+      {/* Map opens full-screen on demand (aqar-style) instead of taking the page */}
       <section className="mb-8">
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+        <button
+          type="button"
+          onClick={() => setMapOpen(true)}
+          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-secondary/60"
+        >
           <MapIcon className="h-4 w-4 text-primary" />
-          خريطة العقارات في المملكة
-        </div>
-        <div className="h-[360px] overflow-hidden rounded-2xl border border-border">
-          <SaudiClusterMap listings={filtered} />
-        </div>
+          عرض العقارات على الخريطة
+        </button>
       </section>
+
+      {mapOpen && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-background">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <MapIcon className="h-4 w-4 text-primary" />
+              خريطة العقارات في المملكة
+              <span className="text-muted-foreground">({filtered.length})</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMapOpen(false)}
+              aria-label="إغلاق الخريطة"
+              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-border text-foreground transition-colors hover:bg-secondary"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="relative flex-1">
+            <SaudiClusterMap listings={filtered} />
+          </div>
+        </div>
+      )}
 
       {/* Search + filters */}
       <form
@@ -324,9 +349,7 @@ export function MarketplaceClient() {
             value={filters.maxPrice}
             onChange={(v) => update("maxPrice", v)}
           />
-          <NumberField
-            label="أقل عدد غرف"
-            placeholder="أي عدد"
+          <BedroomsSelect
             value={filters.bedrooms}
             onChange={(v) => update("bedrooms", v)}
           />
@@ -414,6 +437,39 @@ function NumberField({
         placeholder={placeholder}
         className="w-full min-w-0 bg-transparent text-end text-sm outline-none placeholder:text-muted-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
+    </label>
+  );
+}
+
+// Constrained minimum-bedrooms dropdown — mirrors the property form's bedroom
+// options so searches produce clean integers that match listing data exactly.
+function BedroomsSelect({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (value: number | null) => void;
+}) {
+  return (
+    <label className="flex h-11 items-center gap-2 rounded-xl border border-input bg-background px-3">
+      <span className="shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">
+        أقل عدد غرف
+      </span>
+      <select
+        aria-label="أقل عدد غرف"
+        value={value ?? ""}
+        onChange={(e) =>
+          onChange(e.target.value === "" ? null : Number(e.target.value))
+        }
+        className="w-full min-w-0 cursor-pointer bg-transparent text-end text-sm outline-none"
+      >
+        <option value="">أي عدد</option>
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+          <option key={n} value={n}>
+            {n === 10 ? "10+" : `${n}+`}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }

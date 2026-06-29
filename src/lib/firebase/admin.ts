@@ -27,15 +27,22 @@ function createAdminApp(): App {
   const existing = getApps().find((a) => a.name === APP_NAME);
   if (existing) return existing;
 
-  const explicitProjectId = process.env.FIREBASE_ADMIN_PROJECT_ID?.trim();
+  // Note: keys avoid the reserved FIREBASE_ prefix so they can be deployed via
+  // Firebase (Cloud Functions rejects FIREBASE_*). Old names kept as fallback.
+  const explicitProjectId = (
+    process.env.ADMIN_PROJECT_ID ?? process.env.FIREBASE_ADMIN_PROJECT_ID
+  )?.trim();
   const projectId =
     explicitProjectId || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim();
-  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL?.trim();
-  // Private keys often stored with literal \n — normalize:
-  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(
-    /\\n/g,
-    "\n",
+  const clientEmail = (
+    process.env.ADMIN_CLIENT_EMAIL ?? process.env.FIREBASE_ADMIN_CLIENT_EMAIL
   )?.trim();
+  // Private keys often stored with literal \n — normalize:
+  const privateKey = (
+    process.env.ADMIN_PRIVATE_KEY ?? process.env.FIREBASE_ADMIN_PRIVATE_KEY
+  )
+    ?.replace(/\\n/g, "\n")
+    ?.trim();
 
   const hasServiceAccountEnv =
     Boolean(explicitProjectId) && Boolean(clientEmail) && Boolean(privateKey);

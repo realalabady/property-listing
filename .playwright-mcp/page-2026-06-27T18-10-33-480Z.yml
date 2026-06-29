@@ -1,0 +1,100 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - link "شعار Elite Elite" [ref=e5] [cursor=pointer]:
+        - /url: /dashboard
+        - img "شعار Elite" [ref=e6]
+        - generic [ref=e7]: Elite
+      - navigation [ref=e9]:
+        - link "نظرة عامة" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e12]
+          - generic [ref=e17]: نظرة عامة
+        - generic [ref=e18]:
+          - paragraph [ref=e19]: إدارة العقارات
+          - generic [ref=e21]:
+            - link "العقارات" [ref=e22] [cursor=pointer]:
+              - /url: /dashboard/listings
+              - img [ref=e23]
+              - generic [ref=e27]: العقارات
+            - button "فتح القائمة" [ref=e28] [cursor=pointer]:
+              - img [ref=e29]
+        - generic [ref=e31]:
+          - paragraph [ref=e32]: العملاء والمهام
+          - generic [ref=e34]:
+            - link "العملاء المحتملون" [ref=e35] [cursor=pointer]:
+              - /url: /dashboard/leads
+              - img [ref=e36]
+              - generic [ref=e40]: العملاء المحتملون
+            - button "فتح القائمة" [ref=e41] [cursor=pointer]:
+              - img [ref=e42]
+          - link "الطلبات الواردة" [ref=e44] [cursor=pointer]:
+            - /url: /dashboard/leads/arrived
+            - img [ref=e45]
+            - generic [ref=e48]: الطلبات الواردة
+          - link "العملاء المطابقون" [ref=e49] [cursor=pointer]:
+            - /url: /dashboard/matched-leads
+            - img [ref=e50]
+            - generic [ref=e54]: العملاء المطابقون
+          - link "المهام" [ref=e55] [cursor=pointer]:
+            - /url: /dashboard/tasks
+            - img [ref=e56]
+            - generic [ref=e59]: المهام
+        - generic [ref=e60]:
+          - paragraph [ref=e61]: الفريق
+          - generic [ref=e63]:
+            - link "الموظفون" [ref=e64] [cursor=pointer]:
+              - /url: /dashboard/employees
+              - img [ref=e65]
+              - generic [ref=e77]: الموظفون
+            - button "فتح القائمة" [ref=e78] [cursor=pointer]:
+              - img [ref=e79]
+          - link "مجموعات الصلاحيات" [ref=e81] [cursor=pointer]:
+            - /url: /dashboard/employees/permissions
+            - img [ref=e82]
+            - generic [ref=e85]: مجموعات الصلاحيات
+        - generic [ref=e86]:
+          - paragraph [ref=e87]: التحليلات
+          - link "مؤشرات الأداء" [ref=e88] [cursor=pointer]:
+            - /url: /dashboard/kpi
+            - img [ref=e89]
+            - generic [ref=e91]: مؤشرات الأداء
+          - link "الإعدادات" [ref=e92] [cursor=pointer]:
+            - /url: /dashboard/settings
+            - img [ref=e93]
+            - generic [ref=e96]: الإعدادات
+    - generic [ref=e97]:
+      - banner [ref=e98]:
+        - generic [ref=e99]:
+          - generic [ref=e100]: A
+          - generic [ref=e101]:
+            - paragraph [ref=e102]: Ahmed Ali
+            - paragraph [ref=e103]: مالك
+        - generic [ref=e104]:
+          - button "فتح الإشعارات" [ref=e106] [cursor=pointer]:
+            - img [ref=e107]
+          - button "تسجيل الخروج" [ref=e110] [cursor=pointer]
+      - main [ref=e111]:
+        - generic [ref=e112]:
+          - generic [ref=e113]:
+            - generic [ref=e114]:
+              - heading "المهام" [level=2] [ref=e115]
+              - paragraph [ref=e116]: لوحة الإسناد مع تتبّع تواريخ الاستحقاق والتصعيد.
+            - generic [ref=e117]:
+              - combobox [ref=e118]:
+                - option "جميع الحالات" [selected]
+                - option "قيد الانتظار"
+                - option "قيد التنفيذ"
+                - option "مكتملة"
+                - option "ملغاة"
+              - button "تحديث" [ref=e119] [cursor=pointer]
+              - button "+ مهمة جديدة" [ref=e120] [cursor=pointer]
+          - paragraph [ref=e121]: جارٍ تحميل المهام…
+          - generic [ref=e122]:
+            - generic [ref=e123]:
+              - heading "مهامك" [level=3] [ref=e124]
+              - generic [ref=e125]: "0"
+            - paragraph [ref=e126]: لا توجد مهام مُسندة إليك.
+  - button "Open Next.js Dev Tools" [ref=e132] [cursor=pointer]:
+    - img [ref=e133]
+  - alert [ref=e136]
