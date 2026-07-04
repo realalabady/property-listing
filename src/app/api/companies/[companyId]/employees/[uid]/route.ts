@@ -198,7 +198,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
   });
 }
 
-export async function DELETE(_req: NextRequest, context: RouteContext) {
+export async function DELETE(req: NextRequest, context: RouteContext) {
   const { companyId, uid } = await context.params;
   const user = await getSessionUser();
 
@@ -223,6 +223,41 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Employee not found." }, { status: 404 });
   }
 
+  // `?purge=true` removes the employee entirely: revoke access, delete the
+  // Firestore record, drop the active headcount, and delete the auth account.
+  // Without it we keep the historical soft-delete (deactivate) behaviour.
+  const purge = req.nextUrl.searchParams.get("purge") === "true";
+
+  if (purge) {
+    const wasActive = employeeSnap.get("active") !== false;
+
+    await clearEmployeeClaims(uid);
+    await employeeRef.delete();
+
+    if (wasActive) {
+      await adminDb()
+        .doc(`companies/${companyId}`)
+        .update({
+          activeEmployeesCount: FieldValue.increment(-1),
+          updatedAt: FieldValue.serverTimestamp(),
+        })
+        .catch(() => {
+          // Counter is best-effort; a missing/again-adjusted field shouldn't
+          // block the deletion itself.
+        });
+    }
+
+    // Delete the Firebase Auth account so the email is freed for reuse.
+    try {
+      await adminAuth().deleteUser(uid);
+    } catch {
+      // Auth user may already be gone (e.g. deleted out of band) — the
+      // employee record is the source of truth and is already removed.
+    }
+
+    return NextResponse.json({ ok: true, deleted: "permanent" });
+  }
+
   await employeeRef.update({
     active: false,
     deactivatedAt: FieldValue.serverTimestamp(),
@@ -231,5 +266,5 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
 
   await clearEmployeeClaims(uid);
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, deleted: "deactivated" });
 }

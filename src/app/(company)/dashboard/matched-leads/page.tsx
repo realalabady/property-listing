@@ -13,7 +13,7 @@ export const metadata = {
 export default async function MatchedLeadsPage() {
   const user = await requireCompanyMember();
   if (!canViewMatchedLeads(user, user.companyId as string)) {
-    redirect(ROUTES.DASHBOARD);
+    redirect(`${ROUTES.DASHBOARD}?denied=permission`);
   }
 
   return (

@@ -3,14 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
-import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  serverTimestamp,
-  updateDoc,
-} from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Accordion, AccordionSection } from "@/components/ui/accordion";
@@ -356,6 +349,11 @@ export function NewListingForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Create mode: best-effort plan-quota pre-check so the user sees a message
+  // (and a disabled submit) before hitting the enforced 409 on POST.
+  const [planAtLimit, setPlanAtLimit] = useState(false);
+  const [planMaxListings, setPlanMaxListings] = useState<number | null>(null);
+
   // Edit mode: load the existing listing once, then resolve its (Arabic)
   // location names back into the cascading-select IDs after geo data loads.
   const [hydrated, setHydrated] = useState(!isEdit);
@@ -391,6 +389,34 @@ export function NewListingForm({
       mounted = false;
     };
   }, []);
+
+  // Create mode: read the current listing usage against the plan cap.
+  useEffect(() => {
+    if (isEdit || !authReady) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/companies/${companyId}/listings`, {
+          cache: "no-store",
+        });
+        if (!res.ok || !mounted) return;
+        const data = (await res.json()) as {
+          atLimit?: boolean;
+          maxListings?: number;
+        };
+        if (!mounted) return;
+        setPlanAtLimit(Boolean(data.atLimit));
+        setPlanMaxListings(
+          typeof data.maxListings === "number" ? data.maxListings : null,
+        );
+      } catch {
+        // Pre-check is best-effort; the POST still enforces the quota.
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [isEdit, authReady, companyId]);
 
   // Edit mode: fetch the listing once auth is ready and pre-fill the form.
   useEffect(() => {
@@ -589,7 +615,6 @@ export function NewListingForm({
     setError(null);
     try {
       const db = getFirebaseDb();
-      const listingsRef = collection(db, `companies/${companyId}/listings`);
 
       const region = regions.find((r) => String(r.region_id) === form.regionId);
       const city = cities.find((c) => String(c.city_id) === form.cityId);
@@ -668,26 +693,19 @@ export function NewListingForm({
         return;
       }
 
-      await addDoc(listingsRef, {
-        ...corePayload,
-        media: [],
-        coverImage: null,
-        assignedEmployeeId: null,
-        featured: false,
-        publishedAt:
-          form.status === LISTING_STATUSES.PUBLISHED ? serverTimestamp() : null,
-        analytics: {
-          views: 0,
-          uniqueViews: 0,
-          inquiries: 0,
-          whatsappClicks: 0,
-          phoneClicks: 0,
-          favorites: 0,
-        },
-        createdBy: userId,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+      // Creation goes through the API so the per-plan listing quota is
+      // enforced server-side (firestore rules deny direct client creates).
+      const res = await fetch(`/api/companies/${companyId}/listings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corePayload),
       });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(payload.error || t("listings.createFailed"));
+      }
 
       router.push(ROUTES.DASHBOARD_LISTINGS);
       router.refresh();
@@ -722,6 +740,14 @@ export function NewListingForm({
       {error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
+        </div>
+      )}
+
+      {!isEdit && planAtLimit && (
+        <div className="rounded-lg border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          خطتك وصلت الحد الأقصى للباقة
+          {planMaxListings !== null ? ` (${planMaxListings} عقار)` : ""} — قم
+          بالترقية لإضافة المزيد.
         </div>
       )}
 
@@ -1275,7 +1301,11 @@ export function NewListingForm({
         >
           {t("common.cancel")}
         </Button>
-        <Button type="button" onClick={handleSubmit} disabled={submitting}>
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={submitting || (!isEdit && planAtLimit)}
+        >
           {submitting
             ? t("common.saving")
             : isEdit

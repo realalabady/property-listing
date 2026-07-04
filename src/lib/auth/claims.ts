@@ -19,9 +19,23 @@ export interface AppClaims {
  * Typically called from Cloud Functions whenever an employee's role changes,
  * or during onboarding / invitation acceptance.
  */
+export interface ApplyClaimsOptions {
+  /**
+   * Revoke the user's existing refresh tokens after updating claims. Default
+   * `true`: when an admin changes SOMEONE ELSE's role, revoking forces that
+   * user's other sessions to re-authenticate (and pairs with the checkRevoked
+   * session verification). Pass `false` when the user is updating their OWN
+   * claims in the same request (e.g. accepting an invitation): revoking would
+   * invalidate the refresh token they need to mint a fresh session cookie, and
+   * new claims propagate on the next `getIdToken(true)` without revocation.
+   */
+  revokeSessions?: boolean;
+}
+
 export async function setUserClaims(
   uid: string,
   claims: AppClaims,
+  options: ApplyClaimsOptions = {},
 ): Promise<void> {
   if (!isValidRole(claims.role)) {
     throw new Error(`Invalid role: ${claims.role}`);
@@ -31,8 +45,11 @@ export async function setUserClaims(
     companyId: claims.companyId,
     permissions: claims.permissions,
   });
-  // Revoke refresh tokens so the next token carries the new claims.
-  await adminAuth().revokeRefreshTokens(uid);
+  // Revoke refresh tokens so the next token carries the new claims and any
+  // other live sessions are forced to re-authenticate.
+  if (options.revokeSessions !== false) {
+    await adminAuth().revokeRefreshTokens(uid);
+  }
 }
 
 /**
@@ -44,12 +61,13 @@ export async function applyRoleClaims(
   role: Role,
   companyId: string | null,
   extraPermissions: Permission[] = [],
+  options: ApplyClaimsOptions = {},
 ): Promise<void> {
   const base = permissionsForRole(role);
   const merged = Array.from(
     new Set<Permission>([...base, ...extraPermissions]),
   );
-  await setUserClaims(uid, { role, companyId, permissions: merged });
+  await setUserClaims(uid, { role, companyId, permissions: merged }, options);
 }
 
 /**

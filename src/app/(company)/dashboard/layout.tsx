@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
+import { Toaster } from "sonner";
 import { requireCompanyMember } from "@/lib/auth/guards";
 import { ROUTES } from "@/constants/routes";
 import { ROLE_LABELS, ROLES } from "@/constants/roles";
@@ -7,6 +8,9 @@ import { adminDb } from "@/lib/firebase/admin";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { NotificationsButton } from "@/components/dashboard/NotificationsButton";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { TrialCountdownBanner } from "@/components/dashboard/TrialCountdownBanner";
+import { PasswordResetBanner } from "@/components/dashboard/PasswordResetBanner";
+import { PermissionDeniedToast } from "@/components/dashboard/PermissionDeniedToast";
 import { t } from "@/lib/i18n";
 
 export default async function DashboardLayout({
@@ -29,6 +33,18 @@ export default async function DashboardLayout({
     typeof company.name === "string"
       ? company.name
       : t("dashboard.fallbackTitle");
+  const companyStatus =
+    typeof company.status === "string" ? company.status : "";
+  const trialEndsRaw = company.trialEndsAt;
+  const trialEndsAtIso =
+    trialEndsRaw &&
+    typeof trialEndsRaw === "object" &&
+    "toDate" in trialEndsRaw &&
+    typeof (trialEndsRaw as { toDate?: unknown }).toDate === "function"
+      ? (trialEndsRaw as { toDate: () => Date }).toDate().toISOString()
+      : null;
+  const passwordResetRequired =
+    employeeSnap.exists && employeeSnap.get("passwordResetRequired") === true;
   const userName =
     (employeeSnap.exists && typeof employeeSnap.get("name") === "string"
       ? String(employeeSnap.get("name"))
@@ -45,6 +61,10 @@ export default async function DashboardLayout({
 
   return (
     <div className="enterprise min-h-screen bg-background text-foreground">
+      <Toaster position="top-center" richColors dir="rtl" />
+      <Suspense fallback={null}>
+        <PermissionDeniedToast />
+      </Suspense>
       <aside className="fixed inset-y-0 end-0 z-40 hidden w-64 flex-col border-s border-border bg-card lg:flex">
         <div className="flex h-16 items-center border-b border-border px-5">
           <Link
@@ -55,7 +75,7 @@ export default async function DashboardLayout({
               <img
                 src={companyLogo}
                 alt={t("dashboard.logoAlt", { name: companyName })}
-                className="h-8 w-8 rounded-lg border border-border object-cover"
+                className="h-10 w-auto max-w-[140px] rounded-lg border border-border bg-white object-contain p-1"
               />
             ) : (
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
@@ -93,6 +113,10 @@ export default async function DashboardLayout({
           </div>
         </header>
         <main className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">
+          {passwordResetRequired && <PasswordResetBanner />}
+          {companyStatus === "trial" && trialEndsAtIso && (
+            <TrialCountdownBanner trialEndsAt={trialEndsAtIso} />
+          )}
           {children}
         </main>
       </div>

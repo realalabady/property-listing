@@ -33,7 +33,7 @@ export default async function DashboardLeadsPage() {
   const canAccessLeads = canManageLeads || canAssignLeads || canCommentOnLeads;
 
   if (!canAccessLeads || !user.companyId) {
-    redirect(ROUTES.DASHBOARD);
+    redirect(`${ROUTES.DASHBOARD}?denied=permission`);
   }
 
   return (

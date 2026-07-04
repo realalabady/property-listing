@@ -4,6 +4,7 @@ import { ROLES } from "@/constants/roles";
 import { getSessionUser } from "@/lib/auth/session";
 import { adminDb } from "@/lib/firebase/admin";
 import type { CompanyStatus, SubscriptionPlanId } from "@/types/company";
+import { limitsForPlan } from "@/constants/plans";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,18 @@ interface CreateCompanyBody {
   status?: unknown;
   contactEmail?: string;
   contactPhone?: string;
+  trialDays?: unknown;
+}
+
+const DEFAULT_TRIAL_DAYS = 14;
+const MIN_TRIAL_DAYS = 1;
+const MAX_TRIAL_DAYS = 90;
+
+/** Clamp the requested trial length to a sane range, defaulting to 14 days. */
+function parseTrialDays(value: unknown): number {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_TRIAL_DAYS;
+  return Math.min(Math.max(n, MIN_TRIAL_DAYS), MAX_TRIAL_DAYS);
 }
 
 function normalizeText(value: unknown): string {
@@ -217,9 +230,12 @@ export async function POST(req: NextRequest) {
   const contactPhone = normalizeOptionalText(body.contactPhone);
 
   const companyRef = adminDb().collection("companies").doc();
+  const trialDays = parseTrialDays(body.trialDays);
   const trialEndsAt =
     status === "trial"
-      ? Timestamp.fromDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000))
+      ? Timestamp.fromDate(
+          new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000),
+        )
       : null;
 
   await companyRef.set({
@@ -234,6 +250,7 @@ export async function POST(req: NextRequest) {
       darkMode: false,
     },
     subscriptionPlan,
+    limits: limitsForPlan(subscriptionPlan),
     ownerId: "",
     status,
     contact: {

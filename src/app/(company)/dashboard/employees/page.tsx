@@ -21,7 +21,7 @@ export default async function DashboardEmployeesPage() {
   ]);
 
   if (!canViewEmployees || !user.companyId) {
-    redirect(ROUTES.DASHBOARD);
+    redirect(`${ROUTES.DASHBOARD}?denied=permission`);
   }
 
   const canManageEmployees =

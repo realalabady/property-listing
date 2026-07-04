@@ -7,7 +7,14 @@ import type { Permission } from "@/constants/permissions";
 import type { AppClaims } from "./claims";
 
 const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME || "__session";
-const SESSION_EXPIRES_DAYS = Number(process.env.SESSION_EXPIRES_IN_DAYS || 5);
+// Idle-timeout activity cookie (kept in sync with middleware). Reset on login,
+// cleared on logout, so a stale timestamp can't bounce a fresh session.
+const ACTIVITY_COOKIE =
+  process.env.SESSION_ACTIVITY_COOKIE_NAME || "sess_activity";
+// Absolute session lifetime (hard cap regardless of activity). Kept short for
+// stricter sessions; override via SESSION_EXPIRES_IN_DAYS. Idle timeout (a
+// shorter sliding window) is enforced separately in middleware.
+const SESSION_EXPIRES_DAYS = Number(process.env.SESSION_EXPIRES_IN_DAYS || 1);
 const SESSION_EXPIRES_MS = SESSION_EXPIRES_DAYS * 24 * 60 * 60 * 1000;
 
 export interface SessionUser {
@@ -38,11 +45,27 @@ export async function setSessionCookie(sessionCookie: string): Promise<void> {
     path: "/",
     sameSite: "lax",
   });
+  // Start the idle window fresh so a leftover timestamp from a previous session
+  // doesn't immediately expire this one.
+  store.set(ACTIVITY_COOKIE, String(Date.now()), {
+    maxAge: SESSION_EXPIRES_MS / 1000,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    sameSite: "lax",
+  });
 }
 
 export async function clearSessionCookie(): Promise<void> {
   const store = await cookies();
   store.set(SESSION_COOKIE, "", {
+    maxAge: 0,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    sameSite: "lax",
+  });
+  store.set(ACTIVITY_COOKIE, "", {
     maxAge: 0,
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -61,9 +84,12 @@ const getSessionUserCached = cache(async (): Promise<SessionUser | null> => {
     const sessionCookie = store.get(SESSION_COOKIE)?.value;
     if (!sessionCookie) return null;
 
-    // Avoid revocation check on every request to keep navigation fast.
-    // Revocation checks can be done on explicit security-sensitive actions.
-    const decoded = await adminAuth().verifySessionCookie(sessionCookie);
+    // checkRevoked=false: a stale `tokensValidAfterTime` (from a past
+    // revokeRefreshTokens / persisted client session) was wrongly flagging
+    // fresh logins as "revoked", blocking sign-in entirely. Live deactivation
+    // is still enforced by the employee `active` check in requireCompanyMember,
+    // so we don't need per-request revocation checks here.
+    const decoded = await adminAuth().verifySessionCookie(sessionCookie, false);
 
     const claims: AppClaims = {
       role: (decoded.role as Role) ?? null,

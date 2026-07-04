@@ -138,6 +138,18 @@ export function useAuth() {
     user,
     loading,
     isAuthenticated: !!user,
+    /**
+     * Force-refresh the current user's ID token and re-exchange it for a fresh
+     * session cookie. Call after a server action mutates the user's own claims
+     * in the same visit (e.g. accepting an invitation) so the httpOnly session
+     * cookie reflects the new role/permissions without a full re-login.
+     */
+    refreshSession: async (): Promise<void> => {
+      const current = getFirebaseAuth().currentUser;
+      if (!current) return;
+      const idToken = await current.getIdToken(true);
+      await exchangeIdTokenForSession(idToken);
+    },
     signIn: async (email: string, password: string) => {
       let cred;
       try {

@@ -196,16 +196,9 @@ export async function PUT(req: NextRequest, context: RouteContext) {
   const brandingUpdate: Record<string, unknown> = {};
   const operationalUpdate: Record<string, unknown> = {};
 
-  if (body.name !== undefined) {
-    const name = normalizeText(body.name);
-    if (name.length < 2 || name.length > 120) {
-      return NextResponse.json(
-        { error: "Company name must be between 2 and 120 characters." },
-        { status: 400 },
-      );
-    }
-    brandingUpdate.name = name;
-  }
+  // Company name is immutable after creation. Any `name` field in the request
+  // is intentionally ignored so the name can never be changed here — this
+  // prevents confusion from a company's name changing over time.
 
   if (body.description !== undefined) {
     const description = normalizeText(body.description);

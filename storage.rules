@@ -36,9 +36,16 @@ service firebase.storage {
         && perm in request.auth.token.permissions;
     }
 
+    // SVG is excluded everywhere: files are served from publicly readable
+    // paths and SVGs can embed scripts (stored-XSS vector).
+    function isSafeImageType() {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.contentType != 'image/svg+xml';
+    }
+
     function isValidImage() {
       return request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+        && isSafeImageType();
     }
 
     function isValidVideo() {
@@ -48,16 +55,13 @@ service firebase.storage {
 
     function isValidBrandAsset() {
       return request.resource.size < 20 * 1024 * 1024
-        && (
-          request.resource.contentType.matches('image/.*')
-          || request.resource.contentType == 'image/svg+xml'
-        );
+        && isSafeImageType();
     }
 
     function isValidEmployeeAsset() {
       return request.resource.size < 10 * 1024 * 1024
         && (
-          request.resource.contentType.matches('image/.*')
+          isSafeImageType()
           || request.resource.contentType == 'application/pdf'
         );
     }
@@ -81,7 +85,10 @@ service firebase.storage {
       allow read: if true;
       allow write: if isSuperAdmin()
                    || (isCompanyMember(cid)
-                       && hasPermission('company_settings_access')
+                       && (
+                         hasPermission('manage_branding')
+                         || hasPermission('company_settings_access')
+                       )
                        && isValidBrandAsset());
     }
 

@@ -35,6 +35,14 @@ interface NewEmployeeFormProps {
 
 type Tab = "direct" | "invite";
 
+interface EmployeeCreatedResult {
+  authCreated: boolean;
+  temporaryPassword: string | null;
+  passwordResetLink: string | null;
+  groupNote: string;
+  groupError: boolean;
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const initialDirect = {
@@ -66,6 +74,7 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [created, setCreated] = useState<EmployeeCreatedResult | null>(null);
 
   const loadGroups = useCallback(async () => {
     setLoadingGroups(true);
@@ -174,6 +183,7 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
     setSubmitting(true);
     setError(null);
     setNotice(null);
+    setCreated(null);
     try {
       const response = await fetch(`/api/companies/${companyId}/employees`, {
         method: "POST",
@@ -225,24 +235,14 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
         groupAssignmentError = t("employeesDash.groupAssignFailed");
       }
 
-      const parts = [t("employeesDash.employeeCreated")];
-      if (payload.authUserCreated) parts.push(t("employeesDash.authAccountCreated"));
-      if (payload.temporaryPassword) {
-        parts.push(
-          t("employeesDash.tempPassword", { value: payload.temporaryPassword }),
-        );
-      }
-      if (payload.passwordResetLink) {
-        parts.push(
-          t("employeesDash.passwordResetLink", {
-            value: payload.passwordResetLink,
-          }),
-        );
-      }
-      if (!groupAssignmentError) parts.push(t("employeesDash.groupsAssigned"));
-      else parts.push(groupAssignmentError);
-
-      setNotice(parts.join(" "));
+      setNotice(null);
+      setCreated({
+        authCreated: Boolean(payload.authUserCreated),
+        temporaryPassword: payload.temporaryPassword?.trim() || null,
+        passwordResetLink: payload.passwordResetLink?.trim() || null,
+        groupNote: groupAssignmentError ?? t("employeesDash.groupsAssigned"),
+        groupError: Boolean(groupAssignmentError),
+      });
       setDirect(initialDirect);
       setSubmitted(false);
       router.refresh();
@@ -343,6 +343,7 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
     setTab(next);
     setSubmitted(false);
     setError(null);
+    setCreated(null);
   }
 
   return (
@@ -352,17 +353,69 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
           {error}
         </div>
       )}
+      {created && (
+        <div className="overflow-hidden rounded-xl border border-success/30 bg-card shadow-sm">
+          <div className="flex items-start gap-3 border-b border-success/20 bg-success/10 px-5 py-4">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success text-xs font-bold text-white">
+              ✓
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-success">
+                {t("employeesDash.employeeCreated")}
+              </p>
+              {created.authCreated && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {t("employeesDash.authAccountCreated")}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {(created.temporaryPassword || created.passwordResetLink) && (
+            <div className="space-y-4 px-5 py-4">
+              <p className="text-xs text-muted-foreground">
+                {t("employeesDash.credentialsHint")}
+              </p>
+              {created.temporaryPassword && (
+                <CopyRow
+                  label={t("employeesDash.tempPasswordLabel")}
+                  value={created.temporaryPassword}
+                  mono
+                />
+              )}
+              {created.passwordResetLink && (
+                <CopyRow
+                  label={t("employeesDash.passwordResetLinkLabel")}
+                  value={created.passwordResetLink}
+                />
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3">
+            <span
+              className={cn(
+                "text-xs",
+                created.groupError ? "text-destructive" : "text-muted-foreground",
+              )}
+            >
+              {created.groupNote}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => router.push(ROUTES.DASHBOARD_EMPLOYEES)}
+            >
+              {t("employeesDash.backToList")}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {notice && (
         <div className="space-y-2 rounded-lg border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
           <p className="whitespace-pre-wrap break-words">{notice}</p>
-          <Button
-            variant="outline"
-            size="sm"
-            type="button"
-            onClick={() => router.push(ROUTES.DASHBOARD_EMPLOYEES)}
-          >
-            {t("employeesDash.backToList")}
-          </Button>
         </div>
       )}
 
@@ -587,16 +640,68 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
             >
               {t("common.cancel")}
             </Button>
-            <Button
-              type="button"
-              onClick={sendInvitation}
-              disabled={submitting}
+            {/* Email invitations are disabled until SMTP is configured. */}
+            <span
+              className="inline-flex cursor-not-allowed"
+              title={t("employeesDash.invitationsComingSoon")}
             >
-              {submitting ? t("common.saving") : t("employeesDash.sendInvitation")}
-            </Button>
+              <Button type="button" disabled>
+                {t("employeesDash.sendInvitation")}
+              </Button>
+            </span>
           </div>
         </Accordion>
       )}
+    </div>
+  );
+}
+
+interface CopyRowProps {
+  label: string;
+  value: string;
+  mono?: boolean;
+}
+
+function CopyRow({ label, value, mono }: CopyRowProps) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard may be unavailable (insecure context) — the field is still
+      // selectable so the user can copy manually.
+    }
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <span className="block text-xs font-medium text-muted-foreground">
+        {label}
+      </span>
+      <div className="flex items-stretch gap-2">
+        <input
+          readOnly
+          dir="ltr"
+          value={value}
+          onFocus={(event) => event.currentTarget.select()}
+          className={cn(
+            "w-full select-all rounded-md border border-border bg-background px-3 py-2 text-left text-sm text-foreground outline-none focus:ring-2 focus:ring-ring",
+            mono && "font-mono tracking-tight",
+          )}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={copy}
+          className="shrink-0"
+        >
+          {copied ? t("common.copied") : t("common.copy")}
+        </Button>
+      </div>
     </div>
   );
 }

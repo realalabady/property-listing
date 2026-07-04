@@ -74,7 +74,7 @@ export default async function EmployeeDetailPage({
     PERMISSIONS.REMOVE_EMPLOYEE,
   ]);
   if (!canViewEmployees || !user.companyId) {
-    redirect(ROUTES.DASHBOARD);
+    redirect(`${ROUTES.DASHBOARD}?denied=permission`);
   }
 
   const canManage =

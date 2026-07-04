@@ -26,14 +26,14 @@ export default function LoginForm() {
   const inviteId = params.get("inviteId");
   const inviteToken = params.get("token");
 
-  const { signIn } = useAuth();
+  const { signIn, refreshSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function acceptInvitationAfterLogin(): Promise<void> {
-    if (!inviteCompany || !inviteId || !inviteToken) return;
+  async function acceptInvitationAfterLogin(): Promise<boolean> {
+    if (!inviteCompany || !inviteId || !inviteToken) return false;
 
     const res = await fetch(
       `/api/companies/${encodeURIComponent(inviteCompany)}/invitations/${encodeURIComponent(inviteId)}/accept`,
@@ -44,7 +44,7 @@ export default function LoginForm() {
       },
     );
 
-    if (res.ok) return;
+    if (res.ok) return true;
 
     let message = t("auth.inviteAcceptFailed");
     try {
@@ -65,11 +65,26 @@ export default function LoginForm() {
     setLoading(true);
     try {
       const fbUser = await signIn(email, password);
-      await acceptInvitationAfterLogin();
+      const acceptedInvite = await acceptInvitationAfterLogin();
+      if (acceptedInvite) {
+        // Accepting the invite granted new claims server-side. Re-mint the
+        // session cookie from a fresh ID token so guards see the company role
+        // immediately instead of bouncing the user to /onboarding.
+        await refreshSession();
+      }
       // Customers are not company members — never send them into the dashboard.
-      const { claims } = await fbUser.getIdTokenResult();
+      // Force-refresh after an accept so the just-granted role is read here too.
+      const { claims } = await fbUser.getIdTokenResult(acceptedInvite);
+      // Route by role: customers → marketplace, super admins → admin console,
+      // everyone else → their intended destination (default dashboard). This
+      // avoids a green flash from super admins landing on /dashboard and being
+      // server-redirected to /admin.
       const destination =
-        claims.role === "customer" ? ROUTES.MARKETPLACE : next;
+        claims.role === "customer"
+          ? ROUTES.MARKETPLACE
+          : claims.role === "super_admin"
+            ? ROUTES.ADMIN
+            : next;
       router.push(destination);
       router.refresh();
     } catch (err) {

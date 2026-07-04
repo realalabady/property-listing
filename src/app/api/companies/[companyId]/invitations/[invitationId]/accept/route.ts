@@ -224,7 +224,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
   });
 
-  await applyRoleClaims(user.uid, role, companyId, permissions);
+  // The accepting user is authenticated in THIS request; do not revoke their
+  // refresh token or they cannot mint a fresh session cookie carrying the new
+  // claims. New claims are picked up by the client's next getIdToken(true).
+  await applyRoleClaims(user.uid, role, companyId, permissions, {
+    revokeSessions: false,
+  });
 
   return NextResponse.json({
     ok: true,

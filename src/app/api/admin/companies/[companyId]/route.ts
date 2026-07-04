@@ -1,9 +1,10 @@
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 import { ROLES } from "@/constants/roles";
 import { getSessionUser } from "@/lib/auth/session";
 import { adminDb } from "@/lib/firebase/admin";
 import type { CompanyStatus, SubscriptionPlanId } from "@/types/company";
+import { limitsForPlan } from "@/constants/plans";
 
 export const runtime = "nodejs";
 
@@ -16,12 +17,15 @@ type CompanyAction =
   | "activate"
   | "soft_delete"
   | "restore"
-  | "set_plan";
+  | "set_plan"
+  | "set_trial";
 
 interface CompanyActionBody {
   action?: CompanyAction;
   plan?: unknown;
   reason?: unknown;
+  trialEndsAt?: unknown;
+  trialDays?: unknown;
 }
 
 function normalizeText(value: unknown): string {
@@ -248,6 +252,29 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
         );
       }
       updates.subscriptionPlan = plan;
+      updates.limits = limitsForPlan(plan);
+      break;
+    }
+    case "set_trial": {
+      // Accept an explicit end date (ISO) or a number of days from now.
+      let endDate: Date | null = null;
+      if (typeof body.trialEndsAt === "string" && body.trialEndsAt.trim()) {
+        const parsed = new Date(body.trialEndsAt);
+        if (!Number.isNaN(parsed.getTime())) endDate = parsed;
+      }
+      if (!endDate) {
+        const days = Math.round(Number(body.trialDays));
+        const clamped =
+          Number.isFinite(days) && days > 0
+            ? Math.min(Math.max(days, 1), 365)
+            : 14;
+        endDate = new Date(Date.now() + clamped * 24 * 60 * 60 * 1000);
+      }
+      updates.status = "trial";
+      updates.trialEndsAt = Timestamp.fromDate(endDate);
+      updates.trialExpiredAt = FieldValue.delete();
+      updates.suspendedAt = FieldValue.delete();
+      updates.suspendedBy = FieldValue.delete();
       break;
     }
     default:

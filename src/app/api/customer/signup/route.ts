@@ -3,7 +3,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { validateCustomerSignup } from "@/lib/api/customers";
 import { ROLES } from "@/constants/roles";
-import { rateLimit } from "@/lib/utils/rate-limit";
+import { getClientIp, rateLimit } from "@/lib/utils/rate-limit";
 
 // firebase-admin is not Edge-compatible.
 export const runtime = "nodejs";
@@ -17,11 +17,8 @@ export const runtime = "nodejs";
  */
 export async function POST(req: NextRequest) {
   // Rate-limit signups: 5 per minute per IP.
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown";
-  const rl = rateLimit(`customer:signup:${ip}`, 5, 60_000);
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`customer:signup:${ip}`, 5, 60_000);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "محاولات كثيرة. حاول بعد قليل." },

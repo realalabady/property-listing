@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ROLE_LABELS, type Role } from "@/constants/roles";
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils/cn";
@@ -81,6 +82,7 @@ export function DashboardEmployeesClient({
   initialEmployees,
   initialInvitations,
 }: DashboardEmployeesClientProps) {
+  const { confirm, confirmDialog } = useConfirm();
   const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees);
   const [invitations, setInvitations] =
     useState<InvitationRow[]>(initialInvitations);
@@ -285,8 +287,51 @@ export function DashboardEmployeesClient({
     }
   }
 
+  async function deleteEmployee(employeeId: string) {
+    const confirmed = await confirm({
+      title: "حذف الموظف نهائيًا",
+      description: t("employeesDash.deleteConfirm"),
+      confirmLabel: "حذف نهائي",
+      tone: "danger",
+    });
+    if (!confirmed) return;
+
+    setBusyId(employeeId);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response = await fetch(
+        `/api/companies/${companyId}/employees/${employeeId}?purge=true`,
+        {
+          method: "DELETE",
+        },
+      );
+      const payload = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.error || t("employeesDash.deleteFailed"));
+      }
+
+      await loadEmployees();
+      setNotice(t("employeesDash.employeeDeleted"));
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : t("employeesDash.deleteFailed"),
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {confirmDialog}
       <header>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -437,7 +482,7 @@ export function DashboardEmployeesClient({
                       {dateOrDash(employee.joinedAt)}
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-end gap-2">
                         <Link
                           href={ROUTES.DASHBOARD_EMPLOYEE_DETAIL(employee.id)}
                           className="rounded-md border border-border px-2 py-1 text-xs text-foreground transition hover:bg-muted"
@@ -452,6 +497,17 @@ export function DashboardEmployeesClient({
                             className="rounded-md border border-destructive/40 px-2 py-1 text-xs text-destructive transition hover:bg-destructive/10 disabled:opacity-50"
                           >
                             {t("employeesDash.deactivate")}
+                          </button>
+                        ) : null}
+                        {canManageEmployees &&
+                        employee.id !== currentUserId ? (
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => deleteEmployee(employee.id)}
+                            className="rounded-md border border-destructive bg-destructive/10 px-2 py-1 text-xs font-semibold text-destructive transition hover:bg-destructive hover:text-white disabled:opacity-50"
+                          >
+                            {t("employeesDash.deletePermanently")}
                           </button>
                         ) : null}
                       </div>

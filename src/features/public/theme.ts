@@ -7,19 +7,16 @@ export function publicCompanyThemeStyle(
 ): CSSProperties | undefined {
   if (!company?.theme) return undefined;
 
+  // Only tint the brand accent (buttons, ring). Surfaces stay on the shared
+  // Dar light theme so company pages match the rest of the site — overriding
+  // --secondary/--input/--border with a company colour made them off-brand.
   const primary = hexToHslChannels(company.theme.primaryColor);
-  const secondary = hexToHslChannels(company.theme.secondaryColor);
   const accent = hexToHslChannels(company.theme.accentColor);
 
   const nextStyle: CSSProperties & Record<string, string> = {};
   if (primary) {
     nextStyle["--primary"] = primary;
     nextStyle["--ring"] = primary;
-  }
-  if (secondary) {
-    nextStyle["--secondary"] = secondary;
-    nextStyle["--input"] = secondary;
-    nextStyle["--border"] = secondary;
   }
   if (accent) {
     nextStyle["--accent"] = accent;

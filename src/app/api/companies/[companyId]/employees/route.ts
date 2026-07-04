@@ -21,6 +21,20 @@ import {
 import { isFieldValueTaken } from "@/lib/api/uniqueness";
 import { isValidNationalId, normalizeSaudiPhone } from "@/lib/utils/validation";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { limitsForPlan, isUnlimited } from "@/constants/plans";
+import type { SubscriptionPlanId } from "@/types/company";
+
+function parseSubscriptionPlan(value: unknown): SubscriptionPlanId {
+  if (
+    value === "free" ||
+    value === "starter" ||
+    value === "pro" ||
+    value === "enterprise"
+  ) {
+    return value;
+  }
+  return "starter";
+}
 
 export const runtime = "nodejs";
 
@@ -299,8 +313,42 @@ export async function POST(req: NextRequest, context: RouteContext) {
   const title = normalizeOptionalText(body.title);
   const active = body.active !== false;
 
-  // Enforce unique national ID + phone among this company's employees.
+  // Enforce the per-plan active-employee quota. Only counts toward the cap when
+  // this write results in a new/reactivated ACTIVE member (an existing active
+  // employee was already rejected above; inactive creates don't add headcount).
+  const isNewActiveMember =
+    active && (!employeeSnap.exists || employeeSnap.get("active") === false);
+  if (isNewActiveMember) {
+    const companySnap = await adminDb().doc(`companies/${companyId}`).get();
+    const plan = parseSubscriptionPlan(companySnap.get("subscriptionPlan"));
+    const { maxEmployees } = limitsForPlan(plan);
+    if (!isUnlimited(maxEmployees)) {
+      const activeAgg = await adminDb()
+        .collection(`companies/${companyId}/employees`)
+        .where("active", "==", true)
+        .count()
+        .get();
+      if (activeAgg.data().count >= maxEmployees) {
+        return NextResponse.json(
+          {
+            error: "خطتك وصلت الحد الأقصى للموظفين — قم بالترقية.",
+            code: "PLAN_LIMIT",
+            maxEmployees,
+          },
+          { status: 409 },
+        );
+      }
+    }
+  }
+
+  // Enforce unique email + national ID + phone among this company's employees.
   const employeesPath = `companies/${companyId}/employees`;
+  if (await isFieldValueTaken(employeesPath, "email", email, authUser.uid)) {
+    return NextResponse.json(
+      { error: "البريد الإلكتروني مستخدم بالفعل لموظف آخر." },
+      { status: 409 },
+    );
+  }
   if (await isFieldValueTaken(employeesPath, "nationalId", nationalId, authUser.uid)) {
     return NextResponse.json(
       { error: "رقم الهوية مستخدم بالفعل لموظف آخر." },
@@ -328,6 +376,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
   if (phone) payload.phone = phone;
   if (department) payload.department = department;
   if (title) payload.title = title;
+  // Fresh auth accounts get a generated temp password → remind them to reset.
+  if (authUserCreated) payload.passwordResetRequired = true;
 
   if (!employeeSnap.exists) {
     payload.kpi = emptyEmployeeKpi();

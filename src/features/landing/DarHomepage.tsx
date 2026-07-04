@@ -249,16 +249,6 @@ export function DarHomepage() {
             >
               <Link href={ROUTES.LOGIN}>{isArabic ? "تسجيل الدخول" : "Sign in"}</Link>
             </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="hidden md:inline-flex"
-            >
-              <Link href={ROUTES.LOGIN}>
-                {isArabic ? "أضف عقارك" : "List property"}
-              </Link>
-            </Button>
             <Button size="sm" onClick={() => setRequestOpen(true)}>
               {isArabic ? "اطلب عقارك" : "Request property"}
             </Button>

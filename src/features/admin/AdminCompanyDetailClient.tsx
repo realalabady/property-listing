@@ -26,6 +26,24 @@ interface CompanySummary {
   subscriptionPlan: SubscriptionPlanId;
   isDeleted: boolean;
   owner: OwnerSummary | null;
+  trialEndsAt: string | null;
+}
+
+/** ISO datetime → `YYYY-MM-DD` for a <input type="date">, or "" if invalid. */
+function toDateInputValue(iso: string | null): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
+/** Default trial end for the picker: existing end date, else 14 days out. */
+function defaultTrialInput(iso: string | null): string {
+  const existing = toDateInputValue(iso);
+  if (existing) return existing;
+  return new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 }
 
 interface ActionResponse {
@@ -53,6 +71,9 @@ export function AdminCompanyDetailClient({
     company.subscriptionPlan,
   );
   const [ownerMode, setOwnerMode] = useState<"direct" | "invite">("direct");
+  const [trialEnd, setTrialEnd] = useState(
+    defaultTrialInput(company.trialEndsAt),
+  );
 
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerName, setOwnerName] = useState("");
@@ -102,6 +123,16 @@ export function AdminCompanyDetailClient({
 
   const savePlan = async () => {
     await runCompanyAction("set_plan", { plan });
+  };
+
+  const saveTrial = async () => {
+    if (!trialEnd) {
+      setError("اختر تاريخ نهاية الفترة التجريبية.");
+      return;
+    }
+    // Send end-of-day so the trial is valid through the whole chosen date.
+    const iso = new Date(`${trialEnd}T23:59:59`).toISOString();
+    await runCompanyAction("set_trial", { trialEndsAt: iso });
   };
 
   const provisionOwner = async () => {
@@ -282,6 +313,39 @@ export function AdminCompanyDetailClient({
               ? t("adminDetail.saving")
               : t("adminDetail.updatePlan")}
           </button>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-2">
+          <label>
+            <span className="mb-1.5 block text-sm font-medium">
+              نهاية الفترة التجريبية
+            </span>
+            <input
+              type="date"
+              value={trialEnd}
+              onChange={(event) => setTrialEnd(event.target.value)}
+              className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition focus:ring-2 focus:ring-ring"
+            />
+          </label>
+
+          <button
+            type="button"
+            disabled={busyAction !== null}
+            onClick={saveTrial}
+            className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+          >
+            {busyAction === "set_trial"
+              ? t("adminDetail.saving")
+              : company.status === "trial"
+                ? "تحديث الفترة التجريبية"
+                : "تحويل إلى فترة تجريبية"}
+          </button>
+
+          <span className="text-xs text-muted-foreground">
+            {company.status === "trial" && company.trialEndsAt
+              ? `الحالية: ${new Date(company.trialEndsAt).toLocaleDateString("ar-SA")}`
+              : "يحدد التاريخ ويحوّل الحالة إلى تجريبية"}
+          </span>
         </div>
       </div>
 

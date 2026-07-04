@@ -47,6 +47,19 @@ const getCompanyAccessState = cache(async (companyId: string) => {
   };
 });
 
+const getEmployeeMembership = cache(async (companyId: string, uid: string) => {
+  const snap = await adminDb()
+    .doc(`companies/${companyId}/employees/${uid}`)
+    .get();
+  if (!snap.exists) {
+    return { exists: false, active: false };
+  }
+  const data = snap.data() as Record<string, unknown>;
+  // Treat a missing `active` field as active (legacy docs); only an explicit
+  // `active: false` locks the member out.
+  return { exists: true, active: data.active !== false };
+});
+
 export async function requireCompanyMember(): Promise<SessionUser> {
   const user = await requireAuth();
   if (user.role === ROLES.SUPER_ADMIN) {
@@ -65,6 +78,13 @@ export async function requireCompanyMember(): Promise<SessionUser> {
     company.status === "suspended" || company.status === "cancelled";
 
   if (!company.exists || company.isDeleted || blockedByStatus) {
+    redirect(`${ROUTES.LOGIN}?reauth=1&blocked=company_inactive`);
+  }
+
+  // Deactivated or removed employees keep a valid session cookie until it
+  // expires; check the live employee doc so access is cut immediately.
+  const membership = await getEmployeeMembership(user.companyId, user.uid);
+  if (!membership.exists || !membership.active) {
     redirect(`${ROUTES.LOGIN}?reauth=1&blocked=company_inactive`);
   }
 

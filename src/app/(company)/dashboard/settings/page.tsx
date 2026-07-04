@@ -7,7 +7,14 @@ import {
   type LeadAssignStrategy,
 } from "@/features/settings/DashboardSettingsClient";
 import { requireCompanyMember } from "@/lib/auth/guards";
+import { limitsForPlan } from "@/constants/plans";
+import type { SubscriptionPlanId } from "@/types/company";
 import { adminDb } from "@/lib/firebase/admin";
+import { ROLE_LABELS } from "@/constants/roles";
+import {
+  PersonalInfoSection,
+  type PersonalInfo,
+} from "@/features/settings/PersonalInfoSection";
 
 export const metadata = {
   title: "الإعدادات",
@@ -28,13 +35,14 @@ export default async function DashboardSettingsPage() {
     PERMISSIONS.COMPANY_SETTINGS_ACCESS,
   ]);
 
-  if (!canManageBranding && !canManageOperational) {
-    redirect(ROUTES.DASHBOARD);
-  }
+  // Every member reaches settings to see their personal info + reset password;
+  // only managers see the company-wide settings below.
+  const canAccessCompanySettings = canManageBranding || canManageOperational;
 
-  const [companySnap, settingsSnap] = await Promise.all([
+  const [companySnap, settingsSnap, employeeSnap] = await Promise.all([
     adminDb().doc(`companies/${user.companyId}`).get(),
     adminDb().doc(`companies/${user.companyId}/settings/default`).get(),
+    adminDb().doc(`companies/${user.companyId}/employees/${user.uid}`).get(),
   ]);
 
   if (!companySnap.exists) {
@@ -45,6 +53,28 @@ export default async function DashboardSettingsPage() {
   const settings = settingsSnap.exists
     ? (settingsSnap.data() as Record<string, unknown>)
     : {};
+
+  const employee = employeeSnap.exists
+    ? (employeeSnap.data() as Record<string, unknown>)
+    : {};
+  const personalInfo: PersonalInfo = {
+    name:
+      typeof employee.name === "string" && employee.name
+        ? employee.name
+        : (user.email?.split("@")[0] ?? "—"),
+    email:
+      (typeof employee.email === "string" && employee.email) ||
+      user.email ||
+      "—",
+    roleLabel: user.role ? (ROLE_LABELS[user.role] ?? user.role) : "—",
+    phone: typeof employee.phone === "string" ? employee.phone : null,
+    nationalId:
+      typeof employee.nationalId === "string" ? employee.nationalId : null,
+    department:
+      typeof employee.department === "string" ? employee.department : null,
+    title: typeof employee.title === "string" ? employee.title : null,
+    passwordResetRequired: employee.passwordResetRequired === true,
+  };
 
   const contact =
     typeof company.contact === "object" && company.contact !== null
@@ -74,6 +104,31 @@ export default async function DashboardSettingsPage() {
       : typeof company["theme.accentColor"] === "string"
         ? (company["theme.accentColor"] as string)
         : "#11935d";
+
+  const planId: SubscriptionPlanId =
+    company.subscriptionPlan === "starter" ||
+    company.subscriptionPlan === "pro" ||
+    company.subscriptionPlan === "enterprise"
+      ? company.subscriptionPlan
+      : "free";
+
+  const limits = limitsForPlan(planId);
+
+  const planUsage = {
+    planId,
+    employees: {
+      used:
+        typeof company.activeEmployeesCount === "number"
+          ? company.activeEmployeesCount
+          : 0,
+      limit: limits.maxEmployees,
+    },
+    listings: {
+      used:
+        typeof company.listingsCount === "number" ? company.listingsCount : 0,
+      limit: limits.maxListings,
+    },
+  };
 
   const initialSettings: SettingsFormData = {
     name: typeof company.name === "string" ? company.name : "",
@@ -107,11 +162,17 @@ export default async function DashboardSettingsPage() {
   };
 
   return (
-    <DashboardSettingsClient
-      companyId={user.companyId}
-      canManageBranding={canManageBranding}
-      canManageOperational={canManageOperational}
-      initialSettings={initialSettings}
-    />
+    <div className="space-y-6">
+      <PersonalInfoSection info={personalInfo} />
+      {canAccessCompanySettings && (
+        <DashboardSettingsClient
+          companyId={user.companyId}
+          canManageBranding={canManageBranding}
+          canManageOperational={canManageOperational}
+          initialSettings={initialSettings}
+          planUsage={planUsage}
+        />
+      )}
+    </div>
   );
 }

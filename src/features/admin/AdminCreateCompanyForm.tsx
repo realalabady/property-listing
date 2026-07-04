@@ -41,6 +41,7 @@ export function AdminCreateCompanyForm() {
   const [slug, setSlug] = useState("");
   const [plan, setPlan] = useState<SubscriptionPlanId>("starter");
   const [status, setStatus] = useState<CompanyStatus>("trial");
+  const [trialDays, setTrialDays] = useState("14");
   const [description, setDescription] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -66,6 +67,7 @@ export function AdminCreateCompanyForm() {
           description,
           contactEmail,
           contactPhone,
+          ...(status === "trial" ? { trialDays: Number(trialDays) } : {}),
         }),
       });
 
@@ -126,6 +128,25 @@ export function AdminCreateCompanyForm() {
             label: t(STATUS_LABEL_KEYS[value]),
           }))}
         />
+
+        {status === "trial" && (
+          <label>
+            <span className="mb-1.5 block text-sm font-medium">
+              مدة الفترة التجريبية (بالأيام)
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={90}
+              value={trialDays}
+              onChange={(event) => setTrialDays(event.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition focus:ring-2 focus:ring-ring"
+            />
+            <span className="mt-1 block text-xs text-muted-foreground">
+              تُعلَّق الشركة تلقائيًا بعد انتهاء المدة (1–90 يومًا، الافتراضي 14).
+            </span>
+          </label>
+        )}
 
         <Field
           label={t("adminForm.contactEmailOptional")}

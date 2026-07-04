@@ -7,6 +7,7 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import { AuthBootstrap } from "@/components/providers/AuthBootstrap";
+import { CookieConsent } from "@/components/CookieConsent";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -73,6 +74,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background text-foreground antialiased">
         <AuthBootstrap />
         {children}
+        <CookieConsent />
       </body>
     </html>
   );

@@ -1,13 +1,17 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV !== "production";
+
 const CSP = [
   "default-src 'self'",
   // Firebase Auth needs these origins
   "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://firebaseinstallations.googleapis.com wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
   // Firebase Storage
   "img-src 'self' data: blob: https://firebasestorage.googleapis.com https://storage.googleapis.com https://lh3.googleusercontent.com https://images.unsplash.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.arcgisonline.com",
-  // Next.js inline scripts + Firebase SDK
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  // 'unsafe-eval' is required only by React Fast Refresh / dev tooling — never
+  // shipped to production. 'unsafe-inline' is still needed for Next.js
+  // hydration inline scripts until we migrate to a nonce-based CSP.
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   // Tailwind inline styles
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",

@@ -6,6 +6,7 @@ import { ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/roles";
 import { AdminCompanyDetailClient } from "@/features/admin/AdminCompanyDetailClient";
 import type { CompanyStatus, SubscriptionPlanId } from "@/types/company";
+import { limitsForPlan, isUnlimited } from "@/constants/plans";
 import { ROLE_LABELS, type Role, isValidRole } from "@/constants/roles";
 import { LISTING_STATUS_LABELS } from "@/constants/listing-categories";
 import { t } from "@/lib/i18n";
@@ -63,6 +64,10 @@ function formatDate(value: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function usage(count: number, limit: number): string {
+  return isUnlimited(limit) ? `${count} / ∞` : `${count} / ${limit}`;
 }
 
 function parseStatus(value: unknown): CompanyStatus {
@@ -183,10 +188,13 @@ export default async function AdminCompanyDetailPage(context: RouteContext) {
       leadsConverted: convertedLeads,
       leadConversionRate,
     },
+    trialEndsAt: serializeDate(companyData.trialEndsAt),
     lastSignInAt: serializeDate(companyData.lastSignInAt),
     createdAt: serializeDate(companyData.createdAt),
     updatedAt: serializeDate(companyData.updatedAt),
   };
+
+  const planLimits = limitsForPlan(summary.subscriptionPlan);
 
   const recentEmployees = employeesSnap.docs.map((doc) => ({
     id: doc.id,
@@ -247,11 +255,11 @@ export default async function AdminCompanyDetailPage(context: RouteContext) {
         />
         <Card
           label={t("adminDetail.activeEmployees")}
-          value={String(summary.metrics.activeEmployees)}
+          value={usage(summary.metrics.activeEmployees, planLimits.maxEmployees)}
         />
         <Card
           label={t("adminDetail.unitsUploaded")}
-          value={String(summary.metrics.listingsUploaded)}
+          value={usage(summary.metrics.listingsUploaded, planLimits.maxListings)}
         />
         <Card
           label={t("adminDetail.leadConversion")}
@@ -272,6 +280,12 @@ export default async function AdminCompanyDetailPage(context: RouteContext) {
           label={t("adminDetail.lastSignIn")}
           value={formatDate(summary.lastSignInAt)}
         />
+        {summary.status === "trial" && (
+          <Card
+            label="نهاية الفترة التجريبية"
+            value={formatDate(summary.trialEndsAt)}
+          />
+        )}
       </section>
 
       <section className="rounded-xl border border-border bg-card p-5">
@@ -305,6 +319,7 @@ export default async function AdminCompanyDetailPage(context: RouteContext) {
           subscriptionPlan: summary.subscriptionPlan,
           isDeleted: summary.isDeleted,
           owner: summary.owner,
+          trialEndsAt: summary.trialEndsAt,
         }}
       />
 

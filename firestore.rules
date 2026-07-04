@@ -125,14 +125,14 @@ service cloud.firestore {
                           && hasPermission('manage_permission_groups'));
       }
 
-      // Listings — published listings are public-readable, drafts are internal
+      // Listings — published listings are public-readable, drafts are internal.
+      // Creation is API-only (/api/companies/{cid}/listings) so the per-plan
+      // listing quota is enforced server-side and can't be bypassed here.
       match /listings/{lid} {
         allow read: if resource.data.status == 'published'
                     || isSuperAdmin()
                     || isCompanyMember(cid);
-        allow create: if isCompanyMember(cid)
-                      && hasPermission('create_listing')
-                      && request.resource.data.companyId == cid;
+        allow create: if false;
         allow update: if isSuperAdmin()
                       || (isCompanyMember(cid)
                           && request.resource.data.companyId == cid

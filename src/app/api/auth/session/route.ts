@@ -6,7 +6,7 @@ import {
 } from "@/lib/auth/session";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { rateLimit } from "@/lib/utils/rate-limit";
+import { getClientIp, rateLimit } from "@/lib/utils/rate-limit";
 
 // Ensure Node runtime (firebase-admin is not Edge-compatible)
 export const runtime = "nodejs";
@@ -64,11 +64,8 @@ async function trackSuccessfulSignIn(decoded: {
  */
 export async function POST(req: NextRequest) {
   // Rate-limit login attempts: 10 per minute per IP
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown";
-  const rl = rateLimit(`auth:session:${ip}`, 10, 60_000);
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`auth:session:${ip}`, 10, 60_000);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

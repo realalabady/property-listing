@@ -13,6 +13,12 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 
 const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME || "__session";
+// Sliding idle-timeout cookie: holds the last-activity epoch (ms). Refreshed on
+// every authenticated navigation; if the gap exceeds the window the session is
+// force-ended even though the absolute __session cookie is still valid.
+const ACTIVITY_COOKIE = process.env.SESSION_ACTIVITY_COOKIE_NAME || "sess_activity";
+const IDLE_TIMEOUT_MS =
+  Number(process.env.SESSION_IDLE_MINUTES || 120) * 60 * 1000;
 
 const PROTECTED_PREFIXES = ["/dashboard", "/admin", "/onboarding"];
 const AUTH_PAGES = ["/login", "/signup"];
@@ -29,6 +35,33 @@ export function middleware(req: NextRequest) {
       loginUrl.searchParams.set("next", pathname);
       return NextResponse.redirect(loginUrl);
     }
+
+    const now = Date.now();
+    const lastSeenRaw = req.cookies.get(ACTIVITY_COOKIE)?.value;
+    const lastSeen = lastSeenRaw ? Number(lastSeenRaw) : null;
+
+    // Idle too long → clear cookies and bounce to login.
+    if (lastSeen && Number.isFinite(lastSeen) && now - lastSeen > IDLE_TIMEOUT_MS) {
+      const loginUrl = req.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("reauth", "1");
+      loginUrl.searchParams.set("idle", "1");
+      const res = NextResponse.redirect(loginUrl);
+      res.cookies.delete(SESSION_COOKIE);
+      res.cookies.delete(ACTIVITY_COOKIE);
+      return res;
+    }
+
+    // Slide the activity window forward on this authenticated request.
+    const res = NextResponse.next();
+    res.cookies.set(ACTIVITY_COOKIE, String(now), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: Math.ceil(IDLE_TIMEOUT_MS / 1000),
+    });
+    return res;
   }
 
   // If already authenticated, redirect away from auth pages

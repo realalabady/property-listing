@@ -35,6 +35,13 @@ export interface PublicCompany {
   theme: PublicCompanyTheme;
 }
 
+export interface PublicMedia {
+  url: string;
+  type: "image" | "video";
+  order: number;
+  isCover: boolean;
+}
+
 export interface PublicListing {
   id: string;
   companyId: string;
@@ -55,7 +62,25 @@ export interface PublicListing {
   bathrooms: number;
   area: number;
   coverImage: string;
+  media: PublicMedia[];
   featured: boolean;
+}
+
+/** Parse a listing's media array (present on the source company listing). */
+export function parsePublicMedia(value: unknown): PublicMedia[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (m): m is Record<string, unknown> =>
+        typeof m === "object" && m !== null && typeof m.url === "string",
+    )
+    .map((m, index) => ({
+      url: m.url as string,
+      type: m.type === "video" ? ("video" as const) : ("image" as const),
+      order: typeof m.order === "number" ? m.order : index,
+      isCover: Boolean(m.isCover),
+    }))
+    .sort((a, b) => a.order - b.order);
 }
 
 export function mapPublicListing(
@@ -116,6 +141,7 @@ export function mapPublicListing(
       typeof data.coverImage === "string" && data.coverImage.length > 0
         ? data.coverImage
         : "",
+    media: parsePublicMedia(data.media),
     featured: Boolean(data.featured),
   };
 }

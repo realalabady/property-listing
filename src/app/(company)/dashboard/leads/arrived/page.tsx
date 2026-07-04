@@ -22,7 +22,7 @@ export default async function LeadsArrivedPage() {
     hasAnyPermission(user.permissions, [PERMISSIONS.VIEW_OWN_LEADS]);
 
   if (!canViewLeads || !user.companyId) {
-    redirect(ROUTES.DASHBOARD);
+    redirect(`${ROUTES.DASHBOARD}?denied=permission`);
   }
 
   return (

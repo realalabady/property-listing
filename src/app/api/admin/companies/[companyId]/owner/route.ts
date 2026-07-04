@@ -168,6 +168,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
     if (ownerPhone) {
       employeePayload.phone = ownerPhone;
     }
+    // Fresh auth accounts get a generated temp password → remind them to reset.
+    if (authUserCreated) {
+      employeePayload.passwordResetRequired = true;
+    }
 
     if (!employeeSnap.exists) {
       employeePayload.createdAt = FieldValue.serverTimestamp();

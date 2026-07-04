@@ -1065,3 +1065,55 @@ export const onTaskEscalationSendEmail = onDocumentCreated(
     });
   },
 );
+
+// ---------------------------------------------------------------------------
+// Trial auto-expiry
+// ---------------------------------------------------------------------------
+
+/**
+ * Suspends companies whose trial window has elapsed. `requireCompanyMember`
+ * already blocks members of suspended companies, so flipping the status is all
+ * that's needed to end access when a trial expires.
+ */
+export const expireTrials = onSchedule("every 24 hours", async () => {
+  const now = new Date();
+  const nowTimestamp = Timestamp.fromDate(now);
+  let expired = 0;
+  let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined;
+
+  while (true) {
+    let query = db
+      .collection("companies")
+      .where("status", "==", "trial")
+      .where("trialEndsAt", "<=", nowTimestamp)
+      .limit(300);
+
+    if (lastDoc) {
+      query = query.startAfter(lastDoc);
+    }
+
+    const snap = await query.get();
+    if (snap.empty) {
+      break;
+    }
+
+    const batch = db.batch();
+    for (const companyDoc of snap.docs) {
+      batch.update(companyDoc.ref, {
+        status: "suspended",
+        trialExpiredAt: FieldValue.serverTimestamp(),
+        suspendedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      expired += 1;
+    }
+    await batch.commit();
+
+    lastDoc = snap.docs[snap.docs.length - 1];
+    if (snap.size < 300) {
+      break;
+    }
+  }
+
+  logger.info("Trial expiry cron completed", { expired });
+});

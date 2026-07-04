@@ -1,4 +1,5 @@
 import { CompanyLandingClient } from "@/features/public/CompanyLandingClient";
+import { DarPublicShell } from "@/features/public/DarPublicShell";
 
 export const metadata = {
   title: "الشركة",
@@ -10,5 +11,9 @@ export default async function CompanyLandingPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  return <CompanyLandingClient slug={slug} />;
+  return (
+    <DarPublicShell>
+      <CompanyLandingClient slug={slug} />
+    </DarPublicShell>
+  );
 }
