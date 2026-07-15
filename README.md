@@ -1,271 +1,37 @@
-# Real Estate SaaS — Multi-Tenant Platform
-
-Production-grade multi-tenant Real Estate SaaS built on **Next.js 15 (App Router)** + **TypeScript** + **TailwindCSS v3** + **Firebase** (Firestore, Auth, Storage, Cloud Functions, Security Rules).
-
-Each tenant = a real estate company with:
-
-- A branded public landing page (`/c/[slug]`)
-- An internal CRM-style dashboard (`/dashboard`)
-- Employees, listings, leads, tasks, KPI dashboards
-
-One super-admin plane (`/admin`) manages the entire platform.
-
----
-
-## Phase Progress
-
-- [x] **Phase 1 — Foundation**: architecture, Firestore schema, RBAC claims, auth layer, folder structure, route guards, session cookies, bilingual i18n scaffold
-- [x] **Phase 2 — Public + Dashboard UI, Listings CRUD, Leads (core complete)**
-- [ ] **Phase 3 — KPI, Tasks + Escalation, Cloud Functions, Security Rules (in progress)**
-- [ ] **Phase 4 — Launch Checklist + Scaling**
-
-Current Phase 3 scope already implemented:
-
-- Cloud Functions workspace (`functions/`) in TypeScript
-- Global listing sync automation (`companies/{cid}/listings` -> `global_listings`)
-- Lead round-robin auto-assignment
-- Employee role/permission claim sync to Firebase Auth custom claims
-- Scheduled task escalation and KPI overview refresh
-- KPI and Tasks dashboards switched from mock to Firestore-backed reads
-- Firestore and Storage rules hardened for ownership and permission checks
-
----
-
-## Architecture Overview
-
-### Multi-Tenancy Model
-
-- **Single Firebase project**, **single Firestore DB**
-- Tenant isolation by document path: `companies/{companyId}/...`
-- Custom claims (`role`, `companyId`, `permissions[]`) on every authenticated user
-- Firestore rules enforce isolation as the final source of truth
-
-### Data Model
-
-```
-companies/{cid}
-├── settings/
-├── employees/{uid}
-├── listings/{lid}
-├── leads/{leadId}
-├── tasks/{taskId}
-├── kpi_snapshots/{YYYY-MM}
-├── activity_logs/
-└── notifications/
-
-platform_admins/{uid}
-global_listings/{lid}         # denormalized public marketplace
-invitations/{invId}
-plans/{planId}
-audit_logs/{logId}
-```
-
-### RBAC
-
-Nine roles × ~30 granular permissions. See:
-
-- `src/constants/roles.ts`
-- `src/constants/permissions.ts`
-
-### Rendering
-
-| Area                        | Strategy                  |
-| --------------------------- | ------------------------- |
-| Platform landing            | Static / ISR              |
-| Company landing `/c/[slug]` | ISR (revalidate 60s)      |
-| Marketplace `/properties`   | ISR + client pagination   |
-| `/dashboard/**`             | SSR shell + CSR (guarded) |
-| `/admin/**`                 | SSR shell + CSR (guarded) |
-
----
-
-## Getting Started
-
-### 1. Install dependencies
-
-```bash
-npm install
-```
-
-### 2. Create a Firebase project
-
-1. Go to https://console.firebase.google.com/ and create a new project.
-2. **Enable Authentication** → Email/Password (and any other providers you want).
-3. **Enable Firestore** in production mode.
-4. **Enable Storage**.
-5. **Upgrade to Blaze plan** (required for Cloud Functions; still free under small usage).
-
-### 3. Get Firebase credentials
-
-**Client (public) config** — Project settings → General → Your apps → Web app → Config:
-
-```
-NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=
-property-listing-7f3db
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET= gs://property-listing-7f3db.firebasestorage.app
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
-NEXT_PUBLIC_FIREBASE_APP_ID=...
-```
-
-**Admin (server) credentials** — Project settings → Service accounts → Generate new private key (JSON). From the JSON file:
-
-```
-FIREBASE_ADMIN_PROJECT_ID=<project_id>
-FIREBASE_ADMIN_CLIENT_EMAIL=<client_email>
-FIREBASE_ADMIN_PRIVATE_KEY="<private_key — keep the \n escape sequences>"
-```
-
-> **Tip:** The private key contains newlines. Wrap it in double quotes and keep the literal `\n` sequences — our admin loader normalizes them.
-
-**SMTP (optional, enables automatic invitation emails)**:
-
-```
-SMTP_HOST=smtp.your-provider.com
-SMTP_PORT=465
-SMTP_SECURE=true
-SMTP_USER=your-smtp-username
-SMTP_PASS=your-smtp-password
-EMAIL_FROM=Your App <noreply@yourdomain.com>
-```
-
-If SMTP values are not configured, invitation links are still created but must be shared manually.
-
-### 4. Configure environment
-
-```bash
-cp .env.local.example .env.local
-# edit .env.local with your values
-```
-
-Update `.firebaserc`:
-
-```json
-{ "projects": { "default": "<your-firebase-project-id>" } }
-```
-
-### 5. Install Firebase CLI (for rules/indexes/emulators)
-
-```bash
-npm install -g firebase-tools
-firebase login
-```
-
-### 6. Deploy initial rules + indexes
-
-```bash
-npm run firebase:deploy:rules
-npm run firebase:deploy:indexes
-```
-
-### 7. Build and deploy Cloud Functions (Phase 3)
-
-```bash
-npm run functions:install
-npm run functions:build
-npm run firebase:deploy:functions
-```
-
-### 8. Run dev server
-
-```bash
-npm run dev
-```
-
-Visit:
-
-- `http://localhost:3000` — platform landing
-- `http://localhost:3000/login` — auth
-- `http://localhost:3000/dashboard` — company dashboard (redirects to login if unauthenticated)
-- `http://localhost:3000/admin` — super admin (requires super_admin claim)
-
----
-
-## Creating your first Super Admin (one-time)
-
-Phase 1 ships foundation only — self-signup + onboarding flow lands in Phase 2. To bootstrap the first account, run this from a one-off Node script using the admin SDK, or temporarily from Firebase Console:
-
-```ts
-// scripts/bootstrap-super-admin.ts
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
-
-const uid = "<your-firebase-auth-uid>"; // create the user in Console first
-
-await adminAuth().setCustomUserClaims(uid, {
-  role: "super_admin",
-  companyId: null,
-  permissions: ["*"],
-});
-
-await adminDb().collection("platform_admins").doc(uid).set({
-  email: "<your-email>",
-  createdAt: new Date(),
-});
-```
-
-After running, sign out and sign in again so the ID token picks up the new claims.
-
----
-
-## Folder Structure
-
-```
-src/
-├── app/                    # Next.js App Router
-│   ├── (public)/           # Unauthenticated public routes
-│   ├── (auth)/             # Login / signup / onboarding
-│   ├── (company)/          # /dashboard — company-scoped
-│   ├── (admin)/            # /admin — super admin
-│   └── api/                # Route handlers (Node runtime)
-├── components/             # Reusable UI
-│   └── providers/          # AuthBootstrap etc.
-├── features/               # Feature-sliced (Phase 2+)
-├── lib/
-│   ├── firebase/           # client + admin SDK singletons
-│   ├── auth/               # claims, session, guards
-│   ├── i18n/               # EN + AR dictionaries
-│   └── utils/              # cn, etc.
-├── hooks/                  # useAuth, usePermission
-├── store/                  # Zustand stores
-├── services/               # Data access (Phase 2+)
-├── types/                  # Domain models
-├── constants/              # Roles, permissions, routes, categories
-└── middleware.ts           # Edge route protection
-```
-
----
-
-## Available Scripts
-
-```bash
-npm run dev                    # start dev server
-npm run build                  # production build
-npm run start                  # run production build
-npm run typecheck              # TS check without emit
-npm run lint                   # ESLint
-npm run firebase:emulators     # local Firestore/Auth/Storage emulators
-npm run firebase:deploy:rules  # deploy firestore + storage rules
-npm run firebase:deploy:indexes
-npm run functions:install       # install Cloud Functions dependencies
-npm run functions:build         # build Cloud Functions TypeScript
-npm run firebase:deploy:functions
-```
-
----
-
-## Security Model
-
-1. **Middleware (Edge)** — lightweight cookie presence check for protected routes.
-2. **Server guards** (`requireAuth`, `requireCompanyMember`, `requireSuperAdmin`, `requirePermission`) — deep verification via Admin SDK before rendering.
-3. **Firestore Rules** — claims-based, strict-by-default, per-tenant isolation (Phase 3 hardens).
-4. **Cloud Functions** — sole writers for privileged operations (role changes, billing, escalation) in Phase 3.
-
----
+# Dar — Real Estate CRM & Marketplace
+
+Dar is a multi-tenant platform that gives each real estate company its own
+branded presence and a complete CRM to run the business behind it — listings,
+leads, team, and performance, all in one place. Built Arabic-first with full
+RTL support for the Saudi market.
+
+## What it does
+
+- **Branded company page** — every company gets its own public landing page to
+  showcase its properties and capture inquiries.
+- **Listings management** — publish and manage properties with media, pricing,
+  and status, surfaced on a shared marketplace.
+- **Lead pipeline** — capture inquiries, auto-assign them to agents, and track
+  every lead from first contact to close.
+- **Team & roles** — invite employees and control exactly what each person can
+  see and do with fine-grained permissions.
+- **Tasks & follow-ups** — keep the team on top of every deal with assignable
+  tasks and automatic escalation.
+- **Performance dashboards** — KPIs and reporting so managers can see how the
+  team and the pipeline are doing at a glance.
+
+## Who it's for
+
+- **Real estate companies and brokerages** that want a professional online
+  presence plus the tools to manage listings, leads, and their sales team
+  without stitching together separate products.
+- **Property seekers** who browse the public marketplace to find listings and
+  connect with the right company.
+
+## Status
+
+Actively in development.
 
 ## License
 
 Proprietary — all rights reserved.
-#   p r o p e r t y - l i s t i n g 
- 
- 
