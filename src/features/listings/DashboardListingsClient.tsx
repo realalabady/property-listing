@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
   type DocumentData,
 } from "firebase/firestore";
+import { UserRound } from "lucide-react";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -39,11 +41,17 @@ interface ListingRow {
   price: number;
   currency: string;
   city: string;
+  district: string;
+  region: string;
   status: ListingStatus;
   featured: boolean;
   mediaCount: number;
   coverImage: string | null;
   updatedAt: Date | null;
+  /** uid of the employee who created the listing (internal only). */
+  createdBy: string | null;
+  /** Denormalized name when present; otherwise resolved from the roster. */
+  createdByName: string | null;
 }
 
 function toDate(value: unknown): Date | null {
@@ -102,6 +110,14 @@ function mapListingDoc(id: string, data: DocumentData): ListingRow {
       typeof data.location?.city === "string"
         ? (data.location.city as string)
         : t("listings.unknownCity"),
+    district:
+      typeof data.location?.district === "string"
+        ? (data.location.district as string)
+        : "",
+    region:
+      typeof data.location?.region === "string"
+        ? (data.location.region as string)
+        : "",
     status,
     featured: Boolean(data.featured),
     mediaCount: Array.isArray(data.media) ? data.media.length : 0,
@@ -110,6 +126,9 @@ function mapListingDoc(id: string, data: DocumentData): ListingRow {
         ? data.coverImage
         : firstMediaUrl(data.media),
     updatedAt: toDate(data.updatedAt),
+    createdBy: typeof data.createdBy === "string" ? data.createdBy : null,
+    createdByName:
+      typeof data.createdByName === "string" ? data.createdByName : null,
   };
 }
 
@@ -124,6 +143,11 @@ export function DashboardListingsClient({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [search, setSearch] = useState("");
+  /** uid -> employee name, for showing who published each listing. */
+  const [employeeNames, setEmployeeNames] = useState<Record<string, string>>(
+    {},
+  );
 
   // Firestore Security Rules check `request.auth` (companyId claim). On a cold
   // page load the listener can attach before Firebase Auth restores the user,
@@ -135,29 +159,31 @@ export function DashboardListingsClient({
     // Still restoring the client Firebase session — keep showing the spinner.
     if (authLoading) return;
 
-    // The dashboard chrome is server-authenticated, but Firestore reads use the
-    // CLIENT token. If the browser has no signed-in user, or is signed in as a
-    // DIFFERENT account than this company (e.g. a customer account from the
-    // marketplace), the read would be denied — surface a clear re-login prompt
-    // instead of spinning forever.
-    //
-    // BUT right after login the client Firebase user can be momentarily null
-    // while the SDK restores the session (a transient accounts:lookup race), so
-    // declaring "session expired" immediately flashes a false error. Wait out a
-    // short grace window first — when authUser arrives this effect re-runs and
-    // the timer is cleared before it can fire.
-    if (!authUser) {
-      const graceTimer = setTimeout(() => {
-        setError(t("listings.sessionExpired"));
-        setLoading(false);
-      }, 2500);
-      return () => clearTimeout(graceTimer);
-    }
+    // The dashboard chrome is server-authenticated, but Firestore reads use
+    // the CLIENT token. If the browser has no signed-in user the session has
+    // ended — the layout-level <SessionEndedSignOut /> signs the user out and
+    // returns them to the login page, so just keep the spinner (no banner).
+    if (!authUser) return;
     if (authUser.companyId !== companyId) {
       setError(t("listings.accountMismatch"));
       setLoading(false);
       return;
     }
+
+    // Resolve creator uids to names for the "published by" line. Listings
+    // created before this field was denormalized only carry `createdBy`, so
+    // the roster is the reliable source. Reading employees needs the
+    // view_employees permission — if it's denied we just omit the name.
+    getDocs(collection(getFirebaseDb(), `companies/${companyId}/employees`))
+      .then((snap) => {
+        const names: Record<string, string> = {};
+        snap.docs.forEach((d) => {
+          const name = d.data().name;
+          if (typeof name === "string" && name.length > 0) names[d.id] = name;
+        });
+        setEmployeeNames(names);
+      })
+      .catch(() => undefined);
 
     setLoading(true);
     const db = getFirebaseDb();
@@ -182,9 +208,21 @@ export function DashboardListingsClient({
   }, [companyId, authLoading, authUser]);
 
   const filtered = useMemo(() => {
-    if (statusFilter === "all") return listings;
-    return listings.filter((l) => l.status === statusFilter);
-  }, [listings, statusFilter]);
+    const term = search.trim().toLowerCase();
+    return listings.filter((l) => {
+      if (statusFilter !== "all" && l.status !== statusFilter) return false;
+      if (
+        term &&
+        !l.title.toLowerCase().includes(term) &&
+        !l.city.toLowerCase().includes(term) &&
+        !l.district.toLowerCase().includes(term) &&
+        !l.region.toLowerCase().includes(term)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [listings, statusFilter, search]);
 
   return (
     <div className="space-y-6">
@@ -200,6 +238,13 @@ export function DashboardListingsClient({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("listings.searchPlaceholder")}
+              className="h-11 w-full rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 md:w-64"
+            />
             <label className="text-xs font-medium text-muted-foreground">
               {t("common.status")}
             </label>
@@ -286,6 +331,24 @@ export function DashboardListingsClient({
                   {listing.city} • {LISTING_CATEGORY_LABELS[listing.category].ar}{" "}
                   • {LISTING_TYPE_LABELS[listing.type].ar}
                 </p>
+
+                {/* Internal-only: who published this. Never shown publicly. */}
+                {(() => {
+                  const creator =
+                    listing.createdByName ??
+                    (listing.createdBy
+                      ? employeeNames[listing.createdBy]
+                      : null);
+                  if (!creator) return null;
+                  return (
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <UserRound className="h-3 w-3 shrink-0" aria-hidden />
+                      <span className="truncate">
+                        {t("listings.publishedBy", { name: creator })}
+                      </span>
+                    </p>
+                  );
+                })()}
 
                 <div className="mt-auto flex items-center justify-between pt-2">
                   <span className="font-semibold text-foreground">

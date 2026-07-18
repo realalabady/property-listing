@@ -17,6 +17,7 @@ export const ROUTES = {
   LOGIN: "/login",
   SIGNUP: "/signup",
   ONBOARDING: "/onboarding",
+  PLAN_ENDED: "/plan-ended",
 
   // Dashboard
   DASHBOARD: "/dashboard",
@@ -25,6 +26,7 @@ export const ROUTES = {
   DASHBOARD_LISTING_DETAIL: (id: string) => `/dashboard/listings/${id}`,
   DASHBOARD_LISTING_EDIT: (id: string) => `/dashboard/listings/${id}/edit`,
   DASHBOARD_LEADS: "/dashboard/leads",
+  DASHBOARD_PIPELINE: "/dashboard/pipeline",
   DASHBOARD_LEAD_NEW: "/dashboard/leads/new",
   DASHBOARD_LEADS_ARRIVED: "/dashboard/leads/arrived",
   DASHBOARD_MATCHED_LEADS: "/dashboard/matched-leads",
@@ -41,6 +43,9 @@ export const ROUTES = {
   ADMIN_COMPANIES: "/admin/companies",
   ADMIN_COMPANY_NEW: "/admin/companies/new",
   ADMIN_COMPANY_DETAIL: (companyId: string) => `/admin/companies/${companyId}`,
+  ADMIN_LISTINGS: "/admin/listings",
+  ADMIN_LEADS: "/admin/leads",
+  ADMIN_EMPLOYEES: "/admin/employees",
   ADMIN_BILLING: "/admin/billing",
   ADMIN_ANALYTICS: "/admin/analytics",
 } as const;

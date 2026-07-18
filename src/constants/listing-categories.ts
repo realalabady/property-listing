@@ -26,6 +26,8 @@ export const LISTING_CATEGORIES = {
   TOWNHOUSE: "townhouse",
   PENTHOUSE: "penthouse",
   STUDIO: "studio",
+  CHALET: "chalet",
+  REST_HOUSE: "rest_house",
 } as const;
 
 export type ListingCategory =
@@ -45,6 +47,8 @@ export const LISTING_CATEGORY_LABELS: Record<
   [LISTING_CATEGORIES.TOWNHOUSE]: { en: "Townhouse", ar: "تاون هاوس" },
   [LISTING_CATEGORIES.PENTHOUSE]: { en: "Penthouse", ar: "بنتهاوس" },
   [LISTING_CATEGORIES.STUDIO]: { en: "Studio", ar: "ستوديو" },
+  [LISTING_CATEGORIES.CHALET]: { en: "Chalet", ar: "شاليه" },
+  [LISTING_CATEGORIES.REST_HOUSE]: { en: "Rest House", ar: "استراحة" },
 };
 
 export const LISTING_STATUSES = {
@@ -91,6 +95,78 @@ export const LEAD_STATUS_LABELS: Record<
   [LEAD_STATUSES.DEAL]: { en: "Deal", ar: "صفقة" },
   [LEAD_STATUSES.LOST]: { en: "Lost", ar: "مفقود" },
 };
+
+/**
+ * Every value the `lead.source` field can carry. `landing_request` is set by
+ * the marketplace claim flow; the rest come from manual entry / public forms.
+ * ALWAYS render sources through LEAD_SOURCE_LABELS — never the raw key.
+ */
+export const LEAD_SOURCES = {
+  WEBSITE_FORM: "website_form",
+  WHATSAPP: "whatsapp",
+  PHONE: "phone",
+  WALK_IN: "walk_in",
+  SOCIAL_MEDIA: "social_media",
+  REFERRAL: "referral",
+  MARKETPLACE: "marketplace",
+  LANDING_REQUEST: "landing_request",
+  OTHER: "other",
+} as const;
+
+export type LeadSourceKey = (typeof LEAD_SOURCES)[keyof typeof LEAD_SOURCES];
+
+export const LEAD_SOURCE_LABELS: Record<
+  LeadSourceKey,
+  { en: string; ar: string }
+> = {
+  [LEAD_SOURCES.WEBSITE_FORM]: { en: "Website form", ar: "نموذج الموقع" },
+  [LEAD_SOURCES.WHATSAPP]: { en: "WhatsApp", ar: "واتساب" },
+  [LEAD_SOURCES.PHONE]: { en: "Phone call", ar: "اتصال هاتفي" },
+  [LEAD_SOURCES.WALK_IN]: { en: "Walk-in", ar: "زيارة المكتب" },
+  [LEAD_SOURCES.SOCIAL_MEDIA]: { en: "Social media", ar: "وسائل التواصل" },
+  [LEAD_SOURCES.REFERRAL]: { en: "Referral", ar: "ترشيح" },
+  [LEAD_SOURCES.MARKETPLACE]: { en: "Marketplace", ar: "السوق" },
+  [LEAD_SOURCES.LANDING_REQUEST]: { en: "Incoming request", ar: "طلب وارد" },
+  [LEAD_SOURCES.OTHER]: { en: "Other", ar: "أخرى" },
+};
+
+/**
+ * Optional lead priority. Absent/null means unprioritized — priority is a
+ * team signal, not a required field.
+ */
+export const LEAD_PRIORITIES = {
+  URGENT: "urgent",
+  HIGH: "high",
+  NORMAL: "normal",
+} as const;
+
+export type LeadPriority =
+  (typeof LEAD_PRIORITIES)[keyof typeof LEAD_PRIORITIES];
+
+export const LEAD_PRIORITY_LABELS: Record<
+  LeadPriority,
+  { en: string; ar: string }
+> = {
+  [LEAD_PRIORITIES.URGENT]: { en: "Urgent", ar: "عاجل" },
+  [LEAD_PRIORITIES.HIGH]: { en: "High", ar: "مرتفع" },
+  [LEAD_PRIORITIES.NORMAL]: { en: "Normal", ar: "عادي" },
+};
+
+export function parseLeadPriority(value: unknown): LeadPriority | null {
+  return value === LEAD_PRIORITIES.URGENT ||
+    value === LEAD_PRIORITIES.HIGH ||
+    value === LEAD_PRIORITIES.NORMAL
+    ? value
+    : null;
+}
+
+/** Arabic label for a lead source; falls back to "أخرى" for unknown keys. */
+export function leadSourceLabelAr(source: string): string {
+  return (
+    LEAD_SOURCE_LABELS[source as LeadSourceKey]?.ar ??
+    LEAD_SOURCE_LABELS[LEAD_SOURCES.OTHER].ar
+  );
+}
 
 export const TASK_PRIORITIES = {
   LOW: "low",

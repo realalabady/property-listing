@@ -4,9 +4,11 @@ import { getSessionUser } from "@/lib/auth/session";
 import {
   canAccessLeadDocument,
   canCommentOnLead,
+  getLeadsVisibility,
   normalizeText,
   serializeDate,
 } from "@/lib/api/company-leads";
+import { assertActiveMember } from "@/lib/api/guards";
 import { adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -47,7 +49,8 @@ export async function GET(_req: NextRequest, context: RouteContext) {
   }
 
   const leadData = leadSnap.data() as Record<string, unknown>;
-  if (!canAccessLeadDocument(user, companyId, leadData)) {
+  const visibility = await getLeadsVisibility(companyId);
+  if (!canAccessLeadDocument(user, companyId, leadData, visibility)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
@@ -80,8 +83,17 @@ export async function POST(req: NextRequest, context: RouteContext) {
   }
 
   const leadData = leadSnap.data() as Record<string, unknown>;
-  if (!canCommentOnLead(user, companyId, leadData)) {
+  const visibility = await getLeadsVisibility(companyId);
+  if (!canCommentOnLead(user, companyId, leadData, visibility)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  const membership = await assertActiveMember(user, companyId);
+  if (!membership.ok) {
+    return NextResponse.json(
+      { error: membership.error },
+      { status: membership.status },
+    );
   }
 
   const body = (await req.json()) as CreateLeadNoteBody;

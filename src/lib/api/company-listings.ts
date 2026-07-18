@@ -140,15 +140,26 @@ export function resolveListingCover(media: ListingMedia[]): {
   }
 
   const sorted = [...media].sort((a, b) => a.order - b.order);
-  const explicitCover = sorted.find((item) => item.isCover);
-  const coverPath = explicitCover?.path ?? sorted[0]?.path;
+
+  // The cover is a still thumbnail rendered inside <img> on listing cards and
+  // the public marketplace mirror, so ONLY an image can be the cover. A video
+  // marked isCover blanks those <img> tags out — the "uploaded video doesn't
+  // show at all" bug. Videos still appear in the gallery; they just can't be
+  // the thumbnail. A video-only listing has a null cover (cards show their
+  // placeholder) rather than a broken image.
+  const images = sorted.filter((item) => item.type === "image");
+  const explicitCover = images.find((item) => item.isCover);
+  const coverPath = explicitCover?.path ?? images[0]?.path ?? null;
 
   const normalizedMedia = sorted.map((item, index) => ({
     ...item,
     order: index,
-    isCover: item.path === coverPath,
+    isCover: coverPath !== null && item.path === coverPath,
   }));
 
-  const coverImage = normalizedMedia.find((item) => item.isCover)?.url ?? null;
+  const coverImage =
+    coverPath === null
+      ? null
+      : (normalizedMedia.find((item) => item.path === coverPath)?.url ?? null);
   return { media: normalizedMedia, coverImage };
 }

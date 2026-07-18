@@ -8,6 +8,7 @@ import {
   parseLeadStatus,
   toDate,
 } from "@/lib/api/company-leads";
+import { assertActiveMember } from "@/lib/api/guards";
 import { adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -59,6 +60,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
+  const membership = await assertActiveMember(user, companyId);
+  if (!membership.ok) {
+    return NextResponse.json(
+      { error: membership.error },
+      { status: membership.status },
+    );
+  }
+
   const body = (await req.json()) as BulkLeadBody;
   const leadIds = parseLeadIds(body.leadIds);
   if (!leadIds) {
@@ -68,33 +77,22 @@ export async function POST(req: NextRequest, context: RouteContext) {
     );
   }
 
-  if (body.action !== "status" && body.action !== "assign") {
+  // Status changes flow EXCLUSIVELY through the pipeline board
+  // (PATCH /leads/[leadId]/stage) so stageKey, the legacy status, and the
+  // activity audit trail can never drift apart. This endpoint is
+  // assignment-only; the leads section creates and assigns.
+  if (body.action !== "assign") {
     return NextResponse.json(
-      { error: "action must be either 'status' or 'assign'." },
+      {
+        error: "حالة العميل تتغيّر من لوحة مسار المبيعات فقط.",
+        code: "STATUS_VIA_PIPELINE",
+      },
       { status: 400 },
     );
   }
 
-  if (body.action === "status" && !canManageLeads) {
-    return NextResponse.json(
-      { error: "Only users with manage_leads can update lead status in bulk." },
-      { status: 403 },
-    );
-  }
-
-  let targetStatus: ReturnType<typeof parseLeadStatus> = null;
   let assignedTo: string | null = null;
   let assignedToName: string | null = null;
-
-  if (body.action === "status") {
-    targetStatus = parseLeadStatus(body.status);
-    if (!targetStatus) {
-      return NextResponse.json(
-        { error: "Invalid lead status." },
-        { status: 400 },
-      );
-    }
-  }
 
   if (body.action === "assign") {
     assignedTo = normalizeUid(body.assignedTo);
@@ -150,42 +148,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
   for (const leadSnap of leadSnaps) {
     const leadData = leadSnap.data() as Record<string, unknown>;
     const leadRef = leadSnap.ref;
-
-    if (body.action === "status" && targetStatus) {
-      const shouldSetFirstResponse =
-        targetStatus !== LEAD_STATUSES.NEW &&
-        targetStatus !== LEAD_STATUSES.LOST &&
-        !leadData.firstResponseAt;
-
-      const createdAt = toDate(leadData.createdAt);
-      const responseTimeMinutes =
-        shouldSetFirstResponse && createdAt
-          ? Math.max(0, Math.round((Date.now() - createdAt.getTime()) / 60000))
-          : null;
-
-      batch.update(leadRef, {
-        status: targetStatus,
-        updatedAt: FieldValue.serverTimestamp(),
-        ...(shouldSetFirstResponse
-          ? { firstResponseAt: FieldValue.serverTimestamp() }
-          : {}),
-        ...(responseTimeMinutes !== null ? { responseTimeMinutes } : {}),
-      });
-
-      batch.set(leadRef.collection("activity").doc(), {
-        companyId,
-        leadId: leadRef.id,
-        type: "lead_status_changed",
-        actorId: user.uid,
-        actorName,
-        message: `Changed lead status to ${targetStatus}`,
-        metadata: {
-          status: targetStatus,
-        },
-        createdAt: FieldValue.serverTimestamp(),
-      });
-      continue;
-    }
 
     if (body.action === "assign") {
       batch.update(leadRef, {

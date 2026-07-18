@@ -4,7 +4,7 @@ import { ArrowRight, Pencil } from "lucide-react";
 import { requireCompanyMember } from "@/lib/auth/guards";
 import { PERMISSIONS, hasAnyPermission } from "@/constants/permissions";
 import { ROUTES } from "@/constants/routes";
-import { ROLE_LABELS, ROLES, isValidRole, type Role } from "@/constants/roles";
+import { ROLES } from "@/constants/roles";
 import { adminDb } from "@/lib/firebase/admin";
 import { serializeDate } from "@/lib/api/company-leads";
 import { PageHeader } from "@/components/ui/page-header";
@@ -98,10 +98,33 @@ export default async function EmployeeDetailPage({
   if (!snap.exists) notFound();
 
   const data = snap.data() as Record<string, unknown>;
-  const role: Role =
-    typeof data.role === "string" && isValidRole(data.role)
-      ? (data.role as Role)
-      : ROLES.VIEWER;
+
+  // Access comes from assigned permission groups, so surface the group names
+  // instead of the internal role.
+  const groupIds = Array.isArray(data.permissionGroupIds)
+    ? data.permissionGroupIds.filter(
+        (value): value is string => typeof value === "string",
+      )
+    : [];
+  let permissionGroups = "—";
+  if (groupIds.length > 0) {
+    const groupSnaps = await adminDb().getAll(
+      ...groupIds.map((groupId) =>
+        adminDb().doc(`companies/${user.companyId}/permission_groups/${groupId}`),
+      ),
+    );
+    const names = groupSnaps
+      .filter((groupSnap) => groupSnap.exists && groupSnap.get("active") !== false)
+      .map((groupSnap) => {
+        const nameAr = groupSnap.get("nameAr");
+        const nameEn = groupSnap.get("nameEn");
+        if (typeof nameAr === "string" && nameAr) return nameAr;
+        if (typeof nameEn === "string" && nameEn) return nameEn;
+        return groupSnap.id;
+      });
+    if (names.length > 0) permissionGroups = names.join("، ");
+  }
+
   const name = typeof data.name === "string" ? data.name : "موظف";
   const email = typeof data.email === "string" ? data.email : "—";
   const active = data.active !== false;
@@ -153,7 +176,7 @@ export default async function EmployeeDetailPage({
         {/* Profile */}
         <section className="rounded-2xl border border-border bg-card p-5 lg:col-span-1">
           <h2 className="mb-3 text-base font-semibold">المعلومات الشخصية</h2>
-          <InfoRow label="الدور" value={ROLE_LABELS[role] ?? role} />
+          <InfoRow label="مجموعات الصلاحيات" value={permissionGroups} />
           <InfoRow
             label="رقم الهوية / الإقامة"
             value={

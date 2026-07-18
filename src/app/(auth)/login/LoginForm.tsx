@@ -26,11 +26,33 @@ export default function LoginForm() {
   const inviteId = params.get("inviteId");
   const inviteToken = params.get("token");
 
-  const { signIn, refreshSession } = useAuth();
+  const { signIn, refreshSession, resetPassword } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"signin" | "reset">("signin");
+  const [resetSent, setResetSent] = useState(false);
+
+  async function onResetSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      await resetPassword(email.trim());
+      setResetSent(true);
+    } catch (err) {
+      setError(toPublicAuthMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function switchMode(next: "signin" | "reset") {
+    setMode(next);
+    setError(null);
+    setResetSent(false);
+  }
 
   async function acceptInvitationAfterLogin(): Promise<boolean> {
     if (!inviteCompany || !inviteId || !inviteToken) return false;
@@ -103,13 +125,66 @@ export default function LoginForm() {
             <span className="text-lg font-semibold">{t("common.appName")}</span>
           </Link>
           <h1 className="mt-6 text-2xl font-semibold tracking-tight">
-            {t("auth.signInTitle")}
+            {mode === "reset" ? t("auth.resetTitle") : t("auth.signInTitle")}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {t("auth.signInSubtitle")}
+            {mode === "reset"
+              ? t("auth.resetSubtitle")
+              : t("auth.signInSubtitle")}
           </p>
         </div>
 
+        {mode === "reset" ? (
+          <form
+            onSubmit={onResetSubmit}
+            className="space-y-4 rounded-xl border border-border bg-card p-6"
+          >
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">
+                {t("common.email")}
+              </label>
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition focus:ring-2 focus:ring-ring"
+                placeholder={t("auth.emailPlaceholder")}
+              />
+            </div>
+
+            {resetSent && (
+              <div className="rounded-md border border-emerald-300/60 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                {t("auth.resetEmailSent")}
+              </div>
+            )}
+
+            {error && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || resetSent}
+              className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+            >
+              {loading
+                ? t("auth.sendingResetLink")
+                : t("auth.sendResetLink")}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => switchMode("signin")}
+              className="w-full text-center text-sm font-medium text-primary hover:underline"
+            >
+              {t("auth.backToSignIn")}
+            </button>
+          </form>
+        ) : (
         <form
           onSubmit={onSubmit}
           className="space-y-4 rounded-xl border border-border bg-card p-6"
@@ -136,9 +211,18 @@ export default function LoginForm() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium">
-              {t("common.password")}
-            </label>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-sm font-medium">
+                {t("common.password")}
+              </label>
+              <button
+                type="button"
+                onClick={() => switchMode("reset")}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                {t("auth.forgotPassword")}
+              </button>
+            </div>
             <input
               type="password"
               required
@@ -168,6 +252,7 @@ export default function LoginForm() {
             {t("auth.accountsByOwner")}
           </p>
         </form>
+        )}
       </div>
     </main>
   );

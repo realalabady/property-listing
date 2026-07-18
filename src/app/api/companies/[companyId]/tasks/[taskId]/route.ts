@@ -13,6 +13,7 @@ import {
   canCreateTask,
   serializeDate,
 } from "@/lib/api/company-tasks";
+import { assertActiveMember } from "@/lib/api/guards";
 import { adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -100,6 +101,14 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
   if (!canCreate && !canAssign && !canComplete) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  const membership = await assertActiveMember(user, companyId);
+  if (!membership.ok) {
+    return NextResponse.json(
+      { error: membership.error },
+      { status: membership.status },
+    );
   }
 
   const taskRef = adminDb().doc(`companies/${companyId}/tasks/${taskId}`);
@@ -232,6 +241,14 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
   if (!canCreateTask(user, companyId))
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+
+  const membership = await assertActiveMember(user, companyId);
+  if (!membership.ok) {
+    return NextResponse.json(
+      { error: membership.error },
+      { status: membership.status },
+    );
+  }
 
   const taskRef = adminDb().doc(`companies/${companyId}/tasks/${taskId}`);
   const taskSnap = await taskRef.get();

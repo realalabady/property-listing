@@ -8,6 +8,7 @@ import {
 } from "@/constants/permissions";
 import { ROLES } from "@/constants/roles";
 import { getSessionUser } from "@/lib/auth/session";
+import { assertActiveMember } from "@/lib/api/guards";
 import { adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -61,6 +62,14 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
   if (!canManageCompanyPermissions(user, companyId)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  const membership = await assertActiveMember(user, companyId);
+  if (!membership.ok) {
+    return NextResponse.json(
+      { error: membership.error },
+      { status: membership.status },
+    );
   }
 
   const body = (await req.json()) as {
@@ -135,6 +144,14 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
 
   if (!canManageCompanyPermissions(user, companyId)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  const membership = await assertActiveMember(user, companyId);
+  if (!membership.ok) {
+    return NextResponse.json(
+      { error: membership.error },
+      { status: membership.status },
+    );
   }
 
   const groupRef = adminDb().doc(

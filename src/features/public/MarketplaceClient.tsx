@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Map as MapIcon, Search, SlidersHorizontal, X } from "lucide-react";
+import {
+  LayoutGrid,
+  Map as MapIcon,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { getGlobalListings, type PublicListing } from "./data";
 import { ListingCard } from "./ListingCard";
 import {
@@ -52,6 +58,15 @@ const typeTabs: Array<{ value: ListingType | ""; label: string }> = [
   },
 ];
 
+type SortKey = "default" | "priceAsc" | "priceDesc" | "areaDesc";
+
+const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
+  { value: "default", label: "الأحدث" },
+  { value: "priceAsc", label: "السعر: من الأقل" },
+  { value: "priceDesc", label: "السعر: من الأعلى" },
+  { value: "areaDesc", label: "المساحة: الأكبر" },
+];
+
 export function MarketplaceClient() {
   const router = useRouter();
   const pathname = usePathname();
@@ -61,7 +76,13 @@ export function MarketplaceClient() {
   const [listings, setListings] = useState<PublicListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Mobile-only fullscreen map overlay (kept from the previous design).
   const [mapOpen, setMapOpen] = useState(false);
+  // Desktop split view: map column visible by default, toggleable.
+  const [showMap, setShowMap] = useState(true);
+  // Shared hover state — the link between the cards and the map pins.
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortKey>("default");
 
   // Filters are seeded from (and committed back to) the URL so links from the
   // landing-page search bar arrive pre-filtered and results stay shareable.
@@ -146,6 +167,18 @@ export function MarketplaceClient() {
     () => applyFilters(listings, filters, { regionCities }),
     [listings, filters, regionCities],
   );
+
+  // Client-side sort on top of the filtered set. "default" preserves the
+  // order the data layer returns (newest-first from Firestore).
+  const sorted = useMemo(() => {
+    if (sort === "default") return filtered;
+    const arr = [...filtered];
+    if (sort === "priceAsc") arr.sort((a, b) => a.price - b.price);
+    if (sort === "priceDesc") arr.sort((a, b) => b.price - a.price);
+    if (sort === "areaDesc") arr.sort((a, b) => (b.area ?? 0) - (a.area ?? 0));
+    return arr;
+  }, [filtered, sort]);
+
   const selectedCity = useMemo(
     () => cityOptions.find((c) => c.name_ar === filters.city),
     [cityOptions, filters.city],
@@ -174,12 +207,89 @@ export function MarketplaceClient() {
     }
   }
 
+  // Chips remove filters instantly (no "apply" step) — patch, then commit the
+  // new state straight to the URL so the page and the address bar stay in sync.
+  function removeFilters(patch: Partial<ListingFilters>) {
+    const next = { ...filters, ...patch };
+    setFilters(next);
+    router.push(`${pathname}${filtersToQuery(next)}`, { scroll: false });
+  }
+
   function reset() {
     setFilters(EMPTY_FILTERS);
     router.push(pathname, { scroll: false });
   }
 
   const active = hasActiveFilters(filters);
+
+  const chips: Array<{ key: string; label: string; onRemove: () => void }> = [];
+  if (filters.type) {
+    chips.push({
+      key: "type",
+      label: LISTING_TYPE_LABELS[filters.type].ar,
+      onRemove: () => removeFilters({ type: EMPTY_FILTERS.type }),
+    });
+  }
+  if (filters.category) {
+    const cat = CATEGORY_OPTIONS.find((o) => o.value === filters.category);
+    if (cat) {
+      chips.push({
+        key: "category",
+        label: cat.ar,
+        onRemove: () => removeFilters({ category: EMPTY_FILTERS.category }),
+      });
+    }
+  }
+  if (filters.region) {
+    chips.push({
+      key: "region",
+      label: filters.region,
+      // Removing the region cascades: city and district depend on it.
+      onRemove: () => removeFilters({ region: "", city: "", district: "" }),
+    });
+  }
+  if (filters.city) {
+    chips.push({
+      key: "city",
+      label: filters.city,
+      onRemove: () => removeFilters({ city: "", district: "" }),
+    });
+  }
+  if (filters.district) {
+    chips.push({
+      key: "district",
+      label: filters.district,
+      onRemove: () => removeFilters({ district: "" }),
+    });
+  }
+  if (filters.q) {
+    chips.push({
+      key: "q",
+      label: `"${filters.q}"`,
+      onRemove: () => removeFilters({ q: "" }),
+    });
+  }
+  if (filters.minPrice != null) {
+    chips.push({
+      key: "minPrice",
+      label: `أقل سعر: ${filters.minPrice.toLocaleString("ar-SA")}`,
+      onRemove: () => removeFilters({ minPrice: null }),
+    });
+  }
+  if (filters.maxPrice != null) {
+    chips.push({
+      key: "maxPrice",
+      label: `أعلى سعر: ${filters.maxPrice.toLocaleString("ar-SA")}`,
+      onRemove: () => removeFilters({ maxPrice: null }),
+    });
+  }
+  if (filters.bedrooms != null) {
+    chips.push({
+      key: "bedrooms",
+      label: `${filters.bedrooms}+ غرف`,
+      onRemove: () => removeFilters({ bedrooms: null }),
+    });
+  }
 
   return (
     <main className="container-tight py-10">
@@ -192,8 +302,8 @@ export function MarketplaceClient() {
         </p>
       </header>
 
-      {/* Map opens full-screen on demand (aqar-style) instead of taking the page */}
-      <section className="mb-8">
+      {/* Mobile: map opens full-screen on demand (the split view needs width) */}
+      <section className="mb-6 lg:hidden">
         <button
           type="button"
           onClick={() => setMapOpen(true)}
@@ -230,17 +340,16 @@ export function MarketplaceClient() {
       {/* Search + filters */}
       <form
         onSubmit={commit}
-        className="mb-8 rounded-2xl border border-border bg-card p-4 shadow-sm"
+        className="mb-4 rounded-2xl border border-border bg-card p-4 shadow-sm"
       >
-        {/* Type tabs */}
-        <div className="mb-3 flex flex-wrap gap-2">
+        <div className="mb-4 flex flex-wrap gap-2">
           {typeTabs.map((tab) => (
             <button
-              key={tab.value || "all"}
+              key={tab.value}
               type="button"
               onClick={() => update("type", tab.value)}
               className={cn(
-                "cursor-pointer rounded-full px-4 py-1.5 text-sm font-semibold transition-colors",
+                "cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold transition-colors",
                 filters.type === tab.value
                   ? "bg-primary text-primary-foreground"
                   : "bg-secondary text-secondary-foreground hover:bg-secondary/70",
@@ -376,21 +485,77 @@ export function MarketplaceClient() {
         </div>
       </form>
 
+      {/* Active filter chips — always-visible search state, one-tap removal */}
+      {chips.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {chips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={chip.onRemove}
+              className="group inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
+            >
+              {chip.label}
+              <X className="h-3 w-3 opacity-60 transition-opacity group-hover:opacity-100" />
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={reset}
+            className="cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted"
+          >
+            مسح الكل
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      {loading && (
-        <p className="text-sm text-muted-foreground">{t("marketplace.loading")}</p>
-      )}
-
+      {/* Results toolbar: count, sort, and the desktop map toggle */}
       {!loading && !error && (
-        <p className="mb-4 text-sm text-muted-foreground">
-          {filtered.length} {filtered.length === 1 ? "عقار" : "عقار"}
-          {active ? " مطابق لبحثك" : ""}
-        </p>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">
+              {filtered.length.toLocaleString("ar-SA")}
+            </span>{" "}
+            عقار{active ? " مطابق لبحثك" : ""}
+          </p>
+          <div className="flex items-center gap-2">
+            <select
+              aria-label="ترتيب النتائج"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              className="h-9 cursor-pointer rounded-lg border border-input bg-background px-3 text-sm outline-none"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setShowMap((v) => !v)}
+              className="hidden h-9 cursor-pointer items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary lg:inline-flex"
+            >
+              {showMap ? (
+                <>
+                  <LayoutGrid className="h-4 w-4" />
+                  إخفاء الخريطة
+                </>
+              ) : (
+                <>
+                  <MapIcon className="h-4 w-4 text-primary" />
+                  إظهار الخريطة
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       )}
 
       {!loading && filtered.length === 0 && !error && (
@@ -399,12 +564,62 @@ export function MarketplaceClient() {
         </p>
       )}
 
-      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((listing) => (
-          <ListingCard key={listing.id} listing={listing} />
-        ))}
-      </section>
+      {/* Split view: scrolling card grid + sticky map (desktop). On mobile the
+          grid is full-width and the map lives in the fullscreen overlay. */}
+      <div className="lg:flex lg:items-start lg:gap-6">
+        <section
+          className={cn(
+            "grid min-w-0 flex-1 grid-cols-1 gap-5 md:grid-cols-2",
+            !showMap && "xl:grid-cols-3",
+          )}
+        >
+          {loading &&
+            Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+          {!loading &&
+            sorted.map((listing) => (
+              <ListingCard
+                key={listing.id}
+                listing={listing}
+                highlighted={hoveredId === listing.id}
+                onHoverChange={(h) => setHoveredId(h ? listing.id : null)}
+              />
+            ))}
+        </section>
+
+        {showMap && (
+          <aside className="sticky top-6 hidden h-[calc(100vh-7rem)] w-[44%] shrink-0 lg:block">
+            <div className="h-full w-full overflow-hidden rounded-2xl border border-border shadow-sm">
+              <SaudiClusterMap
+                listings={filtered}
+                hoveredId={hoveredId}
+                onHoverListing={setHoveredId}
+                className="h-full w-full"
+              />
+            </div>
+          </aside>
+        )}
+      </div>
     </main>
+  );
+}
+
+/** Shimmering placeholder matching the ListingCard footprint. */
+function SkeletonCard() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="h-44 w-full animate-pulse bg-muted" />
+      <div className="space-y-3 p-4">
+        <div className="h-5 w-20 animate-pulse rounded-md bg-muted" />
+        <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+        <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+        <div className="flex justify-between">
+          <div className="h-3 w-12 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-12 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-12 animate-pulse rounded bg-muted" />
+        </div>
+        <div className="h-6 w-28 animate-pulse rounded bg-muted" />
+      </div>
+    </div>
   );
 }
 

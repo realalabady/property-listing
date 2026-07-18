@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
-import { canAccessLeadDocument, serializeDate } from "@/lib/api/company-leads";
+import {
+  canAccessLeadDocument,
+  getLeadsVisibility,
+  serializeDate,
+} from "@/lib/api/company-leads";
 import { adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -40,7 +44,8 @@ export async function GET(_req: NextRequest, context: RouteContext) {
   }
 
   const leadData = leadSnap.data() as Record<string, unknown>;
-  if (!canAccessLeadDocument(user, companyId, leadData)) {
+  const visibility = await getLeadsVisibility(companyId);
+  if (!canAccessLeadDocument(user, companyId, leadData, visibility)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 

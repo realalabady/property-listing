@@ -18,6 +18,10 @@ import type { PublicListing } from "./data";
 interface SaudiClusterMapProps {
   listings: PublicListing[];
   className?: string;
+  /** Listing id to visually emphasise on the map (card-hover sync). */
+  hoveredId?: string | null;
+  /** Fired when the pointer enters/leaves a price pin (pin-hover sync). */
+  onHoverListing?: (id: string | null) => void;
 }
 
 /** Hard pan limit — tight to Saudi so you can't drift left/right off it. */
@@ -53,11 +57,21 @@ function jitter(id: string): [number, number] {
   return [jx, jy];
 }
 
-function coordsFor(listing: PublicListing): { lat: number; lng: number } | null {
+function coordsFor(
+  listing: PublicListing,
+): { lat: number; lng: number; precise: boolean } | null {
+  // An exact pin (pasted from Google Maps) is used verbatim — no jitter. A
+  // legacy listing that only stored the city center is NOT precise, so it
+  // still gets jittered to avoid every unit stacking on one point.
   if (listing.lat != null && listing.lng != null) {
-    return { lat: listing.lat, lng: listing.lng };
+    return { lat: listing.lat, lng: listing.lng, precise: listing.precise };
   }
-  return resolveCoordsByName(listing.region, listing.city, listing.district);
+  const byName = resolveCoordsByName(
+    listing.region,
+    listing.city,
+    listing.district,
+  );
+  return byName ? { ...byName, precise: false } : null;
 }
 
 const norm = (value?: string) => (value ?? "").trim().toLowerCase();
@@ -87,9 +101,25 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * Applies/clears the hover emphasis on a pin (or cluster) DOM element.
+ * Styling is inline so it works without touching globals.css.
+ */
+function styleHighlight(el: HTMLElement | null, on: boolean) {
+  if (!el) return;
+  const pill = (el.querySelector(".dar-price-pin__pill") ??
+    el.firstElementChild ??
+    el) as HTMLElement;
+  pill.style.transition = "transform .15s ease, box-shadow .15s ease";
+  pill.style.transform = on ? "scale(1.18)" : "";
+  pill.style.boxShadow = on ? "0 6px 18px rgba(15,23,42,.35)" : "";
+}
+
 export default function SaudiClusterMap({
   listings,
   className,
+  hoveredId = null,
+  onHoverListing,
 }: SaudiClusterMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -99,6 +129,14 @@ export default function SaudiClusterMap({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const regionLayerRef = useRef<any>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  // Marker lookup for the hover sync, plus the element currently emphasised.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersByIdRef = useRef<Map<string, any>>(new Map());
+  const highlightedElRef = useRef<HTMLElement | null>(null);
+  // Latest hover callback in a ref so markers never need re-binding when the
+  // parent re-renders with a new function identity.
+  const hoverCbRef = useRef<SaudiClusterMapProps["onHoverListing"]>(onHoverListing);
+  hoverCbRef.current = onHoverListing;
   // Flips true once the map + layers exist, so the marker effect (which can
   // run before the async init finishes) re-runs and actually populates.
   const [ready, setReady] = useState(false);
@@ -220,6 +258,8 @@ export default function SaudiClusterMap({
         mapRef.current = null;
         clusterRef.current = null;
         regionLayerRef.current = null;
+        markersByIdRef.current.clear();
+        highlightedElRef.current = null;
       }
     };
   }, []);
@@ -236,13 +276,16 @@ export default function SaudiClusterMap({
 
       // --- Price-pin layer (zoomed in) ---
       cluster.clearLayers();
+      markersByIdRef.current.clear();
+      highlightedElRef.current = null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const markers: any[] = [];
 
       for (const listing of listings) {
         const base = coordsFor(listing);
         if (!base) continue;
-        const [jx, jy] = jitter(listing.id);
+        // Precise pins land exactly; only city-center fallbacks are spread out.
+        const [jx, jy] = base.precise ? [0, 0] : jitter(listing.id);
 
         const icon = L.divIcon({
           className: "dar-price-pin",
@@ -262,6 +305,12 @@ export default function SaudiClusterMap({
              <a href="${href}" class="dar-popup__link">عرض التفاصيل</a>
            </div>`,
         );
+
+        // Pin → card sync: report hover upward through the latest callback.
+        marker.on("mouseover", () => hoverCbRef.current?.(listing.id));
+        marker.on("mouseout", () => hoverCbRef.current?.(null));
+
+        markersByIdRef.current.set(listing.id, marker);
         markers.push(marker);
       }
       cluster.addLayers(markers);
@@ -298,6 +347,43 @@ export default function SaudiClusterMap({
       cancelled = true;
     };
   }, [listings, ready]);
+
+  // Card → pin sync: emphasise the hovered listing's pin. If the pin is
+  // currently swallowed by a cluster, emphasise that cluster bubble instead.
+  useEffect(() => {
+    const cluster = clusterRef.current;
+    if (!ready || !cluster) return;
+
+    // Clear the previous emphasis first (also handles hoveredId → null).
+    styleHighlight(highlightedElRef.current, false);
+    highlightedElRef.current = null;
+
+    if (!hoveredId) return;
+    const marker = markersByIdRef.current.get(hoveredId);
+    if (!marker) return;
+
+    // getVisibleParent returns the marker itself when unclustered, the parent
+    // cluster when grouped, or null when the layer isn't on the map (e.g. the
+    // region-bubble zoom level) — in that last case there's nothing to light up.
+    const visible =
+      typeof cluster.getVisibleParent === "function"
+        ? cluster.getVisibleParent(marker)
+        : marker;
+    const el: HTMLElement | null = visible?.getElement?.() ?? null;
+    if (!el) return;
+
+    if (typeof visible.setZIndexOffset === "function") {
+      visible.setZIndexOffset(1000);
+    }
+    styleHighlight(el, true);
+    highlightedElRef.current = el;
+
+    return () => {
+      if (typeof visible.setZIndexOffset === "function") {
+        visible.setZIndexOffset(0);
+      }
+    };
+  }, [hoveredId, ready]);
 
   return (
     <div

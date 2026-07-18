@@ -1,0 +1,30 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.ts",
+    "css": "src/app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils/cn",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "iconLibrary": "lucide-react",
+  "registries": {
+    "@reactbits": "https://reactbits.dev/r/{name}.json",
+    "@21st": {
+      "url": "https://21st.dev/api/r/{name}",
+      "headers": {
+        "Authorization": "Bearer ${TWENTYFIRST_API_KEY}"
+      }
+    }
+  }
+}

@@ -54,6 +54,11 @@ export default async function EditEmployeePage({
     title: typeof data.title === "string" ? data.title : "",
     department: typeof data.department === "string" ? data.department : "",
     active: data.active !== false,
+    permissionGroupIds: Array.isArray(data.permissionGroupIds)
+      ? data.permissionGroupIds.filter(
+          (value): value is string => typeof value === "string",
+        )
+      : [],
   };
 
   return (

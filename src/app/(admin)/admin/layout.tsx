@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth/guards";
 import { ROUTES } from "@/constants/routes";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { SessionEndedSignOut } from "@/components/auth/SessionEndedSignOut";
 import { t } from "@/lib/i18n";
 
 export default async function AdminLayout({
@@ -14,6 +15,7 @@ export default async function AdminLayout({
 
   return (
     <div className="enterprise min-h-screen bg-background text-foreground">
+      <SessionEndedSignOut />
       <aside className="fixed inset-y-0 right-0 hidden w-64 border-l border-border bg-card lg:block">
         <div className="flex h-16 items-center border-b border-border px-6">
           <Link href={ROUTES.ADMIN} className="flex items-center gap-2">
@@ -41,6 +43,24 @@ export default async function AdminLayout({
             className="rounded-md px-3 py-2 hover:bg-secondary"
           >
             {t("admin.createCompany")}
+          </Link>
+          <Link
+            href={ROUTES.ADMIN_LISTINGS}
+            className="rounded-md px-3 py-2 hover:bg-secondary"
+          >
+            {t("admin.allListings")}
+          </Link>
+          <Link
+            href={ROUTES.ADMIN_LEADS}
+            className="rounded-md px-3 py-2 hover:bg-secondary"
+          >
+            {t("admin.allLeads")}
+          </Link>
+          <Link
+            href={ROUTES.ADMIN_EMPLOYEES}
+            className="rounded-md px-3 py-2 hover:bg-secondary"
+          >
+            {t("admin.allEmployees")}
           </Link>
           <Link
             href={ROUTES.ADMIN_BILLING}

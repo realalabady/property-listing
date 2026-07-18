@@ -15,6 +15,7 @@ import {
   parsePermissionOverrides,
   serializeDate,
 } from "@/lib/api/company-employees";
+import { assertActiveMember } from "@/lib/api/guards";
 import { sendInvitationEmail } from "@/lib/email/invitations";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { resolveAppBaseUrl } from "@/lib/url/app-base-url";
@@ -95,6 +96,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
   if (!canManageCompanyEmployees(user, companyId)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  const membership = await assertActiveMember(user, companyId);
+  if (!membership.ok) {
+    return NextResponse.json(
+      { error: membership.error },
+      { status: membership.status },
+    );
   }
 
   const body = (await req.json()) as CreateInvitationBody;

@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   LEAD_STATUSES,
   LISTING_CATEGORIES,
+  parseLeadPriority,
   type LeadStatus,
 } from "@/constants/listing-categories";
 import { getSessionUser } from "@/lib/auth/session";
@@ -10,9 +11,12 @@ import {
   canAssignCompanyLeads,
   canManageCompanyLeads,
   canViewAssignedLeads,
+  getLeadsVisibility,
   parseLeadStatus,
+  resolveLeadListScope,
   serializeDate,
 } from "@/lib/api/company-leads";
+import { assertActiveMember } from "@/lib/api/guards";
 import { isFieldValueTaken } from "@/lib/api/uniqueness";
 import { isValidNationalId, normalizeSaudiPhone } from "@/lib/utils/validation";
 import { adminDb } from "@/lib/firebase/admin";
@@ -36,6 +40,7 @@ interface CreateLeadBody {
   quality?: unknown;
   preferredContactMethod?: unknown;
   requirement?: unknown;
+  priority?: unknown;
 }
 
 const LEAD_SOURCE_VALUES = new Set([
@@ -190,8 +195,8 @@ export async function GET(req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  const canManage = canManageCompanyLeads(user, companyId);
-  const canAssign = canAssignCompanyLeads(user, companyId);
+  const visibility = await getLeadsVisibility(companyId);
+  const scope = resolveLeadListScope(user, companyId, visibility);
 
   const statusParam = req.nextUrl.searchParams.get("status");
   const limitCount = parseLimit(req.nextUrl.searchParams.get("limit"));
@@ -215,7 +220,9 @@ export async function GET(req: NextRequest, context: RouteContext) {
     leadsQuery = leadsQuery.where("status", "==", statusFilter);
   }
 
-  if (!canManage && !canAssign) {
+  if (scope === "own") {
+    // Restricted / view-own users only ever see their own leads; the
+    // caller-supplied assignedTo filter is ignored so it can't widen scope.
     leadsQuery = leadsQuery.where("assignedTo", "==", user.uid);
   } else if (assignedToParam !== null) {
     const assignedToValue = assignedToParam.trim();
@@ -250,6 +257,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
   if (!canManage && !canAssign) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  const membership = await assertActiveMember(user, companyId);
+  if (!membership.ok) {
+    return NextResponse.json(
+      { error: membership.error },
+      { status: membership.status },
+    );
   }
 
   const body = (await req.json()) as CreateLeadBody;
@@ -360,6 +375,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     nationalId: nationalId || null,
     source,
     quality,
+    priority: parseLeadPriority(body.priority),
     preferredContactMethod,
     requirement,
     listingId,

@@ -21,6 +21,7 @@ export const GROUP_ASSIGNABLE_PERMISSIONS: Permission[] = [
   PERMISSIONS.EDIT_OWN_LISTING,
   PERMISSIONS.DELETE_LISTING,
   PERMISSIONS.PUBLISH_LISTING,
+  PERMISSIONS.VIEW_OWNER_INFO,
   PERMISSIONS.CREATE_EMPLOYEE,
   PERMISSIONS.EDIT_EMPLOYEE,
   PERMISSIONS.REMOVE_EMPLOYEE,
@@ -33,6 +34,7 @@ export const GROUP_ASSIGNABLE_PERMISSIONS: Permission[] = [
   PERMISSIONS.VIEW_OWN_LEADS,
   PERMISSIONS.ASSIGN_LEADS,
   PERMISSIONS.VIEW_MATCHED_LEADS,
+  PERMISSIONS.MANAGE_PIPELINE,
   PERMISSIONS.VIEW_KPI,
   PERMISSIONS.VIEW_OWN_KPI,
   PERMISSIONS.COMPANY_SETTINGS_ACCESS,
@@ -47,6 +49,10 @@ export const PERMISSION_LABELS: Record<Permission, LocalizedLabel> = {
   [PERMISSIONS.PUBLISH_LISTING]: { en: "Publish listing", ar: "نشر العقار" },
   [PERMISSIONS.ASSIGN_LISTING]: { en: "Assign listing", ar: "اسناد العقار" },
   [PERMISSIONS.FEATURE_LISTING]: { en: "Feature listing", ar: "تمييز العقار" },
+  [PERMISSIONS.VIEW_OWNER_INFO]: {
+    en: "View owner and deed info",
+    ar: "عرض بيانات المالك والصك",
+  },
 
   [PERMISSIONS.CREATE_EMPLOYEE]: { en: "Create employee", ar: "انشاء موظف" },
   [PERMISSIONS.EDIT_EMPLOYEE]: { en: "Edit employee", ar: "تعديل الموظف" },
@@ -71,6 +77,10 @@ export const PERMISSION_LABELS: Record<Permission, LocalizedLabel> = {
   [PERMISSIONS.VIEW_MATCHED_LEADS]: {
     en: "View matched leads",
     ar: "عرض العملاء المطابقين",
+  },
+  [PERMISSIONS.MANAGE_PIPELINE]: {
+    en: "Manage sales pipeline",
+    ar: "ادارة مسار المبيعات",
   },
 
   [PERMISSIONS.VIEW_KPI]: { en: "View KPI", ar: "عرض مؤشرات الاداء" },
@@ -116,6 +126,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
       PERMISSIONS.EDIT_OWN_LISTING,
       PERMISSIONS.DELETE_LISTING,
       PERMISSIONS.PUBLISH_LISTING,
+      PERMISSIONS.VIEW_OWNER_INFO,
     ],
   },
   {
@@ -126,6 +137,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
       PERMISSIONS.VIEW_OWN_LEADS,
       PERMISSIONS.ASSIGN_LEADS,
       PERMISSIONS.VIEW_MATCHED_LEADS,
+      PERMISSIONS.MANAGE_PIPELINE,
     ],
   },
   {

@@ -200,6 +200,8 @@ export function applyFilters(
       term &&
       !listing.title.toLowerCase().includes(term) &&
       !listing.companyName.toLowerCase().includes(term) &&
+      !listing.region.toLowerCase().includes(term) &&
+      !listing.district.toLowerCase().includes(term) &&
       !cityMatches(listing.city, term)
     ) {
       return false;

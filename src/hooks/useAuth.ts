@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import {
   onAuthStateChanged,
   onIdTokenChanged,
+  sendPasswordResetEmail,
   signOut as fbSignOut,
   signInWithEmailAndPassword,
   signInWithCustomToken,
@@ -217,6 +218,23 @@ export function useAuth() {
         throw error;
       }
       return cred.user;
+    },
+    /**
+     * Send a password-reset email. Treats `auth/user-not-found` as success so
+     * the UI never reveals whether an email is registered (anti-enumeration).
+     */
+    resetPassword: async (email: string): Promise<void> => {
+      try {
+        await sendPasswordResetEmail(getFirebaseAuth(), email);
+      } catch (error) {
+        if (
+          error instanceof FirebaseError &&
+          error.code === "auth/user-not-found"
+        ) {
+          return;
+        }
+        throw new Error(mapFirebaseAuthError(error));
+      }
     },
     signOut: async () => {
       await fbSignOut(getFirebaseAuth());

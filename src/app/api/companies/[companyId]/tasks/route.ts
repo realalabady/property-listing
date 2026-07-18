@@ -14,6 +14,7 @@ import {
   canViewTasks,
   serializeDate,
 } from "@/lib/api/company-tasks";
+import { assertActiveMember } from "@/lib/api/guards";
 import { adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -155,6 +156,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
   if (!canCreateTask(user, companyId))
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+
+  const membership = await assertActiveMember(user, companyId);
+  if (!membership.ok) {
+    return NextResponse.json(
+      { error: membership.error },
+      { status: membership.status },
+    );
+  }
 
   let body: Record<string, unknown>;
   try {

@@ -22,6 +22,10 @@ export const PERMISSIONS = {
   PUBLISH_LISTING: "publish_listing",
   ASSIGN_LISTING: "assign_listing",
   FEATURE_LISTING: "feature_listing",
+  // Field-level privacy: read the listing's protected owner/deed subdocument
+  // (companies/{cid}/listings/{lid}/private/data). Listing creators can always
+  // read their own listing's private data regardless of this permission.
+  VIEW_OWNER_INFO: "view_owner_info",
 
   // Employees
   CREATE_EMPLOYEE: "create_employee",
@@ -41,6 +45,7 @@ export const PERMISSIONS = {
   VIEW_OWN_LEADS: "view_own_leads",
   ASSIGN_LEADS: "assign_leads",
   VIEW_MATCHED_LEADS: "view_matched_leads",
+  MANAGE_PIPELINE: "manage_pipeline",
 
   // KPI / Reports
   VIEW_KPI: "view_kpi",
@@ -73,6 +78,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.PUBLISH_LISTING,
     PERMISSIONS.ASSIGN_LISTING,
     PERMISSIONS.FEATURE_LISTING,
+    PERMISSIONS.VIEW_OWNER_INFO,
     PERMISSIONS.CREATE_EMPLOYEE,
     PERMISSIONS.EDIT_EMPLOYEE,
     PERMISSIONS.REMOVE_EMPLOYEE,
@@ -85,6 +91,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.MANAGE_LEADS,
     PERMISSIONS.ASSIGN_LEADS,
     PERMISSIONS.VIEW_MATCHED_LEADS,
+    PERMISSIONS.MANAGE_PIPELINE,
     PERMISSIONS.VIEW_KPI,
     PERMISSIONS.EXPORT_REPORTS,
     PERMISSIONS.COMPANY_SETTINGS_ACCESS,
@@ -99,6 +106,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.PUBLISH_LISTING,
     PERMISSIONS.ASSIGN_LISTING,
     PERMISSIONS.FEATURE_LISTING,
+    PERMISSIONS.VIEW_OWNER_INFO,
     PERMISSIONS.CREATE_EMPLOYEE,
     PERMISSIONS.EDIT_EMPLOYEE,
     PERMISSIONS.REMOVE_EMPLOYEE,
@@ -111,6 +119,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.MANAGE_LEADS,
     PERMISSIONS.ASSIGN_LEADS,
     PERMISSIONS.VIEW_MATCHED_LEADS,
+    PERMISSIONS.MANAGE_PIPELINE,
     PERMISSIONS.VIEW_KPI,
     PERMISSIONS.EXPORT_REPORTS,
     PERMISSIONS.COMPANY_SETTINGS_ACCESS,
@@ -131,6 +140,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.MANAGE_LEADS,
     PERMISSIONS.ASSIGN_LEADS,
     PERMISSIONS.VIEW_MATCHED_LEADS,
+    PERMISSIONS.MANAGE_PIPELINE,
     PERMISSIONS.VIEW_KPI,
     PERMISSIONS.EXPORT_REPORTS,
   ],

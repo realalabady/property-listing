@@ -2,6 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { canEditCompanyListing } from "@/lib/api/company-listings";
+import { assertActiveMember } from "@/lib/api/guards";
 import { adminDb } from "@/lib/firebase/admin";
 import { PERMISSIONS, hasAnyPermission } from "@/constants/permissions";
 import {
@@ -63,7 +64,11 @@ async function syncGlobalListing(
         typeof listingData.currency === "string" ? listingData.currency : "SAR",
       city: typeof location.city === "string" ? location.city : "",
       country: typeof location.country === "string" ? location.country : "",
+      region: typeof location.region === "string" ? location.region : "",
       district: typeof location.district === "string" ? location.district : "",
+      lat: typeof location.lat === "number" ? location.lat : null,
+      lng: typeof location.lng === "number" ? location.lng : null,
+      preciseLocation: location.preciseLocation === true,
       bedrooms:
         typeof listingData.bedrooms === "number" ? listingData.bedrooms : null,
       bathrooms:
@@ -77,6 +82,14 @@ async function syncGlobalListing(
         typeof listingData.coverImage === "string"
           ? listingData.coverImage
           : "",
+      unitsSummary:
+        typeof listingData.unitsSummary === "object" &&
+        listingData.unitsSummary !== null
+          ? listingData.unitsSummary
+          : null,
+      publicUnits: Array.isArray(listingData.publicUnits)
+        ? listingData.publicUnits
+        : [],
       status: "published",
       featured: Boolean(listingData.featured),
       createdAt: listingData.createdAt ?? FieldValue.serverTimestamp(),
@@ -120,6 +133,14 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
     if (!canEditCompanyListing(user, companyId, listingData)) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    }
+
+    const membership = await assertActiveMember(user, companyId);
+    if (!membership.ok) {
+      return NextResponse.json(
+        { error: membership.error },
+        { status: membership.status },
+      );
     }
 
     // Publishing requires an extra permission

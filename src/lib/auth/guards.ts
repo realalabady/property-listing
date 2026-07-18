@@ -26,26 +26,96 @@ export async function requireAuth(): Promise<SessionUser> {
   return user;
 }
 
-const getCompanyAccessState = cache(async (companyId: string) => {
-  const snap = await adminDb().doc(`companies/${companyId}`).get();
-  if (!snap.exists) {
-    return {
-      exists: false,
-      isDeleted: false,
-      status: null as string | null,
-    };
+function toMillis(value: unknown): number | null {
+  if (!value) return null;
+  if (value instanceof Date) return value.getTime();
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "toMillis" in value &&
+    typeof (value as { toMillis: () => number }).toMillis === "function"
+  ) {
+    return (value as { toMillis: () => number }).toMillis();
   }
+  if (typeof value === "string") {
+    const ms = new Date(value).getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }
+  return null;
+}
 
-  const data = snap.data() as Record<string, unknown>;
-  const status = typeof data.status === "string" ? data.status : null;
-  const isDeleted = data.isDeleted === true || Boolean(data.deletedAt);
+interface CompanyAccessState {
+  exists: boolean;
+  isDeleted: boolean;
+  status: string | null;
+  trialEndsAtMs: number | null;
+}
 
-  return {
-    exists: true,
-    isDeleted,
-    status,
-  };
-});
+const getCompanyAccessState = cache(
+  async (companyId: string): Promise<CompanyAccessState> => {
+    const snap = await adminDb().doc(`companies/${companyId}`).get();
+    if (!snap.exists) {
+      return {
+        exists: false,
+        isDeleted: false,
+        status: null,
+        trialEndsAtMs: null,
+      };
+    }
+
+    const data = snap.data() as Record<string, unknown>;
+    const status = typeof data.status === "string" ? data.status : null;
+    const isDeleted = data.isDeleted === true || Boolean(data.deletedAt);
+
+    return {
+      exists: true,
+      isDeleted,
+      status,
+      trialEndsAtMs: toMillis(data.trialEndsAt),
+    };
+  },
+);
+
+/** Why a company's dashboard access is blocked (or `null` when allowed). */
+export type CompanyBlockReason =
+  | "missing" // company doc gone / soft-deleted → treat as an auth problem
+  | "suspended"
+  | "cancelled"
+  | "trial_expired";
+
+/**
+ * Single source of truth for whether a company may use the dashboard.
+ * Shared by the route guard and the /plan-ended page so they never disagree.
+ * A `trial` company whose `trialEndsAt` has passed is treated as expired even
+ * though its status string is still "trial" (expiry is time-based).
+ */
+export function getCompanyBlockReason(
+  state: CompanyAccessState,
+): CompanyBlockReason | null {
+  if (!state.exists || state.isDeleted) return "missing";
+  if (state.status === "suspended") return "suspended";
+  if (state.status === "cancelled") return "cancelled";
+  if (
+    state.status === "trial" &&
+    state.trialEndsAtMs !== null &&
+    state.trialEndsAtMs <= Date.now()
+  ) {
+    return "trial_expired";
+  }
+  return null;
+}
+
+/**
+ * Resolve the current user's company block reason, or `null` if they have no
+ * company / aren't a company member. Used by the /plan-ended page.
+ */
+export async function getCompanyBlockReasonForUser(
+  user: SessionUser,
+): Promise<CompanyBlockReason | null> {
+  if (!user.companyId) return null;
+  const state = await getCompanyAccessState(user.companyId);
+  return getCompanyBlockReason(state);
+}
 
 const getEmployeeMembership = cache(async (companyId: string, uid: string) => {
   const snap = await adminDb()
@@ -74,11 +144,16 @@ export async function requireCompanyMember(): Promise<SessionUser> {
   }
 
   const company = await getCompanyAccessState(user.companyId);
-  const blockedByStatus =
-    company.status === "suspended" || company.status === "cancelled";
+  const blockReason = getCompanyBlockReason(company);
 
-  if (!company.exists || company.isDeleted || blockedByStatus) {
-    redirect(`${ROUTES.LOGIN}?reauth=1&blocked=company_inactive`);
+  if (blockReason) {
+    // A missing/deleted company is an auth-level problem → back to login.
+    // Billing/trial blocks get the dedicated "plan ended" screen so the user
+    // sees a clear renew / contact-support message instead of a login bounce.
+    if (blockReason === "missing") {
+      redirect(`${ROUTES.LOGIN}?reauth=1&blocked=company_inactive`);
+    }
+    redirect(ROUTES.PLAN_ENDED);
   }
 
   // Deactivated or removed employees keep a valid session cookie until it

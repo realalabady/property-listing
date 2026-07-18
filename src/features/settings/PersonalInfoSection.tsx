@@ -12,7 +12,7 @@ import { getFirebaseAuth } from "@/lib/firebase/client";
 export interface PersonalInfo {
   name: string;
   email: string;
-  roleLabel: string;
+  permissionGroups: string;
   phone: string | null;
   nationalId: string | null;
   department: string | null;
@@ -52,7 +52,7 @@ export function PersonalInfoSection({ info }: { info: PersonalInfo }) {
   const rows: Array<{ label: string; value: string }> = [
     { label: "الاسم", value: info.name },
     { label: "البريد الإلكتروني", value: info.email },
-    { label: "الدور", value: info.roleLabel },
+    { label: "مجموعات الصلاحيات", value: info.permissionGroups },
     { label: "رقم الجوال", value: info.phone || "—" },
     { label: "رقم الهوية", value: info.nationalId || "—" },
     { label: "القسم", value: info.department || "—" },

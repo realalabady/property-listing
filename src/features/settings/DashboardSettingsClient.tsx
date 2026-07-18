@@ -39,6 +39,8 @@ export interface SettingsFormData {
   leadAutoAssignStrategy: LeadAssignStrategy;
   taskEscalationHours: number;
   notificationEmails: string;
+  contactPhonesVisibility: "everyone" | "restricted";
+  leadsVisibility: "all" | "assigned_only";
 }
 
 interface DashboardSettingsClientProps {
@@ -95,6 +97,10 @@ export function DashboardSettingsClient({
           .split(",")
           .map((entry) => entry.trim())
           .filter(Boolean);
+        payload.visibility = {
+          contactPhones: form.contactPhonesVisibility,
+          leads: form.leadsVisibility,
+        };
       }
 
       const response = await fetch(`/api/companies/${companyId}/settings`, {
@@ -353,7 +359,55 @@ export function DashboardSettingsClient({
               }
               placeholder={t("settings.emailsPlaceholder")}
             />
+            <SelectField
+              label={t("settings.contactPhonesVisibility")}
+              value={form.contactPhonesVisibility}
+              onChange={(value) =>
+                setForm((prev) => ({
+                  ...prev,
+                  contactPhonesVisibility:
+                    value === "restricted" ? "restricted" : "everyone",
+                }))
+              }
+              options={[
+                {
+                  value: "everyone",
+                  label: t("settings.contactPhonesEveryone"),
+                },
+                {
+                  value: "restricted",
+                  label: t("settings.contactPhonesRestricted"),
+                },
+              ]}
+            />
+            <SelectField
+              label={t("settings.leadsVisibility")}
+              value={form.leadsVisibility}
+              onChange={(value) =>
+                setForm((prev) => ({
+                  ...prev,
+                  leadsVisibility:
+                    value === "assigned_only" ? "assigned_only" : "all",
+                }))
+              }
+              options={[
+                {
+                  value: "all",
+                  label: t("settings.leadsVisibilityAll"),
+                },
+                {
+                  value: "assigned_only",
+                  label: t("settings.leadsVisibilityAssignedOnly"),
+                },
+              ]}
+            />
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t("settings.contactPhonesVisibilityHint")}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t("settings.leadsVisibilityHint")}
+          </p>
         </section>
       )}
 

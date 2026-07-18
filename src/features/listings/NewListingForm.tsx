@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
-import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Accordion, AccordionSection } from "@/components/ui/accordion";
@@ -22,6 +28,7 @@ import {
   type ListingStatus,
   type ListingType,
 } from "@/constants/listing-categories";
+import type { ListingPublishedOn, ListingSource } from "@/types/listing";
 import { SAUDI_COUNTRY } from "@/constants/saudi-regions";
 import {
   loadCities,
@@ -32,6 +39,7 @@ import {
   type GeoRegion,
 } from "@/lib/geo/saudi-geo";
 import { ROUTES } from "@/constants/routes";
+import { extractLatLngFromMapUrl } from "@/lib/geo/parse-map-url";
 import { cn } from "@/lib/utils/cn";
 import { t } from "@/lib/i18n";
 
@@ -96,6 +104,10 @@ interface FormState {
   regionId: string;
   cityId: string;
   districtId: string;
+  // Exact map pin: the pasted Google Maps link + coords extracted from it.
+  mapUrl: string;
+  mapLat: number | null;
+  mapLng: number | null;
   // Optional
   description: string;
   category: ListingCategory;
@@ -121,6 +133,23 @@ interface FormState {
   postalCode: string;
   buildingNumber: string;
   deedReference: string;
+  // Confidential owner identity (stored in the protected private subdoc)
+  ownerName: string;
+  ownerPhone: string;
+  ownerNationalId: string;
+  ownerNote: string;
+  planNumber: string;
+  // Listing source (note 8)
+  source: ListingSource;
+  brokerAgencyName: string;
+  brokerName: string;
+  brokerPhone: string;
+  // Advertising publish checklist (note 9)
+  pubAqar: boolean;
+  pubInstagram: boolean;
+  pubX: boolean;
+  pubFacebook: boolean;
+  pubSnapchat: boolean;
 }
 
 const initialState: FormState = {
@@ -150,6 +179,9 @@ const initialState: FormState = {
   regionId: DEFAULT_REGION_ID,
   cityId: DEFAULT_CITY_ID,
   districtId: "",
+  mapUrl: "",
+  mapLat: null,
+  mapLng: null,
   description: "",
   category: LISTING_CATEGORIES.APARTMENT,
   usageType: "",
@@ -174,7 +206,40 @@ const initialState: FormState = {
   postalCode: "",
   buildingNumber: "",
   deedReference: "",
+  ownerName: "",
+  ownerPhone: "",
+  ownerNationalId: "",
+  ownerNote: "",
+  planNumber: "",
+  source: "owner",
+  brokerAgencyName: "",
+  brokerName: "",
+  brokerPhone: "",
+  pubAqar: false,
+  pubInstagram: false,
+  pubX: false,
+  pubFacebook: false,
+  pubSnapchat: false,
 };
+
+const PUBLISH_PLATFORMS: Array<{ key: keyof ListingPublishedOn; label: string }> =
+  [
+    { key: "aqar", label: "منصة عقار" },
+    { key: "instagram", label: "انستقرام" },
+    { key: "x", label: "إكس (تويتر)" },
+    { key: "facebook", label: "فيسبوك" },
+    { key: "snapchat", label: "سناب شات" },
+  ];
+
+/** Form keys whose values live in the protected private subdoc (deed block)
+ * for new-style listings. Legacy listings keep them in `details`. */
+const PRIVATE_DEED_FORM_KEYS = [
+  "deedType",
+  "deedNumber",
+  "deedIssueDate",
+  "deedReference",
+  "propertyNumber",
+] as const;
 
 const USAGE_TYPES = ["سكني", "تجاري", "زراعي", "صناعي", "مكتبي"];
 
@@ -238,6 +303,11 @@ function listingDocToForm(data: Record<string, unknown>): {
   const details = obj(data.details);
   const amenities = obj(data.amenities);
   const location = obj(data.location);
+  const broker = obj(data.brokerInfo);
+  const publishedOn = obj(data.publishedOn);
+  // Only resurface coords in the form when they were an exact pin — a legacy
+  // city-center lat/lng must NOT masquerade as a precise location on re-save.
+  const locationPrecise = location.preciseLocation === true;
 
   const form: FormState = {
     ...initialState,
@@ -265,6 +335,15 @@ function listingDocToForm(data: Record<string, unknown>): {
     ac: Boolean(amenities.ac),
     heating: Boolean(amenities.heating),
     petFriendly: Boolean(amenities.petFriendly),
+    mapUrl: str(location.mapUrl),
+    mapLat:
+      locationPrecise && typeof location.lat === "number"
+        ? location.lat
+        : null,
+    mapLng:
+      locationPrecise && typeof location.lng === "number"
+        ? location.lng
+        : null,
     description: str(data.description),
     usageType: str(details.usageType),
     propertyNumber: str(details.propertyNumber),
@@ -288,6 +367,16 @@ function listingDocToForm(data: Record<string, unknown>): {
     postalCode: str(details.postalCode),
     buildingNumber: str(details.buildingNumber),
     deedReference: str(details.deedReference),
+    planNumber: str(details.planNumber),
+    source: data.source === "broker" ? "broker" : "owner",
+    brokerAgencyName: str(broker.agencyName),
+    brokerName: str(broker.brokerName),
+    brokerPhone: str(broker.phone),
+    pubAqar: Boolean(publishedOn.aqar),
+    pubInstagram: Boolean(publishedOn.instagram),
+    pubX: Boolean(publishedOn.x),
+    pubFacebook: Boolean(publishedOn.facebook),
+    pubSnapchat: Boolean(publishedOn.snapchat),
   };
 
   const rawContacts = Array.isArray(data.contacts) ? data.contacts : [];
@@ -348,6 +437,11 @@ export function NewListingForm({
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Map-link resolution state for the "paste a Google Maps link" field.
+  const [mapUrlStatus, setMapUrlStatus] = useState<
+    "idle" | "resolving" | "ok" | "error"
+  >("idle");
+  const [mapUrlMessage, setMapUrlMessage] = useState<string | null>(null);
 
   // Create mode: best-effort plan-quota pre-check so the user sees a message
   // (and a disabled submit) before hitting the enforced 409 on POST.
@@ -365,6 +459,15 @@ export function NewListingForm({
   const [originalStatus, setOriginalStatus] = useState<ListingStatus | null>(
     null,
   );
+  // Protected owner/deed subdoc state for edit mode:
+  //  - "none":     legacy listing (no subdoc) → deed stays in `details`
+  //  - "readable": subdoc loaded → deed/owner edit against the subdoc
+  //  - "denied":   viewer may edit the listing but not see owner/deed →
+  //                those inputs are hidden and the subdoc left untouched
+  const [privateState, setPrivateState] = useState<
+    "none" | "readable" | "denied"
+  >("none");
+  const [privateHasRestricted, setPrivateHasRestricted] = useState(false);
 
   // Official Saudi geography dataset (fetched + cached from /public/geo).
   const [regions, setRegions] = useState<GeoRegion[]>([]);
@@ -433,7 +536,60 @@ export function NewListingForm({
           setError(t("listings.detailNotFound"));
           return;
         }
-        const mapped = listingDocToForm(snap.data() as Record<string, unknown>);
+        const data = snap.data() as Record<string, unknown>;
+        const mapped = listingDocToForm(data);
+
+        // New-style listings keep owner/deed (and possibly full contacts) in
+        // the protected private subdoc; hydrate it when we're allowed to.
+        if (data.hasPrivateData === true) {
+          try {
+            const privateSnap = await getDoc(
+              doc(
+                db,
+                `companies/${companyId}/listings/${listingId}/private/data`,
+              ),
+            );
+            if (privateSnap.exists()) {
+              const priv = privateSnap.data() as Record<string, unknown>;
+              const owner =
+                typeof priv.owner === "object" && priv.owner !== null
+                  ? (priv.owner as Record<string, unknown>)
+                  : {};
+              const deed =
+                typeof priv.deed === "object" && priv.deed !== null
+                  ? (priv.deed as Record<string, unknown>)
+                  : {};
+              const asStr = (v: unknown) => (typeof v === "string" ? v : "");
+              mapped.form.ownerName = asStr(owner.name);
+              mapped.form.ownerPhone = asStr(owner.phone);
+              mapped.form.ownerNationalId = asStr(owner.nationalId);
+              mapped.form.ownerNote = asStr(owner.note);
+              mapped.form.deedType = asStr(deed.deedType);
+              mapped.form.deedNumber = asStr(deed.deedNumber);
+              mapped.form.deedIssueDate = asStr(deed.deedIssueDate);
+              mapped.form.deedReference = asStr(deed.deedReference);
+              mapped.form.propertyNumber = asStr(deed.propertyNumber);
+              const restricted = Array.isArray(priv.restrictedContacts)
+                ? (priv.restrictedContacts as Record<string, unknown>[])
+                : [];
+              if (restricted.length > 0) {
+                mapped.contacts = restricted.map((c) => ({
+                  name: asStr(c.name),
+                  role: asStr(c.role),
+                  phone: asStr(c.phone),
+                  note: asStr(c.note),
+                }));
+                setPrivateHasRestricted(true);
+              }
+            }
+            setPrivateState("readable");
+          } catch {
+            // Permission denied: hide owner/deed inputs, leave subdoc alone.
+            setPrivateState("denied");
+          }
+        }
+
+        if (!mounted) return;
         setForm(mapped.form);
         setContacts(mapped.contacts);
         setPendingLoc(mapped.locationNames);
@@ -501,6 +657,62 @@ export function NewListingForm({
     setForm((prev) => ({ ...prev, cityId, districtId: "" }));
   }
 
+  // Paste handler: a full Maps URL (or raw "lat,lng") resolves instantly on the
+  // client. Short links (maps.app.goo.gl) carry no coords → resolved on blur.
+  function onMapUrlChange(value: string) {
+    setMapUrlMessage(null);
+    const direct = value.trim() ? extractLatLngFromMapUrl(value) : null;
+    setForm((prev) => ({
+      ...prev,
+      mapUrl: value,
+      mapLat: direct?.lat ?? null,
+      mapLng: direct?.lng ?? null,
+    }));
+    setMapUrlStatus(direct ? "ok" : "idle");
+  }
+
+  // Ask the server to follow a short link (maps.app.goo.gl) and extract coords.
+  // Returns the result WITHOUT touching state so both the blur handler and
+  // submit can await it.
+  async function fetchResolvedCoords(
+    url: string,
+  ): Promise<{ lat: number; lng: number } | { error: string }> {
+    try {
+      const res = await fetch("/api/geo/resolve-map-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = (await res.json()) as {
+        lat?: number;
+        lng?: number;
+        error?: string;
+      };
+      if (res.ok && typeof data.lat === "number" && typeof data.lng === "number") {
+        return { lat: data.lat, lng: data.lng };
+      }
+      return { error: data.error ?? "تعذّر استخراج الموقع من الرابط." };
+    } catch {
+      return { error: "تعذّر الاتصال. حاول مرة أخرى." };
+    }
+  }
+
+  async function resolveMapUrl() {
+    const value = form.mapUrl.trim();
+    // Nothing to do if empty or already resolved on the client.
+    if (!value || form.mapLat != null) return;
+    setMapUrlStatus("resolving");
+    setMapUrlMessage(null);
+    const result = await fetchResolvedCoords(value);
+    if ("lat" in result) {
+      setForm((prev) => ({ ...prev, mapLat: result.lat, mapLng: result.lng }));
+      setMapUrlStatus("ok");
+    } else {
+      setMapUrlStatus("error");
+      setMapUrlMessage(result.error);
+    }
+  }
+
   function updateContact(index: number, key: keyof ContactRow, value: string) {
     setContacts((prev) =>
       prev.map((row, i) => (i === index ? { ...row, [key]: value } : row)),
@@ -566,7 +778,31 @@ export function NewListingForm({
     text("postalCode", form.postalCode);
     text("buildingNumber", form.buildingNumber);
     text("deedReference", form.deedReference);
+    text("planNumber", form.planNumber);
     return details;
+  }
+
+  // Origin classification (note 8): broker fields only when source is broker.
+  function buildSourceFields(): Record<string, unknown> {
+    // On edit, null clears a previously-stored brokerInfo when switching to owner.
+    if (form.source !== "broker") return { source: "owner", brokerInfo: null };
+    const brokerInfo: Record<string, string> = {};
+    if (form.brokerAgencyName.trim())
+      brokerInfo.agencyName = form.brokerAgencyName.trim();
+    if (form.brokerName.trim()) brokerInfo.brokerName = form.brokerName.trim();
+    if (form.brokerPhone.trim()) brokerInfo.phone = form.brokerPhone.trim();
+    return { source: "broker", brokerInfo };
+  }
+
+  // Advertising checklist (note 9): store all five booleans so toggles persist.
+  function buildPublishedOn(): Record<string, boolean> {
+    return {
+      aqar: form.pubAqar,
+      instagram: form.pubInstagram,
+      x: form.pubX,
+      facebook: form.pubFacebook,
+      snapchat: form.pubSnapchat,
+    };
   }
 
   // Amenities: store only the toggles that are ON, plus a parking count when > 0.
@@ -621,9 +857,39 @@ export function NewListingForm({
       const district = form.districtId
         ? districts.find((dd) => String(dd.district_id) === form.districtId)
         : undefined;
-      // District coords aren't in the lite dataset → use the city center.
-      const lat = city?.center?.[0] ?? null;
-      const lng = city?.center?.[1] ?? null;
+      // Safety net: a link pasted and submitted without ever blurring the field
+      // never went through the short-link resolver. Resolve it now so the pin
+      // isn't silently downgraded to the city center.
+      let pinLat = form.mapLat;
+      let pinLng = form.mapLng;
+      if (pinLat == null && form.mapUrl.trim()) {
+        const resolved = await fetchResolvedCoords(form.mapUrl.trim());
+        if ("lat" in resolved) {
+          pinLat = resolved.lat;
+          pinLng = resolved.lng;
+          setForm((prev) => ({
+            ...prev,
+            mapLat: resolved.lat,
+            mapLng: resolved.lng,
+          }));
+          setMapUrlStatus("ok");
+        } else {
+          // Don't save a listing whose pin would silently be wrong.
+          setMapUrlStatus("error");
+          setMapUrlMessage(resolved.error);
+          setError(resolved.error);
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      // Prefer the exact pin pasted from Google Maps. Only fall back to the
+      // city center when no precise pin was provided (kept for backwards
+      // compatibility — those pins are flagged imprecise so the map jitters
+      // them instead of stacking every unit on one point).
+      const hasPreciseCoords = pinLat != null && pinLng != null;
+      const lat = hasPreciseCoords ? pinLat : (city?.center?.[0] ?? null);
+      const lng = hasPreciseCoords ? pinLng : (city?.center?.[1] ?? null);
       const isRent = form.type === LISTING_TYPES.RENT;
 
       const cleanContacts = contacts
@@ -662,6 +928,10 @@ export function NewListingForm({
           district: district?.name_ar ?? "",
           lat,
           lng,
+          preciseLocation: hasPreciseCoords,
+          ...(hasPreciseCoords && form.mapUrl.trim()
+            ? { mapUrl: form.mapUrl.trim() }
+            : {}),
         },
         area: Number(form.area),
         areaUnit: "sqm",
@@ -669,8 +939,18 @@ export function NewListingForm({
         amenities: buildAmenities(),
         contacts: cleanContacts,
         details,
+        ...buildSourceFields(),
+        publishedOn: buildPublishedOn(),
         status: form.status,
       };
+
+      // Confidential owner block (goes to the protected private subdoc).
+      const ownerBlock: Record<string, string> = {};
+      if (form.ownerName.trim()) ownerBlock.name = form.ownerName.trim();
+      if (form.ownerPhone.trim()) ownerBlock.phone = form.ownerPhone.trim();
+      if (form.ownerNationalId.trim())
+        ownerBlock.nationalId = form.ownerNationalId.trim();
+      if (form.ownerNote.trim()) ownerBlock.note = form.ownerNote.trim();
 
       if (isEdit && listingId) {
         const updatePayload: Record<string, unknown> = {
@@ -684,10 +964,67 @@ export function NewListingForm({
         ) {
           updatePayload.publishedAt = serverTimestamp();
         }
-        await updateDoc(
-          doc(db, `companies/${companyId}/listings/${listingId}`),
-          updatePayload,
-        );
+
+        // New-style listing whose private subdoc we can read: deed/owner (and
+        // restricted contacts) are saved to the subdoc, never the main doc.
+        if (privateState === "readable") {
+          const deedBlock: Record<string, string> = {};
+          for (const key of PRIVATE_DEED_FORM_KEYS) {
+            delete (updatePayload.details as Record<string, unknown>)[key];
+            const value = form[key].trim();
+            if (value) deedBlock[key] = value;
+          }
+
+          let mainContacts = cleanContacts;
+          let restrictedContacts: typeof cleanContacts = [];
+          if (privateHasRestricted && cleanContacts.some((c) => c.phone)) {
+            restrictedContacts = cleanContacts;
+            mainContacts = cleanContacts.map((c) => ({
+              name: c.name,
+              role: c.role,
+              phone: "",
+              note: c.note,
+            }));
+          }
+          updatePayload.contacts = mainContacts;
+
+          await updateDoc(
+            doc(db, `companies/${companyId}/listings/${listingId}`),
+            updatePayload,
+          );
+          // Full replace: we hydrated the whole subdoc, so we own its state.
+          await setDoc(
+            doc(
+              db,
+              `companies/${companyId}/listings/${listingId}/private/data`,
+            ),
+            {
+              ...(Object.keys(ownerBlock).length > 0
+                ? { owner: ownerBlock }
+                : {}),
+              ...(Object.keys(deedBlock).length > 0 ? { deed: deedBlock } : {}),
+              ...(restrictedContacts.length > 0
+                ? { restrictedContacts }
+                : {}),
+              updatedAt: serverTimestamp(),
+              updatedBy: userId,
+            },
+          );
+        } else {
+          // Legacy listing ("none") or private data not visible ("denied"):
+          // keep today's behavior and never touch the subdoc. When denied,
+          // also make sure no deed data can land on the member-readable doc.
+          if (privateState === "denied") {
+            for (const key of PRIVATE_DEED_FORM_KEYS) {
+              delete (updatePayload.details as Record<string, unknown>)[key];
+            }
+          }
+          await updateDoc(
+            doc(db, `companies/${companyId}/listings/${listingId}`),
+            updatePayload,
+          );
+        }
+
         router.push(ROUTES.DASHBOARD_LISTING_DETAIL(listingId));
         router.refresh();
         return;
@@ -695,10 +1032,17 @@ export function NewListingForm({
 
       // Creation goes through the API so the per-plan listing quota is
       // enforced server-side (firestore rules deny direct client creates).
+      // Deed fields inside `details` are lifted into the protected subdoc by
+      // the server; the owner block is sent explicitly.
       const res = await fetch(`/api/companies/${companyId}/listings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(corePayload),
+        body: JSON.stringify({
+          ...corePayload,
+          ...(Object.keys(ownerBlock).length > 0
+            ? { privateData: { owner: ownerBlock } }
+            : {}),
+        }),
       });
       if (!res.ok) {
         const payload = (await res.json().catch(() => ({}))) as {
@@ -718,6 +1062,10 @@ export function NewListingForm({
       setSubmitting(false);
     }
   }
+
+  // Owner/deed inputs are hidden when editing a listing whose protected data
+  // the viewer isn't allowed to read (edit rights without view rights).
+  const showConfidential = !isEdit || privateState !== "denied";
 
   const textareaClasses = cn(
     "w-full rounded-lg border border-input bg-card px-3.5 py-2.5 text-sm text-foreground",
@@ -971,7 +1319,7 @@ export function NewListingForm({
         {/* Location — cascading Saudi selects */}
         <AccordionSection
           title="الموقع الجغرافي"
-          description="حدّد الدولة ثم المنطقة فالمدينة فالحي — تُحدد إحداثيات العقار تلقائيًا على الخريطة."
+          description="حدّد المنطقة والمدينة والحي، والصق رابط خرائط Google لتحديد موقع العقار بدقة على الخريطة."
           defaultOpen
         >
           <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">
@@ -1030,6 +1378,37 @@ export function NewListingForm({
                   </option>
                 ))}
               </Select>
+            </Field>
+            <Field
+              label="موقع العقار على الخريطة"
+              hint="الصق رابط الموقع من خرائط Google لتحديد الدبوس بدقة على الخريطة"
+              className="md:col-span-2"
+            >
+              <Input
+                value={form.mapUrl}
+                onChange={(e) => onMapUrlChange(e.target.value)}
+                onBlur={resolveMapUrl}
+                placeholder="https://maps.app.goo.gl/…"
+                dir="ltr"
+                inputMode="url"
+              />
+              {mapUrlStatus === "resolving" && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  جارٍ تحديد الموقع…
+                </p>
+              )}
+              {mapUrlStatus === "ok" &&
+                form.mapLat != null &&
+                form.mapLng != null && (
+                  <p className="mt-1.5 text-xs text-emerald-600" dir="ltr">
+                    ✓ {form.mapLat.toFixed(5)}, {form.mapLng.toFixed(5)}
+                  </p>
+                )}
+              {mapUrlStatus === "error" && mapUrlMessage && (
+                <p className="mt-1.5 text-xs text-destructive">
+                  {mapUrlMessage}
+                </p>
+              )}
             </Field>
             <Field label={t("listings.initialStatus")} className="md:col-span-2">
               <Select
@@ -1128,6 +1507,51 @@ export function NewListingForm({
           title="المدخلات الاختيارية"
           description="بيانات الصك والعقار الإضافية"
         >
+          {showConfidential && (
+            <div className="mb-5 rounded-lg border border-amber-300/50 bg-amber-50/50 p-4">
+              <p className="mb-3 text-sm font-semibold text-foreground">
+                بيانات المالك{" "}
+                <span className="rounded bg-amber-200/70 px-1.5 py-0.5 text-xs font-medium text-amber-900">
+                  سرية — تظهر فقط للمصرّح لهم
+                </span>
+              </p>
+              <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">
+                <Field label="اسم المالك">
+                  <Input
+                    value={form.ownerName}
+                    onChange={(e) =>
+                      set("ownerName")(sanitizeAlnum(e.target.value))
+                    }
+                  />
+                </Field>
+                <Field label="جوال المالك">
+                  <Input
+                    value={form.ownerPhone}
+                    onChange={(e) =>
+                      set("ownerPhone")(sanitizePhone(e.target.value))
+                    }
+                    dir="ltr"
+                    inputMode="tel"
+                  />
+                </Field>
+                <Field label="هوية المالك (اختياري)">
+                  <Input
+                    value={form.ownerNationalId}
+                    onChange={(e) =>
+                      set("ownerNationalId")(sanitizeAlnum(e.target.value))
+                    }
+                    inputMode="numeric"
+                  />
+                </Field>
+                <Field label="ملاحظة عن الملكية">
+                  <Input
+                    value={form.ownerNote}
+                    onChange={(e) => set("ownerNote")(e.target.value)}
+                  />
+                </Field>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">
             <Field label="نوع الإستخدام">
               <Select
@@ -1142,12 +1566,14 @@ export function NewListingForm({
                 ))}
               </Select>
             </Field>
-            <Field label="رقم العقار">
-              <Input
-                value={form.propertyNumber}
-                onChange={(e) => set("propertyNumber")(e.target.value)}
-              />
-            </Field>
+            {showConfidential && (
+              <Field label="رقم العقار">
+                <Input
+                  value={form.propertyNumber}
+                  onChange={(e) => set("propertyNumber")(e.target.value)}
+                />
+              </Field>
+            )}
             <Field label="اسم العقار باللغة الإنجليزية" className="md:col-span-2">
               <Input
                 value={form.titleEn}
@@ -1156,25 +1582,29 @@ export function NewListingForm({
                 placeholder="Property name in English"
               />
             </Field>
-            <Field label="نوع صك الملكية">
-              <Input
-                value={form.deedType}
-                onChange={(e) => set("deedType")(e.target.value)}
-              />
-            </Field>
-            <Field label="رقم صك الملكية">
-              <Input
-                value={form.deedNumber}
-                onChange={(e) => set("deedNumber")(e.target.value)}
-              />
-            </Field>
-            <Field label="تاريخ إصدار صك الملكية (ميلادي)">
-              <Input
-                type="date"
-                value={form.deedIssueDate}
-                onChange={(e) => set("deedIssueDate")(e.target.value)}
-              />
-            </Field>
+            {showConfidential && (
+              <>
+                <Field label="نوع صك الملكية">
+                  <Input
+                    value={form.deedType}
+                    onChange={(e) => set("deedType")(e.target.value)}
+                  />
+                </Field>
+                <Field label="رقم صك الملكية">
+                  <Input
+                    value={form.deedNumber}
+                    onChange={(e) => set("deedNumber")(e.target.value)}
+                  />
+                </Field>
+                <Field label="تاريخ إصدار صك الملكية (ميلادي)">
+                  <Input
+                    type="date"
+                    value={form.deedIssueDate}
+                    onChange={(e) => set("deedIssueDate")(e.target.value)}
+                  />
+                </Field>
+              </>
+            )}
             <Field label="مساحة العقار (م²)">
               <Input
                 value={form.propertyArea}
@@ -1194,10 +1624,16 @@ export function NewListingForm({
                 onChange={(e) => set("additionalNumber2")(e.target.value)}
               />
             </Field>
-            <Field label="رقم قطعة العقار">
+            <Field label="رقم قطعة العقار (اختياري)">
               <Input
                 value={form.parcelNumber}
                 onChange={(e) => set("parcelNumber")(e.target.value)}
+              />
+            </Field>
+            <Field label="رقم المخطط (اختياري)">
+              <Input
+                value={form.planNumber}
+                onChange={(e) => set("planNumber")(e.target.value)}
               />
             </Field>
             <Field label="رقم بلوك العقار">
@@ -1274,13 +1710,15 @@ export function NewListingForm({
                 onChange={(e) => set("buildingNumber")(e.target.value)}
               />
             </Field>
-            <Field label="صك الملكية (مرجع)">
-              <Input
-                value={form.deedReference}
-                onChange={(e) => set("deedReference")(e.target.value)}
-                placeholder="رقم أو مرجع الصك"
-              />
-            </Field>
+            {showConfidential && (
+              <Field label="صك الملكية (مرجع)">
+                <Input
+                  value={form.deedReference}
+                  onChange={(e) => set("deedReference")(e.target.value)}
+                  placeholder="رقم أو مرجع الصك"
+                />
+              </Field>
+            )}
             <Field label={t("listings.description")} className="md:col-span-2">
               <textarea
                 value={form.description}
@@ -1289,6 +1727,93 @@ export function NewListingForm({
                 className={textareaClasses}
               />
             </Field>
+          </div>
+        </AccordionSection>
+
+        {/* Listing source (note 8) — internal classification */}
+        <AccordionSection
+          title="مصدر العقار"
+          description="هل العقار مباشر من المالك أم عبر وسيط؟"
+        >
+          <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">
+            <Field label="المصدر">
+              <Select
+                value={form.source}
+                onChange={(e) =>
+                  set("source")(e.target.value as ListingSource)
+                }
+              >
+                <option value="owner">مباشر من المالك</option>
+                <option value="broker">عبر وسيط / مكتب</option>
+              </Select>
+            </Field>
+            {form.source === "broker" && (
+              <>
+                <Field label="اسم المكتب / الوكالة">
+                  <Input
+                    value={form.brokerAgencyName}
+                    onChange={(e) =>
+                      set("brokerAgencyName")(sanitizeAlnum(e.target.value))
+                    }
+                  />
+                </Field>
+                <Field label="اسم الوسيط">
+                  <Input
+                    value={form.brokerName}
+                    onChange={(e) =>
+                      set("brokerName")(sanitizeAlnum(e.target.value))
+                    }
+                  />
+                </Field>
+                <Field label="جوال الوسيط">
+                  <Input
+                    value={form.brokerPhone}
+                    onChange={(e) =>
+                      set("brokerPhone")(sanitizePhone(e.target.value))
+                    }
+                    dir="ltr"
+                    inputMode="tel"
+                  />
+                </Field>
+              </>
+            )}
+          </div>
+        </AccordionSection>
+
+        {/* Advertising publish checklist (note 9) */}
+        <AccordionSection
+          title="حالة النشر الإعلاني"
+          description="أين تم نشر إعلان هذا العقار؟"
+        >
+          <div className="flex flex-wrap gap-2">
+            {PUBLISH_PLATFORMS.map(({ key, label }) => {
+              const field = (
+                {
+                  aqar: "pubAqar",
+                  instagram: "pubInstagram",
+                  x: "pubX",
+                  facebook: "pubFacebook",
+                  snapchat: "pubSnapchat",
+                } as const
+              )[key];
+              const active = form[field];
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => set(field)(!active)}
+                  className={cn(
+                    "rounded-full border px-4 py-1.5 text-sm font-medium transition",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground hover:border-primary/40",
+                  )}
+                >
+                  {active ? "✓ " : ""}
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </AccordionSection>
       </Accordion>

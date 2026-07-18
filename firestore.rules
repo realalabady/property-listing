@@ -43,6 +43,23 @@ service cloud.firestore {
         && perm in claims().permissions;
     }
 
+    // True when the company hides leads until they are assigned. Defaults to
+    // open ("all") when the settings doc or field is missing. Mirrors
+    // getLeadsVisibility() in src/lib/api/company-leads.ts.
+    function leadsRestricted(cid) {
+      return exists(/databases/$(database)/documents/companies/$(cid)/settings/default)
+        && get(/databases/$(database)/documents/companies/$(cid)/settings/default)
+             .data.get('visibility', {}).get('leads', 'all') == 'assigned_only';
+    }
+
+    // Users who always see the whole lead pool regardless of the setting:
+    // company owners/admins and holders of assign_leads (they distribute it).
+    function isLeadPoolPrivileged() {
+      return role() == 'company_owner'
+             || role() == 'company_admin'
+             || hasPermission('assign_leads');
+    }
+
     function isListingOwnerOrAssignee() {
       return resource.data.createdBy == uid()
              || resource.data.assignedEmployeeId == uid();
@@ -142,6 +159,41 @@ service cloud.firestore {
                           ));
         allow delete: if isSuperAdmin()
                       || (isCompanyMember(cid) && hasPermission('delete_listing'));
+
+        // Independently rentable units inside a building (note 6). Internal
+        // only — the public marketplace reads the denormalized `unitsSummary`
+        // on the parent listing instead, so tenant data never leaves the
+        // company. Writes require the same rights as editing the listing.
+        match /units/{unitId} {
+          allow read: if isSuperAdmin() || isCompanyMember(cid);
+          allow write: if isSuperAdmin()
+                       || (isCompanyMember(cid)
+                           && (
+                             hasPermission('edit_listing')
+                             || (hasPermission('edit_own_listing')
+                                 && get(/databases/$(database)/documents/companies/$(cid)/listings/$(lid)).data.createdBy == uid())
+                           ));
+        }
+
+        // Protected owner/deed data. Field-level privacy is impossible on the
+        // parent doc (rules allow/deny whole documents), so confidential data
+        // lives in this subdoc with its own gate: super admin, the listing
+        // creator, or members granted `view_owner_info` (assignable through
+        // permission groups). Writes additionally require edit rights.
+        match /private/{docId} {
+          allow read: if isSuperAdmin()
+                      || (isCompanyMember(cid)
+                          && (
+                            hasPermission('view_owner_info')
+                            || get(/databases/$(database)/documents/companies/$(cid)/listings/$(lid)).data.createdBy == uid()
+                          ));
+          allow write: if isSuperAdmin()
+                       || (isCompanyMember(cid)
+                           && (
+                             hasPermission('edit_listing')
+                             || get(/databases/$(database)/documents/companies/$(cid)/listings/$(lid)).data.createdBy == uid()
+                           ));
+        }
       }
 
       // Leads — created ONLY via the Admin API (/api/companies/{cid}/leads),
@@ -152,8 +204,10 @@ service cloud.firestore {
         allow read: if isSuperAdmin()
                     || (isCompanyMember(cid)
                         && (
-                          hasPermission('manage_leads')
-                          || (hasPermission('view_own_leads') && resource.data.assignedTo == uid())
+                          isLeadPoolPrivileged()
+                          || (hasPermission('manage_leads') && !leadsRestricted(cid))
+                          || ((hasPermission('view_own_leads') || hasPermission('manage_leads'))
+                              && resource.data.assignedTo == uid())
                         ));
         allow create: if false;
         allow update: if isSuperAdmin()
@@ -163,6 +217,25 @@ service cloud.firestore {
                           && request.resource.data.createdAt == resource.data.createdAt);
         allow delete: if isSuperAdmin()
                       || (isCompanyMember(cid) && hasPermission('manage_leads'));
+      }
+
+      // Pipeline stages — Kanban column definitions. Readable by any company
+      // member (the board needs them); mutations require manage_pipeline.
+      // Stage CRUD normally flows through /api/companies/{cid}/pipeline/stages
+      // (which also seeds defaults), but direct writes stay safe because the
+      // payload shape and companyId are validated here.
+      match /pipeline_stages/{stageId} {
+        allow read: if isSuperAdmin() || isCompanyMember(cid);
+        allow create, update: if isSuperAdmin()
+                              || (isCompanyMember(cid)
+                                  && hasPermission('manage_pipeline')
+                                  && request.resource.data.companyId == cid
+                                  && request.resource.data.key is string
+                                  && request.resource.data.labelEn is string
+                                  && request.resource.data.labelAr is string
+                                  && request.resource.data.order is number);
+        allow delete: if isSuperAdmin()
+                      || (isCompanyMember(cid) && hasPermission('manage_pipeline'));
       }
 
       // Tasks — internal only

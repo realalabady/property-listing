@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { MapPin, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { ListingUnitsManager } from "./ListingUnitsManager";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   serverTimestamp,
   updateDoc,
@@ -63,6 +66,12 @@ interface ListingDetail {
   amenities: Record<string, unknown>;
   details: Record<string, unknown>;
   contacts: Record<string, unknown>[];
+  hasPrivateData: boolean;
+  source: "owner" | "broker";
+  brokerInfo: Record<string, unknown> | null;
+  publishedOn: Record<string, boolean>;
+  unitsSummary: { total: number; available: number } | null;
+  publicUnitsCount: number;
   analytics: Record<string, unknown>;
   assignedEmployeeName?: string;
   media: MediaItem[];
@@ -153,6 +162,35 @@ function mapDetail(data: DocumentData): ListingDetail {
           (c) => typeof c === "object" && c !== null,
         ) as Record<string, unknown>[])
       : [],
+    hasPrivateData: data.hasPrivateData === true,
+    source: data.source === "broker" ? "broker" : "owner",
+    brokerInfo:
+      typeof data.brokerInfo === "object" && data.brokerInfo !== null
+        ? (data.brokerInfo as Record<string, unknown>)
+        : null,
+    publishedOn:
+      typeof data.publishedOn === "object" && data.publishedOn !== null
+        ? (data.publishedOn as Record<string, boolean>)
+        : {},
+    unitsSummary:
+      typeof data.unitsSummary === "object" && data.unitsSummary !== null
+        ? {
+            total:
+              typeof (data.unitsSummary as Record<string, unknown>).total ===
+              "number"
+                ? ((data.unitsSummary as Record<string, number>).total as number)
+                : 0,
+            available:
+              typeof (data.unitsSummary as Record<string, unknown>)
+                .available === "number"
+                ? ((data.unitsSummary as Record<string, number>)
+                    .available as number)
+                : 0,
+          }
+        : null,
+    publicUnitsCount: Array.isArray(data.publicUnits)
+      ? data.publicUnits.length
+      : 0,
     analytics:
       typeof data.analytics === "object" && data.analytics !== null
         ? (data.analytics as Record<string, unknown>)
@@ -192,6 +230,7 @@ const DEED_FIELDS: { key: string; label: string }[] = [
   { key: "additionalNumber1", label: t("listings.deedAdditionalNumber1") },
   { key: "additionalNumber2", label: t("listings.deedAdditionalNumber2") },
   { key: "parcelNumber", label: t("listings.deedParcelNumber") },
+  { key: "planNumber", label: t("listings.deedPlanNumber") },
   { key: "blockNumber", label: t("listings.deedBlockNumber") },
   { key: "buildDate", label: t("listings.deedBuildDate") },
   { key: "floorsCount", label: t("listings.deedFloorsCount") },
@@ -215,6 +254,14 @@ const DEED_FIELDS: { key: string; label: string }[] = [
   { key: "deedReference", label: t("listings.deedDeedReference") },
   { key: "paymentCycle", label: t("listings.deedPaymentCycle") },
   { key: "deposit", label: t("listings.deedDeposit") },
+];
+
+const PUBLISH_PLATFORMS: Array<{ key: string; label: string }> = [
+  { key: "aqar", label: "منصة عقار" },
+  { key: "instagram", label: "انستقرام" },
+  { key: "x", label: "إكس (تويتر)" },
+  { key: "facebook", label: "فيسبوك" },
+  { key: "snapchat", label: "سناب شات" },
 ];
 
 function rentPeriodLabel(period?: string): string | undefined {
@@ -279,6 +326,68 @@ export function DashboardListingDetailClient({
     return () => unsub();
   }, [companyId, listingId, authReady]);
 
+  // Protected owner/deed subdoc: readable only by super admins, the listing
+  // creator, or members with `view_owner_info` (firestore rules). A denied
+  // read just means the viewer isn't authorized — render nothing, no error.
+  const [privateData, setPrivateData] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const hasPrivate = listing?.hasPrivateData === true;
+  useEffect(() => {
+    if (!authReady || !hasPrivate) {
+      setPrivateData(null);
+      return;
+    }
+    let mounted = true;
+    (async () => {
+      try {
+        const snap = await getDoc(
+          doc(
+            getFirebaseDb(),
+            `companies/${companyId}/listings/${listingId}/private/data`,
+          ),
+        );
+        if (mounted && snap.exists()) {
+          setPrivateData(snap.data() as Record<string, unknown>);
+        }
+      } catch {
+        // Permission denied — viewer isn't allowed to see owner/deed data.
+        if (mounted) setPrivateData(null);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [authReady, hasPrivate, companyId, listingId]);
+
+  const privateOwner = useMemo(() => {
+    const owner =
+      privateData &&
+      typeof privateData.owner === "object" &&
+      privateData.owner !== null
+        ? (privateData.owner as Record<string, unknown>)
+        : {};
+    const rows: { label: string; value: string }[] = [];
+    const push = (label: string, value: unknown) => {
+      if (typeof value === "string" && value.trim())
+        rows.push({ label, value });
+    };
+    push(t("listings.ownerName"), owner.name);
+    push(t("listings.ownerPhone"), owner.phone);
+    push(t("listings.ownerNationalId"), owner.nationalId);
+    push(t("listings.ownerNote"), owner.note);
+    return rows;
+  }, [privateData]);
+
+  const privateContacts = useMemo(() => {
+    return privateData && Array.isArray(privateData.restrictedContacts)
+      ? (privateData.restrictedContacts.filter(
+          (c) => typeof c === "object" && c !== null,
+        ) as Record<string, unknown>[])
+      : [];
+  }, [privateData]);
+
   const media = listing?.media ?? [];
   const selected = media[activeMedia] ?? media[0];
 
@@ -294,12 +403,112 @@ export function DashboardListingDetailClient({
 
   const deedEntries = useMemo(() => {
     if (!listing) return [] as { label: string; value: string }[];
+    // New-style listings keep deed fields in the protected subdoc; legacy
+    // listings keep them in `details`. Private values win when both exist.
+    const privateDeed =
+      privateData &&
+      typeof privateData.deed === "object" &&
+      privateData.deed !== null
+        ? (privateData.deed as Record<string, unknown>)
+        : {};
     return DEED_FIELDS.map(({ key, label }) => {
-      const raw = listing.details[key];
+      const raw = privateDeed[key] ?? listing.details[key];
       if (raw === undefined || raw === null || raw === "") return null;
       return { label, value: String(raw) };
     }).filter((x): x is { label: string; value: string } => x !== null);
+  }, [listing, privateData]);
+
+  const mapsHref = useMemo(() => {
+    const lat = num(listing?.location.lat);
+    const lng = num(listing?.location.lng);
+    if (lat === undefined || lng === undefined) return null;
+    return `https://www.google.com/maps?q=${lat},${lng}`;
   }, [listing]);
+
+  /**
+   * WhatsApp offer (note 7): builds the whole property pitch so the employee
+   * never has to copy/paste it by hand. The caretaker phone is included ONLY
+   * when this viewer is actually allowed to see it (restricted phones live in
+   * the private subdoc, so `privateContacts` is empty when they're not).
+   * The public link is only added once the listing is published.
+   */
+  const whatsappHref = useMemo(() => {
+    if (!listing) return null;
+
+    const contacts =
+      privateContacts.length > 0 ? privateContacts : listing.contacts;
+    const caretaker = contacts.find((c) => str(c.phone));
+
+    const lines: string[] = [];
+    lines.push(`*${listing.title}*`);
+    if (listing.description) lines.push(listing.description);
+
+    const specs: string[] = [];
+    const price = num(listing.price);
+    if (price !== undefined) {
+      const period = rentPeriodLabel(listing.rentPeriod);
+      specs.push(
+        `${t("listings.price")}: ${price.toLocaleString("en-US")} ${t("units.sar")}${
+          period ? ` / ${period}` : ""
+        }`,
+      );
+    }
+    const city = str(listing.location.city);
+    const district = str(listing.location.district);
+    if (city || district) {
+      specs.push(
+        `${t("common.city")}: ${[city, district].filter(Boolean).join(" - ")}`,
+      );
+    }
+    if (listing.area) specs.push(`${t("listings.areaSqm")}: ${listing.area}`);
+    if (listing.bedrooms != null)
+      specs.push(`${t("units.bedrooms")}: ${listing.bedrooms}`);
+    if (listing.bathrooms != null)
+      specs.push(`${t("units.bathrooms")}: ${listing.bathrooms}`);
+    if (listing.unitsSummary && listing.unitsSummary.total > 0) {
+      specs.push(
+        t("units.availableOfTotal", {
+          available: listing.unitsSummary.available,
+          total: listing.unitsSummary.total,
+        }),
+      );
+    }
+    if (specs.length > 0) lines.push("", ...specs);
+
+    if (mapsHref) lines.push("", `${t("listings.openInGoogleMaps")}: ${mapsHref}`);
+    if (caretaker) {
+      lines.push(
+        `${str(caretaker.role) || t("listings.sectionContacts")}: ${str(caretaker.phone)}`,
+      );
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+    if (appUrl && listing.status === LISTING_STATUSES.PUBLISHED) {
+      lines.push("", `${appUrl}/properties/${companyId}_${listingId}`);
+    }
+
+    return `https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
+  }, [listing, privateContacts, mapsHref, companyId, listingId]);
+
+  // Advertising checklist toggle (note 9). Rules-enforced by the listing's
+  // edit permission; UI is only shown to editors.
+  async function togglePlatform(key: string, next: boolean) {
+    try {
+      await updateDoc(
+        doc(getFirebaseDb(), `companies/${companyId}/listings/${listingId}`),
+        {
+          [`publishedOn.${key}`]: next,
+          updatedAt: serverTimestamp(),
+        },
+      );
+    } catch (toggleError) {
+      setError(
+        toggleError instanceof Error
+          ? toggleError.message
+          : t("listings.statusUpdateFailed"),
+      );
+    }
+  }
 
   async function setStatus(status: ListingStatus) {
     setBusy(true);
@@ -648,16 +857,19 @@ export function DashboardListingDetailClient({
 
               {canEdit && selected && (
                 <div className="flex flex-wrap gap-2">
-                  {!selected.isCover && selected.path && (
-                    <button
-                      type="button"
-                      disabled={busy || uploadBusy}
-                      onClick={() => setCover(selected.path)}
-                      className="rounded-md border border-border px-2 py-1 text-xs hover:bg-secondary disabled:opacity-50"
-                    >
-                      {t("listings.setCover")}
-                    </button>
-                  )}
+                  {/* Only images can be a cover (rendered in <img> on cards). */}
+                  {!selected.isCover &&
+                    selected.path &&
+                    selected.type !== "video" && (
+                      <button
+                        type="button"
+                        disabled={busy || uploadBusy}
+                        onClick={() => setCover(selected.path)}
+                        className="rounded-md border border-border px-2 py-1 text-xs hover:bg-secondary disabled:opacity-50"
+                      >
+                        {t("listings.setCover")}
+                      </button>
+                    )}
                   {selected.path && (
                     <button
                       type="button"
@@ -768,7 +980,114 @@ export function DashboardListingDetailClient({
             },
           ]}
         />
+        {mapsHref && (
+          <a
+            href={mapsHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-primary transition hover:bg-muted"
+          >
+            <MapPin className="h-4 w-4" />
+            {t("listings.openInGoogleMaps")}
+          </a>
+        )}
       </Section>
+
+      {/* Listing source (note 8) */}
+      <Section title={t("listings.sectionSource")}>
+        <p className="text-sm text-foreground">
+          {listing.source === "broker"
+            ? t("listings.sourceBroker")
+            : t("listings.sourceOwner")}
+        </p>
+        {listing.source === "broker" && listing.brokerInfo && (
+          <div className="mt-3">
+            <InfoGrid
+              rows={[
+                {
+                  label: t("listings.brokerAgency"),
+                  value: str(listing.brokerInfo.agencyName),
+                },
+                {
+                  label: t("listings.brokerName"),
+                  value: str(listing.brokerInfo.brokerName),
+                },
+                {
+                  label: t("listings.brokerPhone"),
+                  value: str(listing.brokerInfo.phone),
+                },
+              ]}
+            />
+          </div>
+        )}
+      </Section>
+
+      {/* Advertising publish status (note 9) */}
+      <Section title={t("listings.sectionPublishStatus")}>
+        <div className="flex flex-wrap gap-2">
+          {PUBLISH_PLATFORMS.map(({ key, label }) => {
+            const active = listing.publishedOn[key] === true;
+            const chip = (
+              <>
+                {active ? "✓ " : "✗ "}
+                {label}
+              </>
+            );
+            const cls = cn(
+              "rounded-full border px-4 py-1.5 text-sm font-medium transition",
+              active
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-card text-muted-foreground",
+            );
+            return canEdit ? (
+              <button
+                key={key}
+                type="button"
+                onClick={() => togglePlatform(key, !active)}
+                className={cn(cls, "hover:border-primary/50")}
+              >
+                {chip}
+              </button>
+            ) : (
+              <span key={key} className={cls}>
+                {chip}
+              </span>
+            );
+          })}
+        </div>
+        {canEdit && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t("listings.publishStatusHint")}
+          </p>
+        )}
+      </Section>
+
+      {/* Independently rentable units (note 6) */}
+      <ListingUnitsManager
+        companyId={companyId}
+        listingId={listingId}
+        canEdit={canEdit}
+        defaultType={listing.type === LISTING_TYPES.SALE ? "sale" : "rent"}
+        publicUnitsCount={listing.publicUnitsCount}
+      />
+
+      {/* WhatsApp offer (note 7) */}
+      {whatsappHref && (
+        <Section title={t("listings.sectionShare")}>
+          <a
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+          >
+            <Send className="h-4 w-4" />
+            {t("listings.sendWhatsappOffer")}
+          </a>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t("listings.whatsappOfferHint")}
+          </p>
+        </Section>
+      )}
 
       {/* Amenities */}
       {amenityEntries.length > 0 && (
@@ -787,6 +1106,14 @@ export function DashboardListingDetailClient({
         </Section>
       )}
 
+      {/* Confidential owner info (visible only when the private subdoc is
+          readable: super admin, listing creator, or view_owner_info) */}
+      {privateOwner.length > 0 && (
+        <Section title={t("listings.sectionOwner")}>
+          <InfoGrid rows={privateOwner} />
+        </Section>
+      )}
+
       {/* Deed / registry details */}
       {deedEntries.length > 0 && (
         <Section title={t("listings.sectionDeed")}>
@@ -794,11 +1121,17 @@ export function DashboardListingDetailClient({
         </Section>
       )}
 
-      {/* Contacts */}
-      {listing.contacts.length > 0 && (
+      {/* Contacts — when phone visibility is restricted, the full contacts
+          (with phones) live in the private subdoc; viewers who can read it
+          see those, everyone else sees the phone-less projection. */}
+      {(privateContacts.length > 0 ? privateContacts : listing.contacts)
+        .length > 0 && (
         <Section title={t("listings.sectionContacts")}>
           <div className="space-y-3">
-            {listing.contacts.map((c, i) => (
+            {(privateContacts.length > 0
+              ? privateContacts
+              : listing.contacts
+            ).map((c, i) => (
               <div
                 key={i}
                 className="rounded-md border border-border bg-background p-3 text-sm"

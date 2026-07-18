@@ -8,6 +8,7 @@ import {
   resolveListingCover,
   type ListingMediaInput,
 } from "@/lib/api/company-listings";
+import { assertActiveMember } from "@/lib/api/guards";
 import { adminDb, adminStorage } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -124,6 +125,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 
+    const membership = await assertActiveMember(user, companyId);
+    if (!membership.ok) {
+      return NextResponse.json(
+        { error: membership.error },
+        { status: membership.status },
+      );
+    }
+
     const body = (await req.json()) as UpsertMediaBody;
     const currentMedia = parseExistingMedia(listingData, companyId, listingId);
 
@@ -206,6 +215,14 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 
+    const membership = await assertActiveMember(user, companyId);
+    if (!membership.ok) {
+      return NextResponse.json(
+        { error: membership.error },
+        { status: membership.status },
+      );
+    }
+
     const body = (await req.json()) as ReplaceMediaBody;
     const media = parseListingMediaArray(body.media, companyId, listingId);
     if (!media) {
@@ -269,6 +286,14 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
     const listingData = listingSnap.data() as Record<string, unknown>;
     if (!canEditCompanyListing(user, companyId, listingData)) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    }
+
+    const membership = await assertActiveMember(user, companyId);
+    if (!membership.ok) {
+      return NextResponse.json(
+        { error: membership.error },
+        { status: membership.status },
+      );
     }
 
     const body = (await req.json()) as DeleteMediaBody;

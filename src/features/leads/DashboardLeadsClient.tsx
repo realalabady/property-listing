@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { RotateCw, Search } from "lucide-react";
 import {
   LEAD_STATUSES,
   LEAD_STATUS_LABELS,
@@ -222,9 +223,6 @@ export function DashboardLeadsClient({
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(
     new Set(),
   );
-  const [bulkStatus, setBulkStatus] = useState<LeadStatus>(
-    LEAD_STATUSES.CONTACTED,
-  );
   const [bulkAssignedTo, setBulkAssignedTo] = useState<string>("");
   const [activityLead, setActivityLead] = useState<LeadRow | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
@@ -413,49 +411,6 @@ export function DashboardLeadsClient({
     return { total, fresh, qualified, deals };
   }, [leads]);
 
-  async function updateLeadStatus(leadId: string, status: LeadStatus) {
-    if (!canManageLeads) return;
-
-    setBusyKey(`status:${leadId}`);
-    setError(null);
-    setNotice(null);
-
-    try {
-      const response = await fetch(`/api/companies/${companyId}/leads/bulk`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "status",
-          status,
-          leadIds: [leadId],
-        }),
-      });
-
-      const payload = await parseResponse(response);
-      if (!response.ok) {
-        throw new Error(
-          getErrorMessage(payload, t("leadsDash.statusUpdateFailed")),
-        );
-      }
-
-      await loadLeads();
-      if (activityLead?.id === leadId) {
-        await loadLeadActivity(leadId);
-      }
-      setNotice(t("leadsDash.statusUpdated"));
-    } catch (updateError) {
-      const message =
-        updateError instanceof Error
-          ? updateError.message
-          : t("leadsDash.statusUpdateFailed");
-      setError(message);
-    } finally {
-      setBusyKey(null);
-    }
-  }
-
   async function assignLead(leadId: string, assignedTo: string | null) {
     if (!canAssignLeads) return;
 
@@ -495,52 +450,6 @@ export function DashboardLeadsClient({
       );
     } finally {
       setBusyKey(null);
-    }
-  }
-
-  async function applyBulkStatus() {
-    if (!canManageLeads || selectedLeadIds.size === 0) return;
-
-    setBulkBusy(true);
-    setError(null);
-    setNotice(null);
-
-    try {
-      const response = await fetch(`/api/companies/${companyId}/leads/bulk`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "status",
-          status: bulkStatus,
-          leadIds: Array.from(selectedLeadIds),
-        }),
-      });
-
-      const payload = await parseResponse(response);
-      if (!response.ok) {
-        throw new Error(
-          getErrorMessage(payload, t("leadsDash.bulkStatusFailed")),
-        );
-      }
-
-      const updatedCount =
-        typeof payload.updatedCount === "number"
-          ? payload.updatedCount
-          : selectedLeadIds.size;
-
-      await loadLeads();
-      setSelectedLeadIds(new Set());
-      setNotice(t("leadsDash.bulkStatusDone", { n: updatedCount }));
-    } catch (bulkError) {
-      setError(
-        bulkError instanceof Error
-          ? bulkError.message
-          : t("leadsDash.bulkStatusFailed"),
-      );
-    } finally {
-      setBulkBusy(false);
     }
   }
 
@@ -696,71 +605,22 @@ export function DashboardLeadsClient({
         <MetricCard label={t("leadsDash.deals")} value={String(stats.deals)} />
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-5">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h3 className="text-lg font-semibold">
-              {t("leadsDash.pipelineTitle")}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {t("leadsDash.pipelineSubtitle")}
-            </p>
-          </div>
+      {(error || notice) && (
+        <section className="space-y-3">
+          {error && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+              {error}
+            </div>
+          )}
+          {notice && (
+            <div className="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm font-medium text-success">
+              {notice}
+            </div>
+          )}
+        </section>
+      )}
 
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="text-xs font-medium text-muted-foreground">
-              {t("common.status")}
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value as "all" | LeadStatus)
-              }
-              className="h-11 rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
-            >
-              <option value="all">{t("common.all")}</option>
-              {Object.values(LEAD_STATUSES).map((status) => (
-                <option key={status} value={status}>
-                  {statusLabel(status)}
-                </option>
-              ))}
-            </select>
-
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={t("leadsDash.searchPlaceholder")}
-              className="h-11 rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
-            />
-
-            <button
-              type="button"
-              onClick={refreshAll}
-              disabled={refreshing}
-              className="rounded-md border border-border px-3 py-2 text-sm font-semibold transition hover:bg-secondary disabled:opacity-60"
-            >
-              {refreshing ? t("leadsDash.refreshing") : t("leadsDash.refresh")}
-            </button>
-          </div>
-        </div>
-
-        {(error || notice) && (
-          <div className="mt-4 space-y-3">
-            {error && (
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </div>
-            )}
-            {notice && (
-              <div className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-                {notice}
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
-      {(canManageLeads || canAssignLeads) && (
+      {canAssignLeads && (
         <section className="rounded-xl border border-border bg-card p-5">
           <h4 className="text-base font-semibold">
             {t("leadsDash.bulkActions")}
@@ -770,37 +630,6 @@ export function DashboardLeadsClient({
           </p>
 
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-            {canManageLeads && (
-              <div className="rounded-lg border border-border bg-background p-4">
-                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                  {t("leadsDash.setStatus")}
-                </label>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={bulkStatus}
-                    onChange={(event) =>
-                      setBulkStatus(event.target.value as LeadStatus)
-                    }
-                    className="w-full h-11 rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
-                  >
-                    {Object.values(LEAD_STATUSES).map((status) => (
-                      <option key={status} value={status}>
-                        {statusLabel(status)}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    disabled={bulkBusy || selectedLeadIds.size === 0}
-                    onClick={applyBulkStatus}
-                    className="rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
-                  >
-                    {t("leadsDash.apply")}
-                  </button>
-                </div>
-              </div>
-            )}
-
             {canAssignLeads && (
               <div className="rounded-lg border border-border bg-background p-4">
                 <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
@@ -835,6 +664,67 @@ export function DashboardLeadsClient({
       )}
 
       <section className="overflow-hidden rounded-xl border border-border bg-card">
+        {/* Filter toolbar — attached directly to the list it controls.
+            Status pills replace the old floating dropdown; search + refresh
+            sit inline. All accents use the brand primary for consistency. */}
+        <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div
+            className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0"
+            role="tablist"
+            aria-label={t("common.status")}
+          >
+            {(["all", ...Object.values(LEAD_STATUSES)] as Array<
+              "all" | LeadStatus
+            >).map((value) => {
+              const active = statusFilter === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setStatusFilter(value)}
+                  className={cn(
+                    "shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  {value === "all" ? t("common.all") : statusLabel(value)}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 lg:w-64 lg:flex-none">
+              <Search
+                className="pointer-events-none absolute inset-y-0 start-3 my-auto h-4 w-4 text-muted-foreground"
+                aria-hidden
+              />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t("leadsDash.searchPlaceholder")}
+                className="h-10 w-full rounded-lg border border-input bg-background ps-9 pe-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={refreshAll}
+              disabled={refreshing}
+              aria-label={t("leadsDash.refresh")}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-60"
+            >
+              <RotateCw
+                className={cn("h-4 w-4", refreshing && "animate-spin")}
+                aria-hidden
+              />
+            </button>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-secondary/50 text-right text-xs uppercase tracking-wide text-muted-foreground">
@@ -883,7 +773,6 @@ export function DashboardLeadsClient({
               )}
 
               {filteredLeads.map((lead) => {
-                const isStatusBusy = busyKey === `status:${lead.id}`;
                 const isAssignBusy = busyKey === `assign:${lead.id}`;
                 return (
                   <tr key={lead.id}>
@@ -941,34 +830,17 @@ export function DashboardLeadsClient({
                       )}
                     </td>
                     <td className="px-4 py-4">
-                      {canManageLeads ? (
-                        <select
-                          disabled={isStatusBusy}
-                          value={lead.status}
-                          onChange={(e) =>
-                            updateLeadStatus(
-                              lead.id,
-                              e.target.value as LeadStatus,
-                            )
-                          }
-                          className={cn(
-                            "rounded-md border border-input bg-card px-2 py-1 text-xs",
-                            lead.status === LEAD_STATUSES.DEAL
-                              ? "text-success"
-                              : "text-foreground",
-                          )}
-                        >
-                          {Object.values(LEAD_STATUSES).map((status) => (
-                            <option key={status} value={status}>
-                              {statusLabel(status)}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="rounded-md bg-secondary px-2 py-1 text-xs font-semibold">
-                          {statusLabel(lead.status)}
-                        </span>
-                      )}
+                      {/* Read-only: status moves happen on the pipeline
+                          board so stage, status, and audit never drift. */}
+                      <span
+                        title={t("leadsDash.statusViaPipeline")}
+                        className={cn(
+                          "rounded-md bg-secondary px-2 py-1 text-xs font-semibold",
+                          lead.status === LEAD_STATUSES.DEAL && "text-success",
+                        )}
+                      >
+                        {statusLabel(lead.status)}
+                      </span>
                     </td>
                     <td className="px-4 py-4 text-muted-foreground">
                       {lead.responseTimeMinutes ?? "-"}

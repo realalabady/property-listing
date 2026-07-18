@@ -47,6 +47,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "publish_listing",
     "assign_listing",
     "feature_listing",
+    "view_owner_info",
     "create_employee",
     "edit_employee",
     "remove_employee",
@@ -59,6 +60,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "manage_leads",
     "view_own_leads",
     "assign_leads",
+    "manage_pipeline",
     "view_kpi",
     "view_own_kpi",
     "export_reports",
@@ -76,6 +78,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "publish_listing",
     "assign_listing",
     "feature_listing",
+    "view_owner_info",
     "create_employee",
     "edit_employee",
     "remove_employee",
@@ -87,6 +90,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "complete_tasks",
     "manage_leads",
     "assign_leads",
+    "manage_pipeline",
     "view_kpi",
     "export_reports",
     "company_settings_access",
@@ -100,6 +104,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "publish_listing",
     "assign_listing",
     "feature_listing",
+    "view_owner_info",
     "create_employee",
     "edit_employee",
     "remove_employee",
@@ -111,6 +116,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "complete_tasks",
     "manage_leads",
     "assign_leads",
+    "manage_pipeline",
     "view_kpi",
     "export_reports",
     "company_settings_access",
@@ -129,6 +135,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "complete_tasks",
     "manage_leads",
     "assign_leads",
+    "manage_pipeline",
     "view_kpi",
     "export_reports",
   ],
@@ -334,6 +341,22 @@ async function recomputeCompanyKpi(companyId: string): Promise<void> {
   );
 }
 
+/** First video URL in a listing's media array, or "" when there is none. */
+function firstVideoUrl(media: unknown): string {
+  if (!Array.isArray(media)) return "";
+  for (const item of media) {
+    if (
+      item &&
+      typeof item === "object" &&
+      (item as Record<string, unknown>).type === "video" &&
+      typeof (item as Record<string, unknown>).url === "string"
+    ) {
+      return (item as Record<string, unknown>).url as string;
+    }
+  }
+  return "";
+}
+
 export const syncGlobalListing = onDocumentWritten(
   "companies/{companyId}/listings/{listingId}",
   async (event) => {
@@ -397,6 +420,9 @@ export const syncGlobalListing = onDocumentWritten(
           typeof location.district === "string" ? location.district : "",
         lat: typeof location.lat === "number" ? location.lat : null,
         lng: typeof location.lng === "number" ? location.lng : null,
+        // Must be mirrored: the public map jitters any pin that isn't flagged
+        // precise, which would scatter an exact map-pin location by ~1km.
+        preciseLocation: location.preciseLocation === true,
         bedrooms:
           typeof listingAfter.bedrooms === "number"
             ? listingAfter.bedrooms
@@ -414,6 +440,20 @@ export const syncGlobalListing = onDocumentWritten(
           typeof listingAfter.coverImage === "string"
             ? listingAfter.coverImage
             : "",
+        // Thumbnail fallback for video-only listings so marketplace cards can
+        // show a muted preview instead of a blank tile (no image cover exists).
+        coverVideo: firstVideoUrl(listingAfter.media),
+        // Unit rollup (note 6) so the marketplace can show "X units available"
+        // + a price range without reading the internal units subcollection.
+        unitsSummary:
+          typeof listingAfter.unitsSummary === "object" &&
+          listingAfter.unitsSummary !== null
+            ? listingAfter.unitsSummary
+            : null,
+        // Sanitized available-unit list (already tenant-free at write time).
+        publicUnits: Array.isArray(listingAfter.publicUnits)
+          ? listingAfter.publicUnits
+          : [],
         status: "published",
         featured: Boolean(listingAfter.featured),
         createdAt: listingAfter.createdAt ?? FieldValue.serverTimestamp(),
@@ -1116,4 +1156,149 @@ export const expireTrials = onSchedule("every 24 hours", async () => {
   }
 
   logger.info("Trial expiry cron completed", { expired });
+});
+
+// ---------------------------------------------------------------------------
+// Kanban pipeline (Feature 1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Keep the denormalized `listingsCount` on the company doc exact. The
+ * listings API bumps it transactionally to make the plan-quota check atomic;
+ * this trigger re-derives it from an aggregate count on every listing
+ * create/delete so client-side deletes (allowed by rules) and any historic
+ * drift self-heal. Pure updates are skipped.
+ */
+export const syncListingsCount = onDocumentWritten(
+  "companies/{companyId}/listings/{listingId}",
+  async (event) => {
+    const existedBefore = event.data?.before.exists === true;
+    const existsAfter = event.data?.after.exists === true;
+    if (existedBefore === existsAfter) return; // update, not create/delete
+
+    const companyId = event.params.companyId;
+    const countSnap = await db
+      .collection(`companies/${companyId}/listings`)
+      .count()
+      .get();
+
+    await db
+      .doc(`companies/${companyId}`)
+      .update({ listingsCount: countSnap.data().count })
+      .catch(() => undefined);
+  },
+);
+
+const DEFAULT_STUCK_DEAL_HOURS = 72;
+const TERMINAL_LEGACY_STATUSES = new Set(["deal", "lost"]);
+
+/**
+ * Flag deals stuck in a non-terminal pipeline stage longer than the company's
+ * threshold (settings/default.pipelineStuckHours, default 72h). Notifies the
+ * assignee (or the company owner for unassigned leads) and stamps
+ * `stuckNotifiedAt` so a lead is flagged once per stage entry.
+ */
+export const flagStuckDeals = onSchedule("every 6 hours", async () => {
+  const companiesSnap = await db
+    .collection("companies")
+    .where("status", "in", ["trial", "active"])
+    .get();
+
+  let flagged = 0;
+
+  for (const companyDoc of companiesSnap.docs) {
+    const companyId = companyDoc.id;
+
+    const stagesSnap = await db
+      .collection(`companies/${companyId}/pipeline_stages`)
+      .get();
+    if (stagesSnap.empty) continue; // board never opened — nothing to flag
+
+    const terminalKeys = new Set<string>();
+    for (const stageDoc of stagesSnap.docs) {
+      if (stageDoc.get("isTerminal") === true) {
+        terminalKeys.add(stageDoc.id);
+      }
+    }
+
+    const settingsSnap = await db
+      .doc(`companies/${companyId}/settings/default`)
+      .get();
+    const hoursRaw = settingsSnap.get("pipelineStuckHours");
+    const stuckHours =
+      typeof hoursRaw === "number" && hoursRaw > 0
+        ? hoursRaw
+        : DEFAULT_STUCK_DEAL_HOURS;
+    const cutoff = Timestamp.fromDate(
+      new Date(Date.now() - stuckHours * 60 * 60 * 1000),
+    );
+
+    const leadsSnap = await db
+      .collection(`companies/${companyId}/leads`)
+      .where("stageEnteredAt", "<=", cutoff)
+      .limit(200)
+      .get();
+    if (leadsSnap.empty) continue;
+
+    const ownerId = companyDoc.get("ownerId");
+    const batch = db.batch();
+    let batched = 0;
+
+    for (const leadDoc of leadsSnap.docs) {
+      const lead = leadDoc.data() as Record<string, unknown>;
+
+      const stageKey =
+        typeof lead.stageKey === "string" && lead.stageKey.length > 0
+          ? lead.stageKey
+          : typeof lead.status === "string"
+            ? lead.status
+            : "new";
+      if (terminalKeys.has(stageKey)) continue;
+      if (TERMINAL_LEGACY_STATUSES.has(stageKey)) continue;
+
+      // Already flagged since it entered this stage.
+      const stageEnteredAt = toDate(lead.stageEnteredAt);
+      const stuckNotifiedAt = toDate(lead.stuckNotifiedAt);
+      if (
+        stageEnteredAt &&
+        stuckNotifiedAt &&
+        stuckNotifiedAt.getTime() >= stageEnteredAt.getTime()
+      ) {
+        continue;
+      }
+
+      const recipientId =
+        typeof lead.assignedTo === "string" && lead.assignedTo.length > 0
+          ? lead.assignedTo
+          : typeof ownerId === "string"
+            ? ownerId
+            : null;
+      if (!recipientId) continue;
+
+      batch.set(db.collection(`companies/${companyId}/notifications`).doc(), {
+        companyId,
+        recipientId,
+        type: "deal_stuck",
+        title: "صفقة متوقفة",
+        message: `${
+          typeof lead.name === "string" ? lead.name : "عميل محتمل"
+        } لم يتحرك من نفس المرحلة منذ أكثر من ${stuckHours} ساعة.`,
+        leadId: leadDoc.id,
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      batch.update(leadDoc.ref, {
+        stuckNotifiedAt: FieldValue.serverTimestamp(),
+      });
+      batched += 1;
+      flagged += 1;
+    }
+
+    if (batched > 0) {
+      await batch.commit();
+    }
+  }
+
+  logger.info("Stuck deal cron completed", { flagged });
 });

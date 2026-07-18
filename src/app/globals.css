@@ -53,10 +53,18 @@
 
     --radius: 0.85rem;
 
-    --font-sans: var(--font-manrope), "Segoe UI", system-ui, sans-serif;
+    /* Arabic-first: IBM Plex Sans Arabic leads (it also covers Latin), so
+       Arabic text gets a real typeface instead of the Segoe UI fallback.
+       Manrope stays in the chain for any glyphs Plex lacks. */
+    --font-sans:
+      var(--font-ibm-plex-arabic), var(--font-manrope), "Segoe UI", system-ui,
+      sans-serif;
     --font-arabic:
       var(--font-ibm-plex-arabic), var(--font-tajawal), var(--font-cairo),
       "Segoe UI", system-ui, sans-serif;
+    --font-display:
+      var(--font-cairo), var(--font-ibm-plex-arabic), "Segoe UI", system-ui,
+      sans-serif;
   }
 
   /* Modern Enterprise Administrative Dashboard theme.
@@ -224,6 +232,14 @@
   }
   html[dir="rtl"] body {
     font-family: var(--font-arabic);
+  }
+  /* Dashboard headings get the Cairo display face for real typographic
+     hierarchy; body text stays on IBM Plex Sans Arabic. */
+  .enterprise h1,
+  .enterprise h2,
+  .enterprise h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
   }
 }
 

@@ -6,6 +6,7 @@ import {
   resolveListingCover,
   parseListingMediaArray,
 } from "@/lib/api/company-listings";
+import { assertActiveMember } from "@/lib/api/guards";
 import { adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -41,6 +42,14 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
+  const membership = await assertActiveMember(user, companyId);
+  if (!membership.ok) {
+    return NextResponse.json(
+      { error: membership.error },
+      { status: membership.status },
+    );
+  }
+
   const body = (await req.json()) as SetCoverBody;
   const path = typeof body.path === "string" ? body.path.trim() : "";
   const url = typeof body.url === "string" ? body.url.trim() : "";
@@ -61,13 +70,20 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     );
   }
 
-  const exists = media.some(
+  const target = media.find(
     (item) => (path && item.path === path) || (url && item.url === url),
   );
-  if (!exists) {
+  if (!target) {
     return NextResponse.json(
       { error: "Target media item was not found." },
       { status: 404 },
+    );
+  }
+  // The cover renders inside <img> on cards/marketplace; a video can't be one.
+  if (target.type === "video") {
+    return NextResponse.json(
+      { error: "لا يمكن اختيار مقطع فيديو كصورة غلاف. اختر صورة." },
+      { status: 400 },
     );
   }
 

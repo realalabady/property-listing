@@ -6,6 +6,7 @@ import { ROUTES } from "@/constants/routes";
 import { ROLE_LABELS, ROLES } from "@/constants/roles";
 import { adminDb } from "@/lib/firebase/admin";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { SessionEndedSignOut } from "@/components/auth/SessionEndedSignOut";
 import { NotificationsButton } from "@/components/dashboard/NotificationsButton";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { TrialCountdownBanner } from "@/components/dashboard/TrialCountdownBanner";
@@ -62,6 +63,7 @@ export default async function DashboardLayout({
   return (
     <div className="enterprise min-h-screen bg-background text-foreground">
       <Toaster position="top-center" richColors dir="rtl" />
+      <SessionEndedSignOut />
       <Suspense fallback={null}>
         <PermissionDeniedToast />
       </Suspense>
@@ -69,22 +71,28 @@ export default async function DashboardLayout({
         <div className="flex h-16 items-center border-b border-border px-5">
           <Link
             href={ROUTES.DASHBOARD}
+            aria-label={companyName}
             className="flex min-w-0 items-center gap-2.5"
           >
             {companyLogo ? (
+              // A logo is a brand asset — no frame, no fill, just the mark
+              // sized to read clearly. A full logo carries its own wordmark,
+              // so we drop the duplicate name label to give it room.
               <img
                 src={companyLogo}
                 alt={t("dashboard.logoAlt", { name: companyName })}
-                className="h-10 w-auto max-w-[140px] rounded-lg border border-border bg-white object-contain p-1"
+                className="h-11 w-auto max-w-[200px] object-contain"
               />
             ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-                {companyName.trim()[0]?.toUpperCase() ?? "C"}
-              </div>
+              <>
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-base font-bold text-primary-foreground">
+                  {companyName.trim()[0]?.toUpperCase() ?? "C"}
+                </div>
+                <span className="truncate text-[15px] font-semibold text-foreground">
+                  {companyName}
+                </span>
+              </>
             )}
-            <span className="truncate text-[15px] font-semibold text-foreground">
-              {companyName}
-            </span>
           </Link>
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -93,7 +101,7 @@ export default async function DashboardLayout({
       </aside>
 
       <div className="lg:pe-64">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/90 px-5 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-card/90 px-5 backdrop-blur sm:px-6">
           <div className="flex min-w-0 items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
               {userInitial}
@@ -112,7 +120,9 @@ export default async function DashboardLayout({
             <LogoutButton />
           </div>
         </header>
-        <main className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">
+        {/* Pages that render a [data-full-bleed] root (e.g. the pipeline
+            board) escape the centered column and manage their own padding. */}
+        <main className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8 has-[[data-full-bleed]]:!max-w-none has-[[data-full-bleed]]:!p-0">
           {passwordResetRequired && <PasswordResetBanner />}
           {companyStatus === "trial" && trialEndsAtIso && (
             <TrialCountdownBanner trialEndsAt={trialEndsAtIso} />

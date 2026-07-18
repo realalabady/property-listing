@@ -6,6 +6,7 @@ import {
   canManageCompanyLeads,
   serializeDate,
 } from "@/lib/api/company-leads";
+import { assertActiveMember } from "@/lib/api/guards";
 import { adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -37,6 +38,14 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     canAssignCompanyLeads(user, companyId);
   if (!canAssign) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  const membership = await assertActiveMember(user, companyId);
+  if (!membership.ok) {
+    return NextResponse.json(
+      { error: membership.error },
+      { status: membership.status },
+    );
   }
 
   const leadRef = adminDb().doc(`companies/${companyId}/leads/${leadId}`);

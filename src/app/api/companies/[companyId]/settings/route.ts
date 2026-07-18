@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { PERMISSIONS, hasAnyPermission } from "@/constants/permissions";
 import { ROLES } from "@/constants/roles";
 import { getSessionUser } from "@/lib/auth/session";
+import { assertActiveMember } from "@/lib/api/guards";
 import { normalizeHexColor } from "@/lib/utils/color";
 import { adminDb } from "@/lib/firebase/admin";
 
@@ -30,6 +31,10 @@ interface UpdateSettingsBody {
   leadAutoAssignStrategy?: "round_robin" | "least_busy" | "manual";
   taskEscalationHours?: number;
   notificationEmails?: string[];
+  visibility?: {
+    contactPhones?: "everyone" | "restricted";
+    leads?: "all" | "assigned_only";
+  };
 }
 
 function normalizeText(value: unknown): string {
@@ -175,6 +180,22 @@ export async function GET(_req: NextRequest, context: RouteContext) {
             (entry): entry is string => typeof entry === "string",
           )
         : [],
+      visibility: {
+        contactPhones:
+          typeof settings.visibility === "object" &&
+          settings.visibility !== null &&
+          (settings.visibility as Record<string, unknown>).contactPhones ===
+            "restricted"
+            ? "restricted"
+            : "everyone",
+        leads:
+          typeof settings.visibility === "object" &&
+          settings.visibility !== null &&
+          (settings.visibility as Record<string, unknown>).leads ===
+            "assigned_only"
+            ? "assigned_only"
+            : "all",
+      },
     },
   });
 }
@@ -189,6 +210,14 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
   if (!canAccessCompanySettings(user, companyId)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  const membership = await assertActiveMember(user, companyId);
+  if (!membership.ok) {
+    return NextResponse.json(
+      { error: membership.error },
+      { status: membership.status },
+    );
   }
 
   const body = (await req.json()) as UpdateSettingsBody;
@@ -331,6 +360,43 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     }
 
     operationalUpdate.notificationEmails = Array.from(new Set(cleaned));
+  }
+
+  if (body.visibility !== undefined) {
+    // Each visibility field is optional and validated independently so a
+    // partial update (e.g. only `leads`) doesn't require sending the others.
+    // set(..., {merge:true}) deep-merges the nested map, preserving any field
+    // not included here.
+    const visibilityUpdate: Record<string, unknown> = {};
+
+    const contactPhones = body.visibility?.contactPhones;
+    if (contactPhones !== undefined) {
+      if (contactPhones !== "everyone" && contactPhones !== "restricted") {
+        return NextResponse.json(
+          {
+            error:
+              "visibility.contactPhones must be 'everyone' or 'restricted'.",
+          },
+          { status: 400 },
+        );
+      }
+      visibilityUpdate.contactPhones = contactPhones;
+    }
+
+    const leads = body.visibility?.leads;
+    if (leads !== undefined) {
+      if (leads !== "all" && leads !== "assigned_only") {
+        return NextResponse.json(
+          { error: "visibility.leads must be 'all' or 'assigned_only'." },
+          { status: 400 },
+        );
+      }
+      visibilityUpdate.leads = leads;
+    }
+
+    if (Object.keys(visibilityUpdate).length > 0) {
+      operationalUpdate.visibility = visibilityUpdate;
+    }
   }
 
   const hasBrandingChanges = Object.keys(brandingUpdate).length > 0;

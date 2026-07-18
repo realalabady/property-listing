@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { leadSourceLabelAr } from "@/constants/listing-categories";
 import { formatNumber } from "@/lib/utils/format";
 import { t } from "@/lib/i18n";
 
@@ -53,17 +54,6 @@ const WAZI = {
 // Funnel stages flow purple → blue → teal so the pipeline reads at a glance.
 const FUNNEL_COLORS = ["#662d91", "#5740a6", "#0071bc", "#00a99d"];
 
-const SOURCE_LABELS: Record<string, string> = {
-  phone: "اتصال هاتفي",
-  whatsapp: "واتساب",
-  website_form: "نموذج الموقع",
-  walk_in: "زيارة المكتب",
-  social_media: "وسائل التواصل",
-  referral: "ترشيح",
-  marketplace: "السوق",
-  landing_request: "طلب وارد",
-  other: "أخرى",
-};
 
 /* -------------------------------------------------------------------------- */
 /* Shared building blocks                                                     */
@@ -205,7 +195,7 @@ export function OverviewCharts({ funnel, sources, trend }: OverviewChartsProps) 
   const funnelHasData = funnel.some((d) => d.value > 0);
 
   const sourceData = sources
-    .map((s) => ({ label: SOURCE_LABELS[s.key] ?? s.key, value: s.value }))
+    .map((s) => ({ label: leadSourceLabelAr(s.key), value: s.value }))
     .sort((a, b) => b.value - a.value);
   const sourceMax = sourceData.reduce((m, s) => Math.max(m, s.value), 0);
 

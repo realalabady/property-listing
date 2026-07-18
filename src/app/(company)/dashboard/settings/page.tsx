@@ -10,7 +10,6 @@ import { requireCompanyMember } from "@/lib/auth/guards";
 import { limitsForPlan } from "@/constants/plans";
 import type { SubscriptionPlanId } from "@/types/company";
 import { adminDb } from "@/lib/firebase/admin";
-import { ROLE_LABELS } from "@/constants/roles";
 import {
   PersonalInfoSection,
   type PersonalInfo,
@@ -57,6 +56,33 @@ export default async function DashboardSettingsPage() {
   const employee = employeeSnap.exists
     ? (employeeSnap.data() as Record<string, unknown>)
     : {};
+
+  // Access is granted through permission groups, so show the assigned group
+  // names rather than the internal role.
+  const groupIds = Array.isArray(employee.permissionGroupIds)
+    ? employee.permissionGroupIds.filter(
+        (value): value is string => typeof value === "string",
+      )
+    : [];
+  let permissionGroups = "—";
+  if (groupIds.length > 0) {
+    const groupSnaps = await adminDb().getAll(
+      ...groupIds.map((id) =>
+        adminDb().doc(`companies/${user.companyId}/permission_groups/${id}`),
+      ),
+    );
+    const names = groupSnaps
+      .filter((snap) => snap.exists && snap.get("active") !== false)
+      .map((snap) => {
+        const nameAr = snap.get("nameAr");
+        const nameEn = snap.get("nameEn");
+        if (typeof nameAr === "string" && nameAr) return nameAr;
+        if (typeof nameEn === "string" && nameEn) return nameEn;
+        return snap.id;
+      });
+    if (names.length > 0) permissionGroups = names.join("، ");
+  }
+
   const personalInfo: PersonalInfo = {
     name:
       typeof employee.name === "string" && employee.name
@@ -66,7 +92,7 @@ export default async function DashboardSettingsPage() {
       (typeof employee.email === "string" && employee.email) ||
       user.email ||
       "—",
-    roleLabel: user.role ? (ROLE_LABELS[user.role] ?? user.role) : "—",
+    permissionGroups,
     phone: typeof employee.phone === "string" ? employee.phone : null,
     nationalId:
       typeof employee.nationalId === "string" ? employee.nationalId : null,
@@ -159,6 +185,19 @@ export default async function DashboardSettingsPage() {
           .filter((entry): entry is string => typeof entry === "string")
           .join(", ")
       : "",
+    contactPhonesVisibility:
+      typeof settings.visibility === "object" &&
+      settings.visibility !== null &&
+      (settings.visibility as Record<string, unknown>).contactPhones ===
+        "restricted"
+        ? "restricted"
+        : "everyone",
+    leadsVisibility:
+      typeof settings.visibility === "object" &&
+      settings.visibility !== null &&
+      (settings.visibility as Record<string, unknown>).leads === "assigned_only"
+        ? "assigned_only"
+        : "all",
   };
 
   return (

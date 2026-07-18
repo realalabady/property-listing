@@ -16,6 +16,7 @@ import {
   type ListingCategory,
   type ListingType,
 } from "@/constants/listing-categories";
+import type { PublicListingUnit } from "@/types/listing";
 
 export interface PublicCompanyTheme {
   primaryColor: string;
@@ -44,6 +45,9 @@ export interface PublicMedia {
 
 export interface PublicListing {
   id: string;
+  /** Real listing id under companies/{companyId}/listings. On the global mirror
+   *  the doc id is `${companyId}_${listingId}`, so this holds the actual id. */
+  sourceListingId: string;
   companyId: string;
   companyName: string;
   companySlug: string;
@@ -56,14 +60,69 @@ export interface PublicListing {
   district: string;
   lat: number | null;
   lng: number | null;
+  /** Coords came from an exact map pin — render without fallback jitter. */
+  precise: boolean;
   price: number;
   currency: string;
   bedrooms: number;
   bathrooms: number;
   area: number;
   coverImage: string;
+  /** Thumbnail fallback for video-only listings (no image cover exists).
+   *  Rendered as a muted <video> preview on cards. Empty otherwise. */
+  coverVideo: string;
   media: PublicMedia[];
   featured: boolean;
+  /**
+   * Multi-unit buildings (note 6): aggregates only — the individual unit docs
+   * stay internal to the company. Spec ranges cover the AVAILABLE units.
+   */
+  unitsAvailable: number;
+  unitsTotal: number;
+  unitsMinPrice: number | null;
+  unitsMaxPrice: number | null;
+  unitsBedroomsMin: number | null;
+  unitsBedroomsMax: number | null;
+  unitsAreaMin: number | null;
+  unitsAreaMax: number | null;
+  unitsLivingRoomsMax: number | null;
+  unitsAnyFurnished: boolean;
+  /** Sanitized available units (tenant-free) for the unit details popup. */
+  units: PublicListingUnit[];
+}
+
+/**
+ * Parse the denormalized available-unit list. Defensive re-shaping only —
+ * the array is already tenant-free by construction (written that way by the
+ * dashboard units manager), and this never reads the units subcollection.
+ */
+export function parsePublicUnits(value: unknown): PublicListingUnit[] {
+  if (!Array.isArray(value)) return [];
+  const n = (v: unknown) => (typeof v === "number" ? v : null);
+  const s = (v: unknown) => (typeof v === "string" ? v : "");
+  return value
+    .filter(
+      (u): u is Record<string, unknown> => typeof u === "object" && u !== null,
+    )
+    .map((u, i) => ({
+      id: s(u.id) || String(i),
+      label: s(u.label),
+      type: u.type === "sale" ? ("sale" as const) : ("rent" as const),
+      price: n(u.price) ?? 0,
+      rentPeriod: typeof u.rentPeriod === "string" ? u.rentPeriod : null,
+      area: n(u.area),
+      bedrooms: n(u.bedrooms),
+      bathrooms: n(u.bathrooms),
+      livingRooms: n(u.livingRooms),
+      kitchens: n(u.kitchens),
+      majlis: n(u.majlis),
+      floor: n(u.floor),
+      furnished: u.furnished === true,
+      description: s(u.description),
+      images: Array.isArray(u.images)
+        ? u.images.filter((x): x is string => typeof x === "string")
+        : [],
+    }));
 }
 
 /** Parse a listing's media array (present on the source company listing). */
@@ -92,6 +151,10 @@ export function mapPublicListing(
     (data.category as ListingCategory) ?? LISTING_CATEGORIES.APARTMENT;
   return {
     id,
+    // On the global mirror `sourceListingId` is stored; on a company listing doc
+    // it's absent, so the doc's own id already IS the real listing id.
+    sourceListingId:
+      typeof data.sourceListingId === "string" ? data.sourceListingId : id,
     companyId: typeof data.companyId === "string" ? data.companyId : "",
     companyName:
       typeof data.companyName === "string"
@@ -132,6 +195,10 @@ export function mapPublicListing(
         : typeof data.location?.lng === "number"
           ? (data.location.lng as number)
           : null,
+    // Top-level flag lives on the global mirror; the nested one on the source
+    // company listing. Either being true means the pin is an exact location.
+    precise:
+      data.preciseLocation === true || data.location?.preciseLocation === true,
     price: typeof data.price === "number" ? data.price : 0,
     currency: typeof data.currency === "string" ? data.currency : "SAR",
     bedrooms: typeof data.bedrooms === "number" ? data.bedrooms : 0,
@@ -141,8 +208,40 @@ export function mapPublicListing(
       typeof data.coverImage === "string" && data.coverImage.length > 0
         ? data.coverImage
         : "",
+    // Prefer an explicit mirror field; otherwise derive from media (present on
+    // company-listing docs but not on the lean global mirror). Only meaningful
+    // when there's no image cover — a still can't be shown for a video-only ad.
+    coverVideo: (() => {
+      if (typeof data.coverVideo === "string" && data.coverVideo.length > 0) {
+        return data.coverVideo;
+      }
+      const hasImageCover =
+        typeof data.coverImage === "string" && data.coverImage.length > 0;
+      if (hasImageCover) return "";
+      return parsePublicMedia(data.media).find((m) => m.type === "video")?.url ?? "";
+    })(),
     media: parsePublicMedia(data.media),
     featured: Boolean(data.featured),
+    ...(() => {
+      const summary =
+        typeof data.unitsSummary === "object" && data.unitsSummary !== null
+          ? (data.unitsSummary as Record<string, unknown>)
+          : {};
+      const n = (v: unknown) => (typeof v === "number" ? v : null);
+      return {
+        unitsAvailable: n(summary.available) ?? 0,
+        unitsTotal: n(summary.total) ?? 0,
+        unitsMinPrice: n(summary.minPrice),
+        unitsMaxPrice: n(summary.maxPrice),
+        unitsBedroomsMin: n(summary.bedroomsMin),
+        unitsBedroomsMax: n(summary.bedroomsMax),
+        unitsAreaMin: n(summary.areaMin),
+        unitsAreaMax: n(summary.areaMax),
+        unitsLivingRoomsMax: n(summary.livingRoomsMax),
+        unitsAnyFurnished: summary.anyFurnished === true,
+        units: parsePublicUnits(data.publicUnits),
+      };
+    })(),
   };
 }
 
@@ -190,6 +289,48 @@ export async function getCompanyBySlug(
   };
 }
 
+/** Build a PublicCompany from a raw company doc (slug read from the data). */
+function mapPublicCompany(id: string, data: DocumentData): PublicCompany {
+  const theme =
+    typeof data.theme === "object" && data.theme !== null
+      ? (data.theme as Record<string, unknown>)
+      : {};
+  return {
+    id,
+    slug: typeof data.slug === "string" ? data.slug : "",
+    name: typeof data.name === "string" ? data.name : "Company",
+    description:
+      typeof data.description === "string"
+        ? data.description
+        : "Real estate team focused on premium service.",
+    logo: typeof data.logo === "string" ? data.logo : "",
+    whatsapp:
+      typeof data.contact?.whatsapp === "string" ? data.contact.whatsapp : "",
+    phone: typeof data.contact?.phone === "string" ? data.contact.phone : "",
+    email: typeof data.contact?.email === "string" ? data.contact.email : "",
+    theme: {
+      primaryColor:
+        typeof theme.primaryColor === "string" ? theme.primaryColor : "#0f6d45",
+      secondaryColor:
+        typeof theme.secondaryColor === "string"
+          ? theme.secondaryColor
+          : "#e8d9bf",
+      accentColor:
+        typeof theme.accentColor === "string" ? theme.accentColor : "#11935d",
+    },
+  };
+}
+
+/** Fetch a company's public profile by its document id (companyId). */
+export async function getCompanyById(
+  companyId: string,
+): Promise<PublicCompany | null> {
+  const db = getFirebaseDb();
+  const snap = await getDoc(doc(db, `companies/${companyId}`));
+  if (!snap.exists()) return null;
+  return mapPublicCompany(snap.id, snap.data());
+}
+
 export async function getPublicCompanyListings(
   companyId: string,
 ): Promise<PublicListing[]> {
@@ -231,7 +372,7 @@ export async function getCompanyListingById(
 export async function getGlobalListings(): Promise<PublicListing[]> {
   const db = getFirebaseDb();
   const globalRef = collection(db, "global_listings");
-  const q = query(globalRef, orderBy("createdAt", "desc"), limit(30));
+  const q = query(globalRef, orderBy("createdAt", "desc"), limit(60));
   const snap = await getDocs(q);
   return snap.docs.map((d) => mapPublicListing(d.id, d.data()));
 }

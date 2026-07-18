@@ -2,10 +2,90 @@ import { LEAD_STATUSES, type LeadStatus } from "@/constants/listing-categories";
 import { PERMISSIONS, hasAnyPermission } from "@/constants/permissions";
 import { ROLES } from "@/constants/roles";
 import { getSessionUser } from "@/lib/auth/session";
+import { adminDb } from "@/lib/firebase/admin";
 
 export type SessionUser = Awaited<ReturnType<typeof getSessionUser>>;
 
+/**
+ * Company-wide lead visibility, stored at
+ * `companies/{cid}/settings/default` under `visibility.leads`:
+ * - `"all"`         → any lead viewer sees the whole pool (default / legacy).
+ * - `"assigned_only"` → non-privileged employees only see leads assigned to
+ *   them, even if they hold `manage_leads`. Owners/admins and holders of
+ *   `assign_leads` always see the full pool (they distribute it).
+ */
+export type LeadsVisibility = "all" | "assigned_only";
+
 const LEAD_STATUS_VALUES = new Set<LeadStatus>(Object.values(LEAD_STATUSES));
+
+/**
+ * Reads the effective lead-visibility setting for a company. Defaults to
+ * `"all"` when the settings doc or the field is missing so existing companies
+ * keep their current (open) behavior until an owner opts in to restriction.
+ */
+export async function getLeadsVisibility(
+  companyId: string,
+): Promise<LeadsVisibility> {
+  const snap = await adminDb()
+    .doc(`companies/${companyId}/settings/default`)
+    .get();
+  const data = snap.exists ? (snap.data() as Record<string, unknown>) : null;
+  const visibility =
+    data && typeof data.visibility === "object" && data.visibility !== null
+      ? (data.visibility as Record<string, unknown>).leads
+      : undefined;
+  return visibility === "assigned_only" ? "assigned_only" : "all";
+}
+
+/**
+ * "Privileged" users see the entire lead pool regardless of the company's
+ * visibility setting: super admins, company owners/admins, and anyone holding
+ * `assign_leads` (they must see unassigned leads in order to distribute them).
+ */
+export function isLeadPoolPrivileged(
+  user: SessionUser,
+  companyId: string,
+): boolean {
+  if (!user) return false;
+  if (user.role === ROLES.SUPER_ADMIN) return true;
+  if (user.companyId !== companyId) return false;
+  if (user.role === ROLES.COMPANY_OWNER || user.role === ROLES.COMPANY_ADMIN) {
+    return true;
+  }
+  return hasAnyPermission(user.permissions, [PERMISSIONS.ASSIGN_LEADS]);
+}
+
+/**
+ * Decides whether a user sees the whole lead pool (`"all"`) or only leads
+ * assigned to them (`"own"`), given the company's visibility setting.
+ * Callers should already have gated on {@link canViewAssignedLeads}.
+ */
+export function resolveLeadListScope(
+  user: SessionUser,
+  companyId: string,
+  visibility: LeadsVisibility,
+): "all" | "own" {
+  if (isLeadPoolPrivileged(user, companyId)) return "all";
+  // Under restriction, even manage_leads holders are scoped to their own leads.
+  if (visibility === "assigned_only") return "own";
+  if (!user) return "own";
+  return hasAnyPermission(user.permissions, [PERMISSIONS.MANAGE_LEADS])
+    ? "all"
+    : "own";
+}
+
+/**
+ * Whether a user may act on ANY lead (move/reprioritize/comment on leads not
+ * assigned to them). Mirrors {@link resolveLeadListScope} so write paths honor
+ * the same visibility rule as reads.
+ */
+export function canActOnAnyLead(
+  user: SessionUser,
+  companyId: string,
+  visibility: LeadsVisibility = "all",
+): boolean {
+  return resolveLeadListScope(user, companyId, visibility) === "all";
+}
 
 export function canManageCompanyLeads(
   user: SessionUser,
@@ -25,21 +105,23 @@ export function canAccessLeadDocument(
   user: SessionUser,
   companyId: string,
   leadData: Record<string, unknown>,
+  visibility: LeadsVisibility = "all",
 ): boolean {
   if (!user) return false;
   if (user.role === ROLES.SUPER_ADMIN) return true;
   if (user.companyId !== companyId) return false;
 
-  if (
-    hasAnyPermission(user.permissions, [
-      PERMISSIONS.MANAGE_LEADS,
-      PERMISSIONS.ASSIGN_LEADS,
-    ])
-  ) {
+  if (resolveLeadListScope(user, companyId, visibility) === "all") {
     return true;
   }
 
-  if (!hasAnyPermission(user.permissions, [PERMISSIONS.VIEW_OWN_LEADS])) {
+  // Scoped to own leads: still needs a lead-viewing permission, plus ownership.
+  if (
+    !hasAnyPermission(user.permissions, [
+      PERMISSIONS.VIEW_OWN_LEADS,
+      PERMISSIONS.MANAGE_LEADS,
+    ])
+  ) {
     return false;
   }
 
@@ -52,16 +134,22 @@ export function canCommentOnLead(
   user: SessionUser,
   companyId: string,
   leadData: Record<string, unknown>,
+  visibility: LeadsVisibility = "all",
 ): boolean {
   if (!user) return false;
   if (user.role === ROLES.SUPER_ADMIN) return true;
   if (user.companyId !== companyId) return false;
 
-  if (hasAnyPermission(user.permissions, [PERMISSIONS.MANAGE_LEADS])) {
+  if (resolveLeadListScope(user, companyId, visibility) === "all") {
     return true;
   }
 
-  if (!hasAnyPermission(user.permissions, [PERMISSIONS.VIEW_OWN_LEADS])) {
+  if (
+    !hasAnyPermission(user.permissions, [
+      PERMISSIONS.VIEW_OWN_LEADS,
+      PERMISSIONS.MANAGE_LEADS,
+    ])
+  ) {
     return false;
   }
 

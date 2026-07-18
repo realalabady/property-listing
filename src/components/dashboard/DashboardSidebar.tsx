@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   ListChecks,
   Inbox,
+  SquareKanban,
   Target,
   BarChart3,
   Settings,
@@ -86,6 +87,12 @@ function buildGroups(): NavGroup[] {
           label: t("dashboard.leads"),
           icon: Users2,
           children: viewAdd(ROUTES.DASHBOARD_LEADS, ROUTES.DASHBOARD_LEAD_NEW),
+        },
+        {
+          href: ROUTES.DASHBOARD_PIPELINE,
+          label: t("dashboard.pipeline"),
+          icon: SquareKanban,
+          exact: true,
         },
         {
           href: ROUTES.DASHBOARD_LEADS_ARRIVED,
