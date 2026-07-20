@@ -1,3 +1,4 @@
+import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 import { ROLES } from "@/constants/roles";
 import { getSessionUser } from "@/lib/auth/session";
@@ -11,9 +12,8 @@ interface RouteContext {
 
 /**
  * DELETE /api/admin/leads/{companyId}/{leadId} — super-admin only.
- * Permanently removes a lead in ANY company along with its `activity`
- * subcollection. The `onLeadWriteRefreshKpi` Cloud Function recomputes the
- * company KPI on the delete.
+ * Soft delete: flags the lead as deleted so it drops out of the company and
+ * admin lead views, while the record stays recoverable in Firestore.
  */
 export async function DELETE(_req: NextRequest, context: RouteContext) {
   const { companyId, leadId } = await context.params;
@@ -32,15 +32,12 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Lead not found." }, { status: 404 });
   }
 
-  // Remove the nested activity trail first, then the lead itself.
-  const activitySnap = await leadRef.collection("activity").limit(500).get();
-  if (!activitySnap.empty) {
-    const batch = adminDb().batch();
-    for (const doc of activitySnap.docs) batch.delete(doc.ref);
-    await batch.commit();
-  }
+  await leadRef.update({
+    isDeleted: true,
+    deletedAt: FieldValue.serverTimestamp(),
+    deletedBy: user.uid,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
 
-  await leadRef.delete();
-
-  return NextResponse.json({ ok: true, deleted: leadId });
+  return NextResponse.json({ ok: true, deleted: "soft" });
 }

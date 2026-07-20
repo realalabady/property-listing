@@ -369,7 +369,11 @@ export const syncGlobalListing = onDocumentWritten(
       `global_listings/${globalListingDocId(companyId, listingId)}`,
     );
 
-    if (!listingAfter || listingAfter.status !== "published") {
+    if (
+      !listingAfter ||
+      listingAfter.status !== "published" ||
+      listingAfter.isDeleted === true
+    ) {
       await globalRef.delete().catch(() => undefined);
       logger.info("Removed listing from global marketplace", {
         companyId,

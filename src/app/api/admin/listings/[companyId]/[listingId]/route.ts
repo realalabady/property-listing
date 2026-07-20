@@ -1,3 +1,4 @@
+import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 import { ROLES } from "@/constants/roles";
 import { getSessionUser } from "@/lib/auth/session";
@@ -11,9 +12,10 @@ interface RouteContext {
 
 /**
  * DELETE /api/admin/listings/{companyId}/{listingId} — super-admin only.
- * Permanently removes a listing in ANY company. The `syncGlobalListing` Cloud
- * Function fires on the delete and (a) removes the mirrored `global_listings`
- * doc and (b) recomputes the company KPI, so no extra cleanup is needed here.
+ * Soft delete: flags the listing as deleted (recoverable) and immediately
+ * removes its public `global_listings` mirror so it disappears from the
+ * marketplace at once. The Cloud Function also treats `isDeleted` as
+ * unpublished, so the mirror can't be re-created by a later write.
  */
 export async function DELETE(_req: NextRequest, context: RouteContext) {
   const { companyId, listingId } = await context.params;
@@ -34,7 +36,18 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Listing not found." }, { status: 404 });
   }
 
-  await listingRef.delete();
+  await listingRef.update({
+    isDeleted: true,
+    deletedAt: FieldValue.serverTimestamp(),
+    deletedBy: user.uid,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
 
-  return NextResponse.json({ ok: true, deleted: listingId });
+  // Drop the public marketplace mirror right away (doc id is companyId_listingId).
+  await adminDb()
+    .doc(`global_listings/${companyId}_${listingId}`)
+    .delete()
+    .catch(() => undefined);
+
+  return NextResponse.json({ ok: true, deleted: "soft" });
 }

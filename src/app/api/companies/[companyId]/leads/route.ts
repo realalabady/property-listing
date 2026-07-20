@@ -237,9 +237,9 @@ export async function GET(req: NextRequest, context: RouteContext) {
     .orderBy("createdAt", "desc")
     .limit(limitCount)
     .get();
-  const leads = snap.docs.map((doc) =>
-    mapLeadDoc(doc.id, doc.data() as Record<string, unknown>),
-  );
+  const leads = snap.docs
+    .filter((doc) => doc.data().isDeleted !== true)
+    .map((doc) => mapLeadDoc(doc.id, doc.data() as Record<string, unknown>));
 
   return NextResponse.json({ leads });
 }

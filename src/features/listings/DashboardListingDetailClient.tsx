@@ -74,6 +74,10 @@ interface ListingDetail {
   publicUnitsCount: number;
   analytics: Record<string, unknown>;
   assignedEmployeeName?: string;
+  /** uid of the employee who created/published the listing (internal only). */
+  createdBy?: string;
+  /** Denormalized creator name when present; else resolved from the roster. */
+  createdByName?: string;
   media: MediaItem[];
   createdAt: Date | null;
   updatedAt: Date | null;
@@ -196,6 +200,8 @@ function mapDetail(data: DocumentData): ListingDetail {
         ? (data.analytics as Record<string, unknown>)
         : {},
     assignedEmployeeName: str(data.assignedEmployeeName),
+    createdBy: str(data.createdBy),
+    createdByName: str(data.createdByName),
     media: parseMedia(data.media),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
@@ -361,6 +367,74 @@ export function DashboardListingDetailClient({
     };
   }, [authReady, hasPrivate, companyId, listingId]);
 
+  // Who published this listing. Prefer the denormalized name; for older
+  // listings that only stored `createdBy`, resolve the uid against the employee
+  // roster. A denied/missing read just leaves the uid-less fallback.
+  const [publisherName, setPublisherName] = useState<string | null>(null);
+  const createdBy = listing?.createdBy ?? null;
+  const createdByName = listing?.createdByName ?? null;
+  useEffect(() => {
+    if (createdByName) {
+      setPublisherName(createdByName);
+      return;
+    }
+    if (!authReady || !createdBy) {
+      setPublisherName(null);
+      return;
+    }
+    let mounted = true;
+    (async () => {
+      try {
+        const snap = await getDoc(
+          doc(getFirebaseDb(), `companies/${companyId}/employees/${createdBy}`),
+        );
+        const name = snap.exists() ? snap.get("name") : null;
+        if (mounted) {
+          setPublisherName(typeof name === "string" && name ? name : null);
+        }
+      } catch {
+        if (mounted) setPublisherName(null);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [authReady, companyId, createdBy, createdByName]);
+
+  // Contact of the employee SENDING the offer (the signed-in agent), so the
+  // WhatsApp pitch carries their own name + phone instead of the caretaker's.
+  const [agentContact, setAgentContact] = useState<{
+    name: string;
+    phone: string;
+  } | null>(null);
+  const agentUid = authUser?.uid ?? null;
+  useEffect(() => {
+    if (!authReady || !agentUid) {
+      setAgentContact(null);
+      return;
+    }
+    let mounted = true;
+    (async () => {
+      try {
+        const snap = await getDoc(
+          doc(getFirebaseDb(), `companies/${companyId}/employees/${agentUid}`),
+        );
+        if (!mounted) return;
+        const name = snap.exists() ? snap.get("name") : null;
+        const phone = snap.exists() ? snap.get("phone") : null;
+        setAgentContact({
+          name: typeof name === "string" ? name : "",
+          phone: typeof phone === "string" ? phone : "",
+        });
+      } catch {
+        if (mounted) setAgentContact(null);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [authReady, companyId, agentUid]);
+
   const privateOwner = useMemo(() => {
     const owner =
       privateData &&
@@ -435,10 +509,6 @@ export function DashboardListingDetailClient({
   const whatsappHref = useMemo(() => {
     if (!listing) return null;
 
-    const contacts =
-      privateContacts.length > 0 ? privateContacts : listing.contacts;
-    const caretaker = contacts.find((c) => str(c.phone));
-
     const lines: string[] = [];
     lines.push(`*${listing.title}*`);
     if (listing.description) lines.push(listing.description);
@@ -476,10 +546,12 @@ export function DashboardListingDetailClient({
     if (specs.length > 0) lines.push("", ...specs);
 
     if (mapsHref) lines.push("", `${t("listings.openInGoogleMaps")}: ${mapsHref}`);
-    if (caretaker) {
-      lines.push(
-        `${str(caretaker.role) || t("listings.sectionContacts")}: ${str(caretaker.phone)}`,
-      );
+
+    // The agent's own contact — replaces the (secret) caretaker phone.
+    if (agentContact && (agentContact.name || agentContact.phone)) {
+      lines.push("", t("listings.offerContactTitle"));
+      if (agentContact.name) lines.push(agentContact.name);
+      if (agentContact.phone) lines.push(agentContact.phone);
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
@@ -488,7 +560,7 @@ export function DashboardListingDetailClient({
     }
 
     return `https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
-  }, [listing, privateContacts, mapsHref, companyId, listingId]);
+  }, [listing, agentContact, mapsHref, companyId, listingId]);
 
   // Advertising checklist toggle (note 9). Rules-enforced by the listing's
   // edit permission; UI is only shown to editors.
@@ -1194,6 +1266,10 @@ export function DashboardListingDetailClient({
       <Section title={t("listings.sectionMeta")}>
         <InfoGrid
           rows={[
+            {
+              label: t("listings.metaPublishedBy"),
+              value: publisherName ?? t("listings.metaUnknownPublisher"),
+            },
             {
               label: t("listings.metaAssignedEmployee"),
               value:

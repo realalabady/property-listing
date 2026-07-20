@@ -339,15 +339,17 @@ export async function getPublicCompanyListings(
   const q = query(listingsRef, where("status", "==", "published"), limit(24));
 
   const snap = await getDocs(q);
-  return snap.docs.map((d) =>
-    mapPublicListing(d.id, {
-      ...d.data(),
-      companyId,
-      companyName: d.data().companyName,
-      companySlug: d.data().companySlug,
-      city: d.data().location?.city,
-    }),
-  );
+  return snap.docs
+    .filter((d) => d.data().isDeleted !== true)
+    .map((d) =>
+      mapPublicListing(d.id, {
+        ...d.data(),
+        companyId,
+        companyName: d.data().companyName,
+        companySlug: d.data().companySlug,
+        city: d.data().location?.city,
+      }),
+    );
 }
 
 export async function getCompanyListingById(
@@ -360,7 +362,7 @@ export async function getCompanyListingById(
   if (!snap.exists()) return null;
 
   const data = snap.data();
-  if (data.status !== "published") return null;
+  if (data.status !== "published" || data.isDeleted === true) return null;
 
   return mapPublicListing(snap.id, {
     ...data,

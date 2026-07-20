@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LISTING_STATUS_LABELS } from "@/constants/listing-categories";
 import { t } from "@/lib/i18n";
 import type { AdminListingRow } from "@/app/(admin)/admin/listings/page";
+import { Pagination } from "@/components/ui/pagination";
+
+const PAGE_SIZE = 20;
 
 function formatDate(value: string | null): string {
   if (!value) return "-";
@@ -39,6 +42,21 @@ export function AdminListingsClient({
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return listings;
+    return listings.filter((row) =>
+      [row.title, row.companyName, statusLabel(row.status)]
+        .join(" ")
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [listings, search]);
+
+  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const deleteListing = async (row: AdminListingRow) => {
     if (!window.confirm(t("admin.confirmDeleteListing"))) return;
@@ -74,9 +92,21 @@ export function AdminListingsClient({
         </p>
       )}
 
-      <p className="text-sm text-muted-foreground">
-        {t("admin.totalCount", { count: listings.length })}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          placeholder="ابحث بعنوان العقار أو الشركة أو الحالة…"
+          className="h-11 w-full max-w-sm rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
+        />
+        <p className="text-sm text-muted-foreground">
+          {t("admin.totalCount", { count: filtered.length })}
+        </p>
+      </div>
 
       <section className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="overflow-x-auto">
@@ -92,7 +122,7 @@ export function AdminListingsClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {listings.length === 0 ? (
+              {filtered.length === 0 ? (
                 <tr>
                   <td
                     colSpan={6}
@@ -102,7 +132,7 @@ export function AdminListingsClient({
                   </td>
                 </tr>
               ) : (
-                listings.map((row) => (
+                pageRows.map((row) => (
                   <tr key={`${row.companyId}-${row.id}`}>
                     <td className="px-4 py-4 font-medium text-foreground">
                       {row.title}
@@ -137,6 +167,12 @@ export function AdminListingsClient({
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={filtered.length}
+          onPageChange={setPage}
+        />
       </section>
     </div>
   );

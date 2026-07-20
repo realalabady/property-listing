@@ -55,7 +55,9 @@ async function fetchAllLeads(): Promise<AdminLeadRow[]> {
     fetchCompanyNames(),
   ]);
 
-  return snap.docs.map((doc) => {
+  return snap.docs
+    .filter((doc) => (doc.data() as Record<string, unknown>).isDeleted !== true)
+    .map((doc) => {
     const data = doc.data() as Record<string, unknown>;
     const companyId = doc.ref.parent.parent?.id ?? "";
     return {

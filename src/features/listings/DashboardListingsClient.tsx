@@ -143,6 +143,12 @@ export function DashboardListingsClient({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | ListingType>("all");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | ListingCategory>(
+    "all",
+  );
+  const [publisherFilter, setPublisherFilter] = useState<string>("all");
+  const [onlyMine, setOnlyMine] = useState(false);
   const [search, setSearch] = useState("");
   /** uid -> employee name, for showing who published each listing. */
   const [employeeNames, setEmployeeNames] = useState<Record<string, string>>(
@@ -193,7 +199,9 @@ export function DashboardListingsClient({
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const rows = snap.docs.map((d) => mapListingDoc(d.id, d.data()));
+        const rows = snap.docs
+          .filter((d) => d.data().isDeleted !== true)
+          .map((d) => mapListingDoc(d.id, d.data()));
         setListings(rows);
         setLoading(false);
         setError(null);
@@ -207,10 +215,41 @@ export function DashboardListingsClient({
     return () => unsub();
   }, [companyId, authLoading, authUser]);
 
+  const myUid = authUser?.uid ?? null;
+
+  // Distinct creators present in the current listings, for the "publisher"
+  // dropdown. Name comes from the denormalized field or the roster; unknowns
+  // still get an option so their listings remain filterable.
+  const publisherOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const l of listings) {
+      if (!l.createdBy) continue;
+      const name =
+        l.createdByName ??
+        employeeNames[l.createdBy] ??
+        t("listings.unknownPublisher");
+      map.set(l.createdBy, name);
+    }
+    return Array.from(map, ([uid, name]) => ({ uid, name })).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }, [listings, employeeNames]);
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return listings.filter((l) => {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
+      if (typeFilter !== "all" && l.type !== typeFilter) return false;
+      if (categoryFilter !== "all" && l.category !== categoryFilter)
+        return false;
+      if (onlyMine && l.createdBy !== myUid) return false;
+      if (
+        !onlyMine &&
+        publisherFilter !== "all" &&
+        l.createdBy !== publisherFilter
+      ) {
+        return false;
+      }
       if (
         term &&
         !l.title.toLowerCase().includes(term) &&
@@ -222,7 +261,16 @@ export function DashboardListingsClient({
       }
       return true;
     });
-  }, [listings, statusFilter, search]);
+  }, [
+    listings,
+    statusFilter,
+    typeFilter,
+    categoryFilter,
+    publisherFilter,
+    onlyMine,
+    myUid,
+    search,
+  ]);
 
   return (
     <div className="space-y-6">
@@ -245,21 +293,82 @@ export function DashboardListingsClient({
               placeholder={t("listings.searchPlaceholder")}
               className="h-11 w-full rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 md:w-64"
             />
-            <label className="text-xs font-medium text-muted-foreground">
-              {t("common.status")}
-            </label>
             <select
+              aria-label={t("common.status")}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
               className="h-11 rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
             >
-              <option value="all">{t("common.all")}</option>
+              <option value="all">{t("common.status")}</option>
               {Object.values(LISTING_STATUSES).map((status) => (
                 <option key={status} value={status}>
                   {LISTING_STATUS_LABELS[status].ar}
                 </option>
               ))}
             </select>
+
+            <select
+              aria-label={t("listings.filterType")}
+              value={typeFilter}
+              onChange={(e) =>
+                setTypeFilter(e.target.value as "all" | ListingType)
+              }
+              className="h-11 rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
+            >
+              <option value="all">{t("listings.allTypes")}</option>
+              {Object.values(LISTING_TYPES).map((type) => (
+                <option key={type} value={type}>
+                  {LISTING_TYPE_LABELS[type].ar}
+                </option>
+              ))}
+            </select>
+
+            <select
+              aria-label={t("listings.filterCategory")}
+              value={categoryFilter}
+              onChange={(e) =>
+                setCategoryFilter(e.target.value as "all" | ListingCategory)
+              }
+              className="h-11 rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
+            >
+              <option value="all">{t("listings.allCategories")}</option>
+              {Object.values(LISTING_CATEGORIES).map((category) => (
+                <option key={category} value={category}>
+                  {LISTING_CATEGORY_LABELS[category].ar}
+                </option>
+              ))}
+            </select>
+
+            <select
+              aria-label={t("listings.publisher")}
+              value={publisherFilter}
+              disabled={onlyMine}
+              onChange={(e) => setPublisherFilter(e.target.value)}
+              className="h-11 rounded-lg border border-input bg-card px-3.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:opacity-50"
+            >
+              <option value="all">{t("listings.allPublishers")}</option>
+              {publisherOptions.map((p) => (
+                <option key={p.uid} value={p.uid}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+
+            {myUid && (
+              <button
+                type="button"
+                onClick={() => setOnlyMine((v) => !v)}
+                aria-pressed={onlyMine}
+                className={cn(
+                  "h-11 rounded-lg border px-3.5 text-sm font-medium transition focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/15",
+                  onlyMine
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-card text-foreground hover:bg-secondary",
+                )}
+              >
+                {t("listings.myListings")}
+              </button>
+            )}
           </div>
         </div>
 

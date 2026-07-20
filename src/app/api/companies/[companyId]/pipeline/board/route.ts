@@ -68,6 +68,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
     columns[stage.key] = [];
   }
   for (const doc of snap.docs) {
+    if (doc.data().isDeleted === true) continue;
     const lead = mapBoardLead(
       doc.id,
       doc.data() as Record<string, unknown>,

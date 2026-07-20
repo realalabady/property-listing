@@ -53,7 +53,9 @@ async function fetchAllListings(): Promise<AdminListingRow[]> {
     fetchCompanyNames(),
   ]);
 
-  return snap.docs.map((doc) => {
+  return snap.docs
+    .filter((doc) => (doc.data() as Record<string, unknown>).isDeleted !== true)
+    .map((doc) => {
     const data = doc.data() as Record<string, unknown>;
     // collectionGroup path is companies/{cid}/listings/{lid} → grandparent id.
     const companyId = doc.ref.parent.parent?.id ?? "";
