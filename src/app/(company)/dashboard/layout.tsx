@@ -7,8 +7,10 @@ import { ROLE_LABELS, ROLES } from "@/constants/roles";
 import { adminDb } from "@/lib/firebase/admin";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { SessionEndedSignOut } from "@/components/auth/SessionEndedSignOut";
+import { IdleTimeout } from "@/components/auth/IdleTimeout";
 import { NotificationsButton } from "@/components/dashboard/NotificationsButton";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { DashboardMobileNav } from "@/components/dashboard/DashboardMobileNav";
 import { TrialCountdownBanner } from "@/components/dashboard/TrialCountdownBanner";
 import { PasswordResetBanner } from "@/components/dashboard/PasswordResetBanner";
 import { PermissionDeniedToast } from "@/components/dashboard/PermissionDeniedToast";
@@ -64,10 +66,11 @@ export default async function DashboardLayout({
     <div className="enterprise min-h-screen bg-background text-foreground">
       <Toaster position="top-center" richColors dir="rtl" />
       <SessionEndedSignOut />
+      <IdleTimeout />
       <Suspense fallback={null}>
         <PermissionDeniedToast />
       </Suspense>
-      <aside className="fixed inset-y-0 end-0 z-40 hidden w-64 flex-col border-s border-border bg-card lg:flex">
+      <aside className="fixed inset-y-0 start-0 z-40 hidden w-64 flex-col border-e border-border bg-card lg:flex">
         <div className="flex h-16 items-center border-b border-border px-5">
           <Link
             href={ROUTES.DASHBOARD}
@@ -100,9 +103,13 @@ export default async function DashboardLayout({
         </div>
       </aside>
 
-      <div className="lg:pe-64">
+      <div className="lg:ps-64">
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-card/90 px-5 backdrop-blur sm:px-6">
           <div className="flex min-w-0 items-center gap-2.5">
+            <DashboardMobileNav
+              companyName={companyName}
+              companyLogo={companyLogo}
+            />
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
               {userInitial}
             </div>

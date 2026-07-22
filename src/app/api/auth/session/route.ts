@@ -3,6 +3,7 @@ import {
   createSessionCookie,
   setSessionCookie,
   clearSessionCookie,
+  getSessionUser,
 } from "@/lib/auth/session";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
@@ -148,6 +149,21 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+/**
+ * GET /api/auth/session
+ * Lightweight session probe: 200 when the httpOnly session cookie still
+ * resolves to a user, 401 when it's gone/expired. The client uses this to
+ * confirm a real logout before ending the visit (a transient client-side
+ * Firebase blip must NOT sign the user out).
+ */
+export async function GET() {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ authenticated: false }, { status: 401 });
+  }
+  return NextResponse.json({ authenticated: true });
 }
 
 /**

@@ -22,6 +22,7 @@ export default function LoginForm() {
   const params = useSearchParams();
   const next = params.get("next") || ROUTES.DASHBOARD;
   const blocked = params.get("blocked") === "company_inactive";
+  const sessionEnded = params.get("idle") === "1";
   const inviteCompany = params.get("inviteCompany");
   const inviteId = params.get("inviteId");
   const inviteToken = params.get("token");
@@ -189,6 +190,18 @@ export default function LoginForm() {
           onSubmit={onSubmit}
           className="space-y-4 rounded-xl border border-border bg-card p-6"
         >
+          {sessionEnded && (
+            <div className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p>{t("auth.sessionEndedIdle")}</p>
+              <Link
+                href="/"
+                className="mt-1 inline-block font-medium text-amber-900 underline underline-offset-2 hover:opacity-80"
+              >
+                {t("auth.goHome")}
+              </Link>
+            </div>
+          )}
+
           {blocked && (
             <div className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               {t("auth.companyInactive")}

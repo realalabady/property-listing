@@ -385,6 +385,7 @@ export const syncGlobalListing = onDocumentWritten(
     const companySnap = await db.doc(`companies/${companyId}`).get();
     const company = companySnap.data() as Record<string, unknown> | undefined;
     const location = (listingAfter.location ?? {}) as Record<string, unknown>;
+    const details = (listingAfter.details ?? {}) as Record<string, unknown>;
 
     await globalRef.set(
       {
@@ -409,6 +410,8 @@ export const syncGlobalListing = onDocumentWritten(
             ? listingAfter.category
             : "apartment",
         price: typeof listingAfter.price === "number" ? listingAfter.price : 0,
+        discount:
+          typeof listingAfter.discount === "number" ? listingAfter.discount : 0,
         currency:
           typeof listingAfter.currency === "string"
             ? listingAfter.currency
@@ -422,6 +425,11 @@ export const syncGlobalListing = onDocumentWritten(
         region: typeof location.region === "string" ? location.region : "",
         district:
           typeof location.district === "string" ? location.district : "",
+        // Registry identifiers surfaced on public cards (optional).
+        planNumber:
+          typeof details.planNumber === "string" ? details.planNumber : "",
+        blockNumber:
+          typeof details.blockNumber === "string" ? details.blockNumber : "",
         lat: typeof location.lat === "number" ? location.lat : null,
         lng: typeof location.lng === "number" ? location.lng : null,
         // Must be mirrored: the public map jitters any pin that isn't flagged
@@ -587,9 +595,33 @@ export const syncEmployeeClaims = onDocumentWritten(
   async (event) => {
     const companyId = event.params.companyId;
     const uid = event.params.uid;
+    const employeeBefore = event.data?.before.data() as
+      | Record<string, unknown>
+      | undefined;
     const employeeAfter = event.data?.after.data() as
       | Record<string, unknown>
       | undefined;
+
+    // Claims + token revocation must ONLY happen when a field that actually
+    // affects the user's claims changes. Every login writes bookkeeping fields
+    // (lastSignInAt, lastActiveAt), and KPI/counter updates touch this doc too —
+    // none of those change claims. Revoking on those writes was invalidating the
+    // user's fresh refresh token on the very next page load (silent logout).
+    const CLAIM_FIELDS = [
+      "role",
+      "active",
+      "permissions",
+      "permissionGroupIds",
+    ] as const;
+    if (employeeBefore && employeeAfter) {
+      const claimsUnchanged = CLAIM_FIELDS.every(
+        (k) =>
+          JSON.stringify(employeeBefore[k]) === JSON.stringify(employeeAfter[k]),
+      );
+      if (claimsUnchanged) {
+        return;
+      }
+    }
 
     if (!employeeAfter || employeeAfter.active === false) {
       await admin.auth().setCustomUserClaims(uid, {

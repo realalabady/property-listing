@@ -82,6 +82,10 @@ const typeTabs: Array<{ value: ListingType; label: Localized }> = [
     value: LISTING_TYPES.OFF_PLAN,
     label: LISTING_TYPE_LABELS[LISTING_TYPES.OFF_PLAN],
   },
+  {
+    value: LISTING_TYPES.TAKEOVER,
+    label: LISTING_TYPE_LABELS[LISTING_TYPES.TAKEOVER],
+  },
 ];
 
 const valueProps: Array<{

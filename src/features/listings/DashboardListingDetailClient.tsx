@@ -18,6 +18,9 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseDb, getFirebaseStorage } from "@/lib/firebase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
+  coerceListingCategory,
+  coerceListingStatus,
+  coerceListingType,
   LISTING_CATEGORIES,
   LISTING_CATEGORY_LABELS,
   LISTING_STATUSES,
@@ -31,7 +34,7 @@ import {
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils/cn";
 import { formatDate } from "@/lib/utils/format";
-import { SARPrice } from "@/components/ui/SARPrice";
+import { DiscountedPrice } from "@/components/ui/DiscountedPrice";
 import { t } from "@/lib/i18n";
 
 interface MediaItem {
@@ -50,6 +53,7 @@ interface ListingDetail {
   type: ListingType;
   category: ListingCategory;
   price: number;
+  discount?: number;
   currency: string;
   priceNegotiable?: boolean;
   rentPeriod?: string;
@@ -134,13 +138,14 @@ function mapDetail(data: DocumentData): ListingDetail {
     title: str(data.title) ?? t("listings.untitled"),
     description: str(data.description) ?? "",
     descriptionAr: str(data.descriptionAr),
-    type: (data.type as ListingType) ?? LISTING_TYPES.SALE,
-    category: (data.category as ListingCategory) ?? LISTING_CATEGORIES.APARTMENT,
+    type: coerceListingType(data.type),
+    category: coerceListingCategory(data.category),
     price: num(data.price) ?? 0,
+    discount: num(data.discount) ?? 0,
     currency: str(data.currency) ?? "SAR",
     priceNegotiable: Boolean(data.priceNegotiable),
     rentPeriod: str(data.rentPeriod),
-    status: (data.status as ListingStatus) ?? LISTING_STATUSES.DRAFT,
+    status: coerceListingStatus(data.status),
     featured: Boolean(data.featured),
     bedrooms: num(data.bedrooms),
     bathrooms: num(data.bathrooms),
@@ -258,6 +263,7 @@ const DEED_FIELDS: { key: string; label: string }[] = [
   { key: "postalCode", label: t("listings.deedPostalCode") },
   { key: "buildingNumber", label: t("listings.deedBuildingNumber") },
   { key: "deedReference", label: t("listings.deedDeedReference") },
+  { key: "brokerageContract", label: t("listings.deedBrokerageContract") },
   { key: "paymentCycle", label: t("listings.deedPaymentCycle") },
   { key: "deposit", label: t("listings.deedDeposit") },
 ];
@@ -797,12 +803,18 @@ export function DashboardListingDetailClient({
               {str(listing.location.city) ?? t("listings.unknownCity")}
             </p>
             <div className="text-xl font-bold text-foreground">
-              <SARPrice amount={listing.price} />
-              {listing.rentPeriod && (
-                <span className="ms-1 text-sm font-normal text-muted-foreground">
-                  / {rentPeriodLabel(listing.rentPeriod)}
-                </span>
-              )}
+              <DiscountedPrice
+                price={listing.price}
+                discount={listing.discount}
+                badge
+                suffix={
+                  listing.rentPeriod ? (
+                    <span className="ms-1 text-sm font-normal text-muted-foreground">
+                      / {rentPeriodLabel(listing.rentPeriod)}
+                    </span>
+                  ) : undefined
+                }
+              />
             </div>
           </div>
 
@@ -1139,7 +1151,7 @@ export function DashboardListingDetailClient({
         companyId={companyId}
         listingId={listingId}
         canEdit={canEdit}
-        defaultType={listing.type === LISTING_TYPES.SALE ? "sale" : "rent"}
+        defaultType={listing.type === LISTING_TYPES.RENT ? "rent" : "sale"}
         publicUnitsCount={listing.publicUnitsCount}
       />
 

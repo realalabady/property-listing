@@ -24,6 +24,7 @@ import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils/cn";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth.store";
+import { ROLES } from "@/constants/roles";
 import {
   hasAnyPermission,
   PERMISSIONS,
@@ -182,6 +183,10 @@ function itemClasses(active: boolean): string {
 export function DashboardSidebar() {
   const pathname = usePathname() || "";
   const permissions = useAuthStore((s) => s.user?.permissions);
+  const role = useAuthStore((s) => s.user?.role);
+  // The company owner has full access to their company, so they see every
+  // permission-gated item regardless of which permissions sit in their token.
+  const isOwner = role === ROLES.COMPANY_OWNER || role === ROLES.SUPER_ADMIN;
   const groups = React.useMemo(() => {
     return buildGroups()
       .map((group) => ({
@@ -189,11 +194,12 @@ export function DashboardSidebar() {
         items: group.items.filter(
           (item) =>
             !item.requiredAnyPermission ||
+            isOwner ||
             hasAnyPermission(permissions, item.requiredAnyPermission),
         ),
       }))
       .filter((group) => group.items.length > 0);
-  }, [permissions]);
+  }, [permissions, isOwner]);
   // Manual expand overrides; undefined => follow active state.
   const [overrides, setOverrides] = React.useState<Record<string, boolean>>({});
 

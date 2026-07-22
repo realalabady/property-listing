@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, MapPin, MessageCircle, Share2 } from "lucide-react";
 import { UnitsDialog } from "./UnitsDialog";
 import { ROUTES } from "@/constants/routes";
-import { SARPrice } from "@/components/ui/SARPrice";
+import { DiscountedPrice } from "@/components/ui/DiscountedPrice";
 import {
   LISTING_CATEGORY_LABELS,
   LISTING_TYPE_LABELS,
@@ -22,14 +22,25 @@ import {
 
 interface MarketplaceDetailClientProps {
   listingId: string;
+  /** Server-rendered seed data. When provided the client skips its own fetch,
+   *  so the page paints immediately with no post-hydration Firestore round-trip. */
+  initialListing?: PublicListing | null;
+  initialCompany?: PublicCompany | null;
 }
 
 export function MarketplaceDetailClient({
   listingId,
+  initialListing,
+  initialCompany,
 }: MarketplaceDetailClientProps) {
-  const [listing, setListing] = useState<PublicListing | null>(null);
-  const [company, setCompany] = useState<PublicCompany | null>(null);
-  const [loading, setLoading] = useState(true);
+  const seeded = initialListing !== undefined;
+  const [listing, setListing] = useState<PublicListing | null>(
+    initialListing ?? null,
+  );
+  const [company, setCompany] = useState<PublicCompany | null>(
+    initialCompany ?? null,
+  );
+  const [loading, setLoading] = useState(!seeded);
   const [error, setError] = useState<string | null>(null);
   const [activeMedia, setActiveMedia] = useState(0);
   const [unitsOpen, setUnitsOpen] = useState(false);
@@ -59,6 +70,9 @@ export function MarketplaceDetailClient({
   }, [listing?.title]);
 
   useEffect(() => {
+    // Server already provided the data — no client fetch needed.
+    if (seeded) return;
+
     let mounted = true;
 
     // The global marketplace mirror only stores the cover image. To show the
@@ -153,23 +167,15 @@ export function MarketplaceDetailClient({
   const categoryLabel =
     LISTING_CATEGORY_LABELS[listing.category as ListingCategory]?.ar;
 
-  // Contact routes to the agent's company via WhatsApp (prefilled with the
-  // listing), then phone, then the company's contact page as a last resort.
-  const waDigits = company?.whatsapp
-    ? company.whatsapp.replace(/[^\d]/g, "")
-    : "";
+  // Contact the current owner (the assigned agent, else the creator) through a
+  // server redirect that resolves their WhatsApp at click time — the number is
+  // never exposed in the public payload. The endpoint falls back to the
+  // company's WhatsApp, phone, then contact page.
   const pageUrl = typeof window !== "undefined" ? window.location.href : "";
-  const contactPrefill =
-    t("marketplace.contactPrefill", { title: listing.title }) +
-    (pageUrl ? `\n${pageUrl}` : "");
   const companySlug = company?.slug || listing.companySlug;
-  const contactHref = waDigits
-    ? `https://wa.me/${waDigits}?text=${encodeURIComponent(contactPrefill)}`
-    : company?.phone
-      ? `tel:${company.phone}`
-      : companySlug
-        ? ROUTES.COMPANY_CONTACT(companySlug)
-        : null;
+  const contactHref =
+    `/api/companies/${listing.companyId}/listings/${listing.id}/contact` +
+    (pageUrl ? `?u=${encodeURIComponent(pageUrl)}` : "");
 
   return (
     <main className="container-tight py-12">
@@ -279,7 +285,11 @@ export function MarketplaceDetailClient({
           </p>
 
           <p className="text-3xl font-semibold">
-            <SARPrice amount={listing.price} />
+            <DiscountedPrice
+              price={listing.price}
+              discount={listing.discount}
+              badge
+            />
           </p>
 
           {/* Location + map link */}
@@ -385,21 +395,15 @@ export function MarketplaceDetailClient({
 
           {/* Actions: contact the advertiser + share the offer */}
           <div className="flex flex-wrap items-center gap-2">
-            {contactHref && (
-              <a
-                href={contactHref}
-                target={contactHref.startsWith("http") ? "_blank" : undefined}
-                rel={
-                  contactHref.startsWith("http")
-                    ? "noopener noreferrer"
-                    : undefined
-                }
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 sm:flex-none"
-              >
-                <MessageCircle className="h-4 w-4" aria-hidden />
-                {t("marketplace.contactAdvertiser")}
-              </a>
-            )}
+            <a
+              href={contactHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 sm:flex-none"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden />
+              {t("marketplace.contactAdvertiser")}
+            </a>
             <button
               type="button"
               onClick={handleShare}

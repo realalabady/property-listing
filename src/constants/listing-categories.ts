@@ -2,6 +2,7 @@ export const LISTING_TYPES = {
   RENT: "rent",
   SALE: "sale",
   OFF_PLAN: "off_plan",
+  TAKEOVER: "takeover",
 } as const;
 
 export type ListingType = (typeof LISTING_TYPES)[keyof typeof LISTING_TYPES];
@@ -13,6 +14,7 @@ export const LISTING_TYPE_LABELS: Record<
   [LISTING_TYPES.RENT]: { en: "For Rent", ar: "للإيجار" },
   [LISTING_TYPES.SALE]: { en: "For Sale", ar: "للبيع" },
   [LISTING_TYPES.OFF_PLAN]: { en: "Off-Plan", ar: "على الخريطة" },
+  [LISTING_TYPES.TAKEOVER]: { en: "For Takeover", ar: "للتقبيل" },
 };
 
 export const LISTING_CATEGORIES = {
@@ -74,6 +76,33 @@ export const LISTING_STATUS_LABELS: Record<
   [LISTING_STATUSES.RENTED]: { en: "Rented", ar: "تم التأجير" },
   [LISTING_STATUSES.ARCHIVED]: { en: "Archived", ar: "مؤرشف" },
 };
+
+/**
+ * Coerce a raw (DB / network) value to a KNOWN enum member, never just a
+ * non-null one. A listing saved with an empty string or a legacy/unknown
+ * `type`/`category`/`status` would otherwise pass a `?? default` guard
+ * untouched and later make `LISTING_*_LABELS[value].ar` throw
+ * "Cannot read properties of undefined (reading 'ar')", 500-ing every page
+ * that renders it. Always run DB values through these before indexing a label
+ * map or setting a typed field.
+ */
+export function coerceListingType(value: unknown): ListingType {
+  return typeof value === "string" && value in LISTING_TYPE_LABELS
+    ? (value as ListingType)
+    : LISTING_TYPES.SALE;
+}
+
+export function coerceListingCategory(value: unknown): ListingCategory {
+  return typeof value === "string" && value in LISTING_CATEGORY_LABELS
+    ? (value as ListingCategory)
+    : LISTING_CATEGORIES.APARTMENT;
+}
+
+export function coerceListingStatus(value: unknown): ListingStatus {
+  return typeof value === "string" && value in LISTING_STATUS_LABELS
+    ? (value as ListingStatus)
+    : LISTING_STATUSES.DRAFT;
+}
 
 export const LEAD_STATUSES = {
   NEW: "new",

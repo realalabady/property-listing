@@ -4,6 +4,7 @@ import { requireSuperAdmin } from "@/lib/auth/guards";
 import { ROUTES } from "@/constants/routes";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { SessionEndedSignOut } from "@/components/auth/SessionEndedSignOut";
+import { IdleTimeout } from "@/components/auth/IdleTimeout";
 import { t } from "@/lib/i18n";
 
 export default async function AdminLayout({
@@ -16,6 +17,7 @@ export default async function AdminLayout({
   return (
     <div className="enterprise min-h-screen bg-background text-foreground">
       <SessionEndedSignOut />
+      <IdleTimeout />
       <aside className="fixed inset-y-0 right-0 hidden w-64 border-l border-border bg-card lg:block">
         <div className="flex h-16 items-center border-b border-border px-6">
           <Link href={ROUTES.ADMIN} className="flex items-center gap-2">

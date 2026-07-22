@@ -15,6 +15,9 @@ import { UserRound } from "lucide-react";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
+  coerceListingCategory,
+  coerceListingStatus,
+  coerceListingType,
   LISTING_CATEGORIES,
   LISTING_CATEGORY_LABELS,
   LISTING_STATUSES,
@@ -28,7 +31,7 @@ import {
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils/cn";
 import { formatDate } from "@/lib/utils/format";
-import { SARPrice } from "@/components/ui/SARPrice";
+import { DiscountedPrice } from "@/components/ui/DiscountedPrice";
 import { t } from "@/lib/i18n";
 
 type StatusFilter = "all" | ListingStatus;
@@ -39,6 +42,7 @@ interface ListingRow {
   type: ListingType;
   category: ListingCategory;
   price: number;
+  discount: number;
   currency: string;
   city: string;
   district: string;
@@ -93,10 +97,9 @@ function firstMediaUrl(media: unknown): string | null {
 }
 
 function mapListingDoc(id: string, data: DocumentData): ListingRow {
-  const type = (data.type as ListingType) ?? LISTING_TYPES.SALE;
-  const category =
-    (data.category as ListingCategory) ?? LISTING_CATEGORIES.APARTMENT;
-  const status = (data.status as ListingStatus) ?? LISTING_STATUSES.DRAFT;
+  const type = coerceListingType(data.type);
+  const category = coerceListingCategory(data.category);
+  const status = coerceListingStatus(data.status);
 
   return {
     id,
@@ -105,6 +108,7 @@ function mapListingDoc(id: string, data: DocumentData): ListingRow {
     type,
     category,
     price: typeof data.price === "number" ? data.price : 0,
+    discount: typeof data.discount === "number" ? data.discount : 0,
     currency: typeof data.currency === "string" ? data.currency : "SAR",
     city:
       typeof data.location?.city === "string"
@@ -461,7 +465,11 @@ export function DashboardListingsClient({
 
                 <div className="mt-auto flex items-center justify-between pt-2">
                   <span className="font-semibold text-foreground">
-                    <SARPrice amount={listing.price} />
+                    <DiscountedPrice
+                      price={listing.price}
+                      discount={listing.discount}
+                      badge
+                    />
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {t("listings.mediaCount", { count: listing.mediaCount })}

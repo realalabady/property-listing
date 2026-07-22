@@ -8,10 +8,15 @@ import { ROUTES } from "@/constants/routes";
 import { useAuthStore } from "@/store/auth.store";
 
 /**
- * Ends the visit silently when the client Firebase session disappears while a
- * protected page is open (expired or revoked session): clears the client auth
- * state and the httpOnly session cookie, then sends the user back to the
- * login page so they can simply sign in again — no "session expired" banner.
+ * Ends the visit silently when the session has genuinely expired, sending the
+ * user back to the login page (no "session expired" banner).
+ *
+ * IMPORTANT: the client Firebase user can go null transiently — a token
+ * refresh, a backgrounded tab, a network blip — which is NOT proof the session
+ * ended. Treating that as a logout used to sign active users out at random.
+ * So when the client user disappears we wait a grace window and then ask the
+ * SERVER: only a real 401 (the httpOnly session cookie is gone/expired) ends
+ * the visit. If the server still has a valid session, we leave the user alone.
  *
  * Mount once inside protected layouts (dashboard, admin).
  */
@@ -24,11 +29,27 @@ export function SessionEndedSignOut() {
   useEffect(() => {
     if (loading || user || endedRef.current) return;
 
-    // Right after login the client user can be momentarily null while the SDK
-    // restores the session (a transient accounts:lookup race) — wait out a
-    // short grace window first. When the user arrives this effect re-runs and
-    // the timer is cleared before it can fire.
+    let cancelled = false;
     const graceTimer = setTimeout(async () => {
+      if (cancelled) return;
+
+      // Confirm with the server before doing anything destructive.
+      let sessionGone = false;
+      try {
+        const res = await fetch("/api/auth/session", {
+          method: "GET",
+          cache: "no-store",
+        });
+        sessionGone = res.status === 401;
+      } catch {
+        // Can't reach the server → don't sign the user out on a guess.
+        return;
+      }
+
+      // Server session is still valid: this was a transient client blip. Leave
+      // the user signed in.
+      if (cancelled || !sessionGone) return;
+
       endedRef.current = true;
       await fbSignOut(getFirebaseAuth()).catch(() => undefined);
       await fetch("/api/auth/session", { method: "DELETE" }).catch(
@@ -38,9 +59,12 @@ export function SessionEndedSignOut() {
       // the DELETE, avoiding a redirect loop through the middleware.
       router.replace(`${ROUTES.LOGIN}?reauth=1`);
       router.refresh();
-    }, 2500);
+    }, 5000);
 
-    return () => clearTimeout(graceTimer);
+    return () => {
+      cancelled = true;
+      clearTimeout(graceTimer);
+    };
   }, [loading, user, router]);
 
   return null;

@@ -11,8 +11,8 @@ import {
 } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import {
-  LISTING_CATEGORIES,
-  LISTING_TYPES,
+  coerceListingCategory,
+  coerceListingType,
   type ListingCategory,
   type ListingType,
 } from "@/constants/listing-categories";
@@ -58,11 +58,16 @@ export interface PublicListing {
   city: string;
   region: string;
   district: string;
+  /** Optional registry identifiers, shown on cards when present. */
+  planNumber: string;
+  blockNumber: string;
   lat: number | null;
   lng: number | null;
   /** Coords came from an exact map pin — render without fallback jitter. */
   precise: boolean;
   price: number;
+  /** Optional amount subtracted from `price`; 0 means no discount. */
+  discount: number;
   currency: string;
   bedrooms: number;
   bathrooms: number;
@@ -146,9 +151,11 @@ export function mapPublicListing(
   id: string,
   data: DocumentData,
 ): PublicListing {
-  const type = (data.type as ListingType) ?? LISTING_TYPES.SALE;
-  const category =
-    (data.category as ListingCategory) ?? LISTING_CATEGORIES.APARTMENT;
+  // Coerce to a KNOWN enum value, not just non-null — an unknown/legacy string
+  // would otherwise make `LISTING_TYPE_LABELS[type].ar` throw and 500 every
+  // public page that renders it (homepage cards, marketplace, detail).
+  const type = coerceListingType(data.type);
+  const category = coerceListingCategory(data.category);
   return {
     id,
     // On the global mirror `sourceListingId` is stored; on a company listing doc
@@ -183,6 +190,20 @@ export function mapPublicListing(
         : typeof data.location?.district === "string"
           ? (data.location.district as string)
           : "",
+    // Mirrored at top level on the global doc; nested under `details` on the
+    // source company listing — read whichever is present.
+    planNumber:
+      typeof data.planNumber === "string"
+        ? data.planNumber
+        : typeof data.details?.planNumber === "string"
+          ? (data.details.planNumber as string)
+          : "",
+    blockNumber:
+      typeof data.blockNumber === "string"
+        ? data.blockNumber
+        : typeof data.details?.blockNumber === "string"
+          ? (data.details.blockNumber as string)
+          : "",
     lat:
       typeof data.lat === "number"
         ? data.lat
@@ -200,6 +221,7 @@ export function mapPublicListing(
     precise:
       data.preciseLocation === true || data.location?.preciseLocation === true,
     price: typeof data.price === "number" ? data.price : 0,
+    discount: typeof data.discount === "number" ? data.discount : 0,
     currency: typeof data.currency === "string" ? data.currency : "SAR",
     bedrooms: typeof data.bedrooms === "number" ? data.bedrooms : 0,
     bathrooms: typeof data.bathrooms === "number" ? data.bathrooms : 0,
@@ -290,7 +312,7 @@ export async function getCompanyBySlug(
 }
 
 /** Build a PublicCompany from a raw company doc (slug read from the data). */
-function mapPublicCompany(id: string, data: DocumentData): PublicCompany {
+export function mapPublicCompany(id: string, data: DocumentData): PublicCompany {
   const theme =
     typeof data.theme === "object" && data.theme !== null
       ? (data.theme as Record<string, unknown>)

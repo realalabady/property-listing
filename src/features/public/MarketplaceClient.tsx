@@ -56,6 +56,10 @@ const typeTabs: Array<{ value: ListingType | ""; label: string }> = [
     value: LISTING_TYPES.OFF_PLAN,
     label: LISTING_TYPE_LABELS[LISTING_TYPES.OFF_PLAN].ar,
   },
+  {
+    value: LISTING_TYPES.TAKEOVER,
+    label: LISTING_TYPE_LABELS[LISTING_TYPES.TAKEOVER].ar,
+  },
 ];
 
 type SortKey = "default" | "priceAsc" | "priceDesc" | "areaDesc";

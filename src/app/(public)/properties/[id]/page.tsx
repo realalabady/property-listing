@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import { MarketplaceDetailClient } from "@/features/public/MarketplaceDetailClient";
 import { DarPublicShell } from "@/features/public/DarPublicShell";
 import { adminDb } from "@/lib/firebase/admin";
+import {
+  getCompanyByIdServer,
+  getCompanyListingByIdServer,
+  getGlobalListingByIdServer,
+} from "@/features/public/data.server";
 
 // firebase-admin (used in generateMetadata) is not Edge-compatible.
 export const runtime = "nodejs";
@@ -69,9 +74,31 @@ export default async function MarketplaceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
+  // Resolve on the server so the page ships fully rendered (no client-side
+  // Firestore waterfall). The global mirror only holds the cover image, so —
+  // like the client did — load the source company listing for the full gallery,
+  // and the company for its public contact. Both only need companyId, so run
+  // them in parallel.
+  const global = await getGlobalListingByIdServer(id);
+  let initialListing = global;
+  let initialCompany = null;
+  if (global?.companyId) {
+    const [source, company] = await Promise.all([
+      getCompanyListingByIdServer(global.companyId, global.sourceListingId),
+      getCompanyByIdServer(global.companyId),
+    ]);
+    if (source) initialListing = source;
+    initialCompany = company;
+  }
+
   return (
     <DarPublicShell>
-      <MarketplaceDetailClient listingId={id} />
+      <MarketplaceDetailClient
+        listingId={id}
+        initialListing={initialListing}
+        initialCompany={initialCompany}
+      />
     </DarPublicShell>
   );
 }

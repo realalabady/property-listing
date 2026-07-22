@@ -55,6 +55,12 @@ export async function GET(
   const { companyId } = await params;
 
   const user = await getSessionUser();
+  if (process.env.NODE_ENV !== "production")
+    console.log(
+      "[auth-debug] matched-leads: user=%s companyId=%s",
+      user ? user.uid : "NULL",
+      companyId,
+    );
   if (!user) {
     return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
   }

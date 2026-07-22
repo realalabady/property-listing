@@ -60,6 +60,8 @@ async function syncGlobalListing(
           ? listingData.category
           : "apartment",
       price: typeof listingData.price === "number" ? listingData.price : 0,
+      discount:
+        typeof listingData.discount === "number" ? listingData.discount : 0,
       currency:
         typeof listingData.currency === "string" ? listingData.currency : "SAR",
       city: typeof location.city === "string" ? location.city : "",

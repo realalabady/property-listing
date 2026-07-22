@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Bath, BedDouble, MapPin, Ruler, Sofa, Sparkles } from "lucide-react";
 import { LISTING_TYPE_LABELS } from "@/constants/listing-categories";
 import { SARPrice } from "@/components/ui/SARPrice";
+import { DiscountedPrice } from "@/components/ui/DiscountedPrice";
 import { ROUTES } from "@/constants/routes";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils/cn";
@@ -101,6 +102,16 @@ export function ListingCard({
             <MapPin className="h-3.5 w-3.5 shrink-0" />
             {listing.city || t("marketplace.locationPending")}
           </p>
+          {(listing.planNumber || listing.blockNumber) && (
+            <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+              {listing.planNumber && (
+                <span>رقم المخطط: {listing.planNumber}</span>
+              )}
+              {listing.blockNumber && (
+                <span>رقم البلوك: {listing.blockNumber}</span>
+              )}
+            </p>
+          )}
         </div>
 
         {/* Specs — icons read faster than labels, and hide when absent
@@ -171,22 +182,25 @@ export function ListingCard({
           {/* A building's own price means little when its units are priced
               individually — advertise the cheapest available unit instead. */}
           <p className="text-lg font-semibold text-foreground">
-            {isMultiUnit && listing.unitsMinPrice != null && (
-              <span className="me-1 text-xs font-normal text-muted-foreground">
-                {t("marketplace.priceFrom")}
-              </span>
-            )}
-            <SARPrice
-              amount={
-                isMultiUnit && listing.unitsMinPrice != null
-                  ? listing.unitsMinPrice
-                  : listing.price
-              }
-            />
-            {listing.type === "rent" && (
-              <span className="ms-1 text-xs font-normal text-muted-foreground">
-                {rentPeriodSuffix(listing.type, listing.rentPeriod)}
-              </span>
+            {isMultiUnit && listing.unitsMinPrice != null ? (
+              <>
+                <span className="me-1 text-xs font-normal text-muted-foreground">
+                  {t("marketplace.priceFrom")}
+                </span>
+                <SARPrice amount={listing.unitsMinPrice} />
+              </>
+            ) : (
+              <DiscountedPrice
+                price={listing.price}
+                discount={listing.discount}
+                suffix={
+                  listing.type === "rent" ? (
+                    <span className="ms-1 text-xs font-normal text-muted-foreground">
+                      {rentPeriodSuffix(listing.type, listing.rentPeriod)}
+                    </span>
+                  ) : undefined
+                }
+              />
             )}
           </p>
           <Link

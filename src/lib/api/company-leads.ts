@@ -196,6 +196,8 @@ export function canViewMatchedLeads(
   if (!user) return false;
   if (user.role === ROLES.SUPER_ADMIN) return true;
   if (user.companyId !== companyId) return false;
+  // The company owner has full access to their own company's data.
+  if (user.role === ROLES.COMPANY_OWNER) return true;
 
   return hasAnyPermission(user.permissions, [
     PERMISSIONS.VIEW_MATCHED_LEADS,

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Plus, Trash2 } from "lucide-react";
 import {
   doc,
@@ -39,9 +40,16 @@ import {
   type GeoRegion,
 } from "@/lib/geo/saudi-geo";
 import { ROUTES } from "@/constants/routes";
-import { extractLatLngFromMapUrl } from "@/lib/geo/parse-map-url";
 import { cn } from "@/lib/utils/cn";
 import { t } from "@/lib/i18n";
+
+// Client-only Leaflet map for picking the exact pin — never SSR'd.
+const LocationPicker = dynamic(() => import("./LocationPicker"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full animate-pulse rounded-xl bg-muted" />
+  ),
+});
 
 const DEFAULT_REGION_ID = "1"; // Riyadh region
 const DEFAULT_CITY_ID = "3"; // Riyadh city
@@ -84,6 +92,7 @@ interface FormState {
   rentPeriod: string;
   paymentCycle: string;
   deposit: string;
+  discount: string;
   priceNegotiable: boolean;
   // Unit specifications & amenities
   bedrooms: string;
@@ -104,7 +113,8 @@ interface FormState {
   regionId: string;
   cityId: string;
   districtId: string;
-  // Exact map pin: the pasted Google Maps link + coords extracted from it.
+  // Exact map pin: coords picked on the map. `mapUrl` is retained only to read
+  // a legacy pasted-link value on edit; it's no longer entered in the form.
   mapUrl: string;
   mapLat: number | null;
   mapLng: number | null;
@@ -133,6 +143,7 @@ interface FormState {
   postalCode: string;
   buildingNumber: string;
   deedReference: string;
+  brokerageContract: string;
   // Confidential owner identity (stored in the protected private subdoc)
   ownerName: string;
   ownerPhone: string;
@@ -161,6 +172,7 @@ const initialState: FormState = {
   rentPeriod: "monthly",
   paymentCycle: "monthly",
   deposit: "",
+  discount: "",
   priceNegotiable: false,
   bedrooms: "",
   bathrooms: "",
@@ -206,6 +218,7 @@ const initialState: FormState = {
   postalCode: "",
   buildingNumber: "",
   deedReference: "",
+  brokerageContract: "",
   ownerName: "",
   ownerPhone: "",
   ownerNationalId: "",
@@ -320,6 +333,7 @@ function listingDocToForm(data: Record<string, unknown>): {
     rentPeriod: str(data.rentPeriod) || "monthly",
     paymentCycle: str(details.paymentCycle) || "monthly",
     deposit: numStr(details.deposit),
+    discount: numStr(data.discount),
     priceNegotiable: Boolean(data.priceNegotiable),
     bedrooms: numStr(data.bedrooms),
     bathrooms: numStr(data.bathrooms),
@@ -367,6 +381,7 @@ function listingDocToForm(data: Record<string, unknown>): {
     postalCode: str(details.postalCode),
     buildingNumber: str(details.buildingNumber),
     deedReference: str(details.deedReference),
+    brokerageContract: str(details.brokerageContract),
     planNumber: str(details.planNumber),
     source: data.source === "broker" ? "broker" : "owner",
     brokerAgencyName: str(broker.agencyName),
@@ -409,6 +424,7 @@ function listingDocToForm(data: Record<string, unknown>): {
 interface Errors {
   title?: string;
   price?: string;
+  discount?: string;
   area?: string;
   district?: string;
 }
@@ -437,11 +453,6 @@ export function NewListingForm({
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Map-link resolution state for the "paste a Google Maps link" field.
-  const [mapUrlStatus, setMapUrlStatus] = useState<
-    "idle" | "resolving" | "ok" | "error"
-  >("idle");
-  const [mapUrlMessage, setMapUrlMessage] = useState<string | null>(null);
 
   // Create mode: best-effort plan-quota pre-check so the user sees a message
   // (and a disabled submit) before hitting the enforced 409 on POST.
@@ -643,6 +654,13 @@ export function NewListingForm({
     () => districts.filter((dd) => String(dd.city_id) === form.cityId),
     [districts, form.cityId],
   );
+  // Selected city's center — used to frame the pin picker before a pin is set.
+  const cityCenter = useMemo(() => {
+    const city = cities.find((c) => String(c.city_id) === form.cityId);
+    return city?.center
+      ? { lat: city.center[0], lng: city.center[1] }
+      : null;
+  }, [cities, form.cityId]);
 
   function onRegionChange(regionId: string) {
     const firstCity = cities.find((c) => String(c.region_id) === regionId);
@@ -657,60 +675,14 @@ export function NewListingForm({
     setForm((prev) => ({ ...prev, cityId, districtId: "" }));
   }
 
-  // Paste handler: a full Maps URL (or raw "lat,lng") resolves instantly on the
-  // client. Short links (maps.app.goo.gl) carry no coords → resolved on blur.
-  function onMapUrlChange(value: string) {
-    setMapUrlMessage(null);
-    const direct = value.trim() ? extractLatLngFromMapUrl(value) : null;
-    setForm((prev) => ({
-      ...prev,
-      mapUrl: value,
-      mapLat: direct?.lat ?? null,
-      mapLng: direct?.lng ?? null,
-    }));
-    setMapUrlStatus(direct ? "ok" : "idle");
+  // Map pin: clicking/dragging on the Saudi map sets the exact coordinates.
+  // Dropping a pin also drops any legacy pasted Maps link so it can't linger.
+  function onPickLocation(lat: number, lng: number) {
+    setForm((prev) => ({ ...prev, mapLat: lat, mapLng: lng, mapUrl: "" }));
   }
 
-  // Ask the server to follow a short link (maps.app.goo.gl) and extract coords.
-  // Returns the result WITHOUT touching state so both the blur handler and
-  // submit can await it.
-  async function fetchResolvedCoords(
-    url: string,
-  ): Promise<{ lat: number; lng: number } | { error: string }> {
-    try {
-      const res = await fetch("/api/geo/resolve-map-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      const data = (await res.json()) as {
-        lat?: number;
-        lng?: number;
-        error?: string;
-      };
-      if (res.ok && typeof data.lat === "number" && typeof data.lng === "number") {
-        return { lat: data.lat, lng: data.lng };
-      }
-      return { error: data.error ?? "تعذّر استخراج الموقع من الرابط." };
-    } catch {
-      return { error: "تعذّر الاتصال. حاول مرة أخرى." };
-    }
-  }
-
-  async function resolveMapUrl() {
-    const value = form.mapUrl.trim();
-    // Nothing to do if empty or already resolved on the client.
-    if (!value || form.mapLat != null) return;
-    setMapUrlStatus("resolving");
-    setMapUrlMessage(null);
-    const result = await fetchResolvedCoords(value);
-    if ("lat" in result) {
-      setForm((prev) => ({ ...prev, mapLat: result.lat, mapLng: result.lng }));
-      setMapUrlStatus("ok");
-    } else {
-      setMapUrlStatus("error");
-      setMapUrlMessage(result.error);
-    }
+  function clearPin() {
+    setForm((prev) => ({ ...prev, mapLat: null, mapLng: null, mapUrl: "" }));
   }
 
   function updateContact(index: number, key: keyof ContactRow, value: string) {
@@ -725,6 +697,16 @@ export function NewListingForm({
     const price = Number(form.price);
     if (!form.price.trim() || Number.isNaN(price) || price <= 0) {
       next.price = t("common.fieldRequired");
+    }
+    // Discount is optional, but when present it must be a positive amount that
+    // stays below the price (a discount can't exceed the property's value).
+    if (form.discount.trim()) {
+      const discount = Number(form.discount);
+      if (Number.isNaN(discount) || discount < 0) {
+        next.discount = t("common.fieldRequired");
+      } else if (!Number.isNaN(price) && discount >= price) {
+        next.discount = "الخصم يجب أن يكون أقل من السعر";
+      }
     }
     const area = Number(form.area);
     if (!form.area.trim() || Number.isNaN(area) || area <= 0) {
@@ -779,6 +761,7 @@ export function NewListingForm({
     text("buildingNumber", form.buildingNumber);
     text("deedReference", form.deedReference);
     text("planNumber", form.planNumber);
+    text("brokerageContract", form.brokerageContract);
     return details;
   }
 
@@ -857,34 +840,11 @@ export function NewListingForm({
       const district = form.districtId
         ? districts.find((dd) => String(dd.district_id) === form.districtId)
         : undefined;
-      // Safety net: a link pasted and submitted without ever blurring the field
-      // never went through the short-link resolver. Resolve it now so the pin
-      // isn't silently downgraded to the city center.
-      let pinLat = form.mapLat;
-      let pinLng = form.mapLng;
-      if (pinLat == null && form.mapUrl.trim()) {
-        const resolved = await fetchResolvedCoords(form.mapUrl.trim());
-        if ("lat" in resolved) {
-          pinLat = resolved.lat;
-          pinLng = resolved.lng;
-          setForm((prev) => ({
-            ...prev,
-            mapLat: resolved.lat,
-            mapLng: resolved.lng,
-          }));
-          setMapUrlStatus("ok");
-        } else {
-          // Don't save a listing whose pin would silently be wrong.
-          setMapUrlStatus("error");
-          setMapUrlMessage(resolved.error);
-          setError(resolved.error);
-          setSubmitting(false);
-          return;
-        }
-      }
+      const pinLat = form.mapLat;
+      const pinLng = form.mapLng;
 
-      // Prefer the exact pin pasted from Google Maps. Only fall back to the
-      // city center when no precise pin was provided (kept for backwards
+      // Prefer the exact pin dropped on the map. Only fall back to the city
+      // center when no precise pin was provided (kept for backwards
       // compatibility — those pins are flagged imprecise so the map jitters
       // them instead of stacking every unit on one point).
       const hasPreciseCoords = pinLat != null && pinLng != null;
@@ -918,6 +878,7 @@ export function NewListingForm({
         type: form.type,
         category: form.category,
         price: Number(form.price),
+        discount: form.discount.trim() ? Number(form.discount) : 0,
         currency: "SAR",
         rentPeriod: isRent ? form.rentPeriod : null,
         priceNegotiable: isRent ? false : form.priceNegotiable,
@@ -1161,6 +1122,19 @@ export function NewListingForm({
               />
             </Field>
             <Field
+              label="الخصم (اختياري)"
+              hint="مبلغ يُخصم من السعر — يظهر السعر الأصلي مشطوباً"
+              error={submitted ? errors.discount : undefined}
+            >
+              <Input
+                value={form.discount}
+                onChange={(e) => set("discount")(e.target.value)}
+                placeholder="0"
+                inputMode="numeric"
+                aria-invalid={Boolean(submitted && errors.discount)}
+              />
+            </Field>
+            <Field
               label={t("listings.areaSqm")}
               required
               error={submitted ? errors.area : undefined}
@@ -1319,7 +1293,7 @@ export function NewListingForm({
         {/* Location — cascading Saudi selects */}
         <AccordionSection
           title="الموقع الجغرافي"
-          description="حدّد المنطقة والمدينة والحي، والصق رابط خرائط Google لتحديد موقع العقار بدقة على الخريطة."
+          description="حدّد المنطقة والمدينة والحي، ثم اضغط على الخريطة لتثبيت موقع العقار بدقة."
           defaultOpen
         >
           <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">
@@ -1381,34 +1355,45 @@ export function NewListingForm({
             </Field>
             <Field
               label="موقع العقار على الخريطة"
-              hint="الصق رابط الموقع من خرائط Google لتحديد الدبوس بدقة على الخريطة"
               className="md:col-span-2"
             >
-              <Input
-                value={form.mapUrl}
-                onChange={(e) => onMapUrlChange(e.target.value)}
-                onBlur={resolveMapUrl}
-                placeholder="https://maps.app.goo.gl/…"
-                dir="ltr"
-                inputMode="url"
-              />
-              {mapUrlStatus === "resolving" && (
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  جارٍ تحديد الموقع…
-                </p>
-              )}
-              {mapUrlStatus === "ok" &&
-                form.mapLat != null &&
-                form.mapLng != null && (
-                  <p className="mt-1.5 text-xs text-emerald-600" dir="ltr">
-                    ✓ {form.mapLat.toFixed(5)}, {form.mapLng.toFixed(5)}
+              <div className="flex flex-col gap-4 md:flex-row md:items-start">
+                {/* Map on the left, kept compact. */}
+                <div className="h-[280px] w-full overflow-hidden rounded-xl border border-input md:w-[360px] md:shrink-0">
+                  <LocationPicker
+                    lat={form.mapLat}
+                    lng={form.mapLng}
+                    onChange={onPickLocation}
+                    centerHint={cityCenter}
+                    className="h-full w-full"
+                  />
+                </div>
+                {/* Instructions + coordinate readout on the right. */}
+                <div className="flex-1 space-y-2 text-sm">
+                  <p className="text-muted-foreground">
+                    اضغط على الخريطة لتحديد موقع العقار، أو اسحب الدبوس لضبطه
+                    بدقة. الخريطة مقصورة على المملكة العربية السعودية.
                   </p>
-                )}
-              {mapUrlStatus === "error" && mapUrlMessage && (
-                <p className="mt-1.5 text-xs text-destructive">
-                  {mapUrlMessage}
-                </p>
-              )}
+                  {form.mapLat != null && form.mapLng != null ? (
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-emerald-600" dir="ltr">
+                        ✓ {form.mapLat.toFixed(5)}, {form.mapLng.toFixed(5)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={clearPin}
+                        className="text-xs text-muted-foreground underline-offset-2 hover:text-destructive hover:underline"
+                      >
+                        مسح الموقع
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      لم يتم تحديد موقع بعد — سيُستخدم مركز المدينة تلقائياً.
+                    </p>
+                  )}
+                </div>
+              </div>
             </Field>
             <Field label={t("listings.initialStatus")} className="md:col-span-2">
               <Select
@@ -1708,6 +1693,12 @@ export function NewListingForm({
               <Input
                 value={form.buildingNumber}
                 onChange={(e) => set("buildingNumber")(e.target.value)}
+              />
+            </Field>
+            <Field label="عقد الوساطة">
+              <Input
+                value={form.brokerageContract}
+                onChange={(e) => set("brokerageContract")(e.target.value)}
               />
             </Field>
             {showConfidential && (
