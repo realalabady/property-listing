@@ -1,10 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Bath, BedDouble, MapPin, Ruler, Sofa, Sparkles } from "lucide-react";
 import { LISTING_TYPE_LABELS } from "@/constants/listing-categories";
 import { SARPrice } from "@/components/ui/SARPrice";
 import { DiscountedPrice } from "@/components/ui/DiscountedPrice";
+import { AuctionBadge } from "@/components/ui/AuctionBadge";
 import { ROUTES } from "@/constants/routes";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils/cn";
@@ -65,12 +67,13 @@ export function ListingCard({
         aria-hidden="true"
       >
         {listing.coverImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={listing.coverImage}
             alt={listing.title}
+            fill
             loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
@@ -102,13 +105,18 @@ export function ListingCard({
             <MapPin className="h-3.5 w-3.5 shrink-0" />
             {listing.city || t("marketplace.locationPending")}
           </p>
-          {(listing.planNumber || listing.blockNumber) && (
+          {(listing.planNumber ||
+            listing.blockNumber ||
+            listing.parcelNumber) && (
             <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
               {listing.planNumber && (
                 <span>رقم المخطط: {listing.planNumber}</span>
               )}
               {listing.blockNumber && (
                 <span>رقم البلوك: {listing.blockNumber}</span>
+              )}
+              {listing.parcelNumber && (
+                <span>رقم القطعة: {listing.parcelNumber}</span>
               )}
             </p>
           )}
@@ -180,29 +188,34 @@ export function ListingCard({
 
         <div className="flex items-center justify-between border-t border-border pt-3">
           {/* A building's own price means little when its units are priced
-              individually — advertise the cheapest available unit instead. */}
-          <p className="text-lg font-semibold text-foreground">
-            {isMultiUnit && listing.unitsMinPrice != null ? (
-              <>
-                <span className="me-1 text-xs font-normal text-muted-foreground">
-                  {t("marketplace.priceFrom")}
-                </span>
-                <SARPrice amount={listing.unitsMinPrice} />
-              </>
-            ) : (
-              <DiscountedPrice
-                price={listing.price}
-                discount={listing.discount}
-                suffix={
-                  listing.type === "rent" ? (
-                    <span className="ms-1 text-xs font-normal text-muted-foreground">
-                      {rentPeriodSuffix(listing.type, listing.rentPeriod)}
-                    </span>
-                  ) : undefined
-                }
-              />
-            )}
-          </p>
+              individually — advertise the cheapest available unit instead.
+              The asking price is always shown untouched; an optional auction
+              adds a current-bid chip beneath it. */}
+          <div className="min-w-0 space-y-1.5">
+            <p className="text-lg font-semibold text-foreground">
+              {isMultiUnit && listing.unitsMinPrice != null ? (
+                <>
+                  <span className="me-1 text-xs font-normal text-muted-foreground">
+                    {t("marketplace.priceFrom")}
+                  </span>
+                  <SARPrice amount={listing.unitsMinPrice} />
+                </>
+              ) : (
+                <DiscountedPrice
+                  price={listing.price}
+                  discount={listing.discount}
+                  suffix={
+                    listing.type === "rent" ? (
+                      <span className="ms-1 text-xs font-normal text-muted-foreground">
+                        {rentPeriodSuffix(listing.type, listing.rentPeriod)}
+                      </span>
+                    ) : undefined
+                  }
+                />
+              )}
+            </p>
+            <AuctionBadge auction={listing.auction} />
+          </div>
           <Link
             href={target}
             className="rounded-md border border-border px-3 py-1.5 text-sm font-semibold transition hover:bg-secondary"

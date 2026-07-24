@@ -1,11 +1,32 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import type { DocumentSnapshot } from "firebase-admin/firestore";
 import { getSessionUser, type SessionUser } from "./session";
 import { ROUTES } from "@/constants/routes";
 import { ROLES, type Role } from "@/constants/roles";
 import { hasAnyPermission, type Permission } from "@/constants/permissions";
 import { adminDb } from "@/lib/firebase/admin";
+
+/**
+ * Cached raw-document fetchers.
+ *
+ * Wrapped in React `cache()` so a given company/employee doc is read from
+ * Firestore at most ONCE per request, no matter how many callers ask for it —
+ * the guards below AND the dashboard layout share these, so the same two docs
+ * aren't read twice per navigation. Callers that only need a processed subset
+ * go through `getCompanyAccessState` / `getEmployeeMembership`; callers that
+ * need raw fields (e.g. the layout's company name/logo) read the snapshot.
+ */
+export const getCompanyDoc = cache(
+  (companyId: string): Promise<DocumentSnapshot> =>
+    adminDb().doc(`companies/${companyId}`).get(),
+);
+
+export const getEmployeeDoc = cache(
+  (companyId: string, uid: string): Promise<DocumentSnapshot> =>
+    adminDb().doc(`companies/${companyId}/employees/${uid}`).get(),
+);
 
 /**
  * Server-side route guards for Next.js App Router layouts & pages.
@@ -53,7 +74,7 @@ interface CompanyAccessState {
 
 const getCompanyAccessState = cache(
   async (companyId: string): Promise<CompanyAccessState> => {
-    const snap = await adminDb().doc(`companies/${companyId}`).get();
+    const snap = await getCompanyDoc(companyId);
     if (!snap.exists) {
       return {
         exists: false,
@@ -118,9 +139,7 @@ export async function getCompanyBlockReasonForUser(
 }
 
 const getEmployeeMembership = cache(async (companyId: string, uid: string) => {
-  const snap = await adminDb()
-    .doc(`companies/${companyId}/employees/${uid}`)
-    .get();
+  const snap = await getEmployeeDoc(companyId, uid);
   if (!snap.exists) {
     return { exists: false, active: false };
   }
@@ -143,7 +162,13 @@ export async function requireCompanyMember(): Promise<SessionUser> {
     redirect(ROUTES.ONBOARDING);
   }
 
-  const company = await getCompanyAccessState(user.companyId);
+  // Fetch the company and employee docs in parallel — one round-trip, not two.
+  // (Deactivated/removed employees keep a valid session cookie until it
+  // expires, so the live employee doc is checked on every render.)
+  const [company, membership] = await Promise.all([
+    getCompanyAccessState(user.companyId),
+    getEmployeeMembership(user.companyId, user.uid),
+  ]);
   const blockReason = getCompanyBlockReason(company);
 
   if (blockReason) {
@@ -156,9 +181,6 @@ export async function requireCompanyMember(): Promise<SessionUser> {
     redirect(ROUTES.PLAN_ENDED);
   }
 
-  // Deactivated or removed employees keep a valid session cookie until it
-  // expires; check the live employee doc so access is cut immediately.
-  const membership = await getEmployeeMembership(user.companyId, user.uid);
   if (!membership.exists || !membership.active) {
     redirect(`${ROUTES.LOGIN}?reauth=1&blocked=company_inactive`);
   }

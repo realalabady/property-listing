@@ -54,30 +54,32 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
+  // Scope the read to the current user in the query (not in JS) so Firestore
+  // only reads/bills this user's own notifications. Requires the composite
+  // index on notifications (recipientId ASC, createdAt DESC) — see
+  // firestore.indexes.json.
   const snap = await adminDb()
     .collection(`companies/${companyId}/notifications`)
+    .where("recipientId", "==", user.uid)
     .orderBy("createdAt", "desc")
-    .limit(200)
+    .limit(50)
     .get();
 
-  const notifications = snap.docs
-    .map((doc) => {
-      const data = doc.data() as Record<string, unknown>;
-      return {
-        id: doc.id,
-        recipientId:
-          typeof data.recipientId === "string" ? data.recipientId : null,
-        type: typeof data.type === "string" ? data.type : "general",
-        title: typeof data.title === "string" ? data.title : "Notification",
-        message:
-          typeof data.message === "string" ? data.message : "New update.",
-        leadId: typeof data.leadId === "string" ? data.leadId : null,
-        taskId: typeof data.taskId === "string" ? data.taskId : null,
-        read: data.read === true,
-        createdAt: serializeDate(data.createdAt),
-      };
-    })
-    .filter((item) => item.recipientId === user.uid);
+  const notifications = snap.docs.map((doc) => {
+    const data = doc.data() as Record<string, unknown>;
+    return {
+      id: doc.id,
+      recipientId:
+        typeof data.recipientId === "string" ? data.recipientId : null,
+      type: typeof data.type === "string" ? data.type : "general",
+      title: typeof data.title === "string" ? data.title : "Notification",
+      message: typeof data.message === "string" ? data.message : "New update.",
+      leadId: typeof data.leadId === "string" ? data.leadId : null,
+      taskId: typeof data.taskId === "string" ? data.taskId : null,
+      read: data.read === true,
+      createdAt: serializeDate(data.createdAt),
+    };
+  });
 
   return NextResponse.json({ notifications });
 }
@@ -94,8 +96,11 @@ export async function PATCH(_req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
+  // Only this user's own notifications — filtered in the query (reuses the
+  // notifications (recipientId, createdAt DESC) composite index).
   const snap = await adminDb()
     .collection(`companies/${companyId}/notifications`)
+    .where("recipientId", "==", user.uid)
     .orderBy("createdAt", "desc")
     .limit(200)
     .get();
@@ -105,11 +110,9 @@ export async function PATCH(_req: NextRequest, context: RouteContext) {
 
   for (const doc of snap.docs) {
     const data = doc.data() as Record<string, unknown>;
-    const recipientId =
-      typeof data.recipientId === "string" ? data.recipientId : null;
     const alreadyRead = data.read === true;
 
-    if (recipientId === user.uid && !alreadyRead) {
+    if (!alreadyRead) {
       batch.update(doc.ref, {
         read: true,
         readAt: FieldValue.serverTimestamp(),

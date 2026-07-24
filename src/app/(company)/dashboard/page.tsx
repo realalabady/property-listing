@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { requireCompanyMember } from "@/lib/auth/guards";
 import { adminDb } from "@/lib/firebase/admin";
 import {
@@ -5,8 +6,19 @@ import {
   LEAD_STATUS_LABELS,
   type LeadStatus,
 } from "@/constants/listing-categories";
-import { OverviewCharts } from "@/features/dashboard/OverviewCharts";
+import { OverviewChartsLazy } from "@/features/dashboard/OverviewChartsLazy";
 import { t } from "@/lib/i18n";
+import { Building2, UserPlus, ListChecks, Users } from "lucide-react";
+
+// Overview stats are counts/aggregates that don't need to be real-time. Cache
+// per company for 60s so repeat visits paint instantly and don't re-run the
+// ~17 Firestore aggregations on every navigation. The `companyId` argument is
+// part of the cache key; `stats:<companyId>` tag allows targeted invalidation.
+const getCachedStats = unstable_cache(
+  (companyId: string) => fetchStats(companyId),
+  ["dashboard-overview-stats"],
+  { revalidate: 60 },
+);
 
 export const metadata = { title: t("dashPages.overviewMeta") };
 
@@ -125,13 +137,33 @@ async function fetchStats(companyId: string) {
 export default async function DashboardPage() {
   const user = await requireCompanyMember();
   const companyId = user.companyId as string;
-  const stats = await fetchStats(companyId);
+  const stats = await getCachedStats(companyId);
 
   const cards = [
-    { label: t("dashPages.activeListings"), value: stats.listings },
-    { label: t("dashPages.newLeads30d"), value: stats.leads },
-    { label: t("dashPages.pendingTasks"), value: stats.tasks },
-    { label: t("dashPages.teamMembers"), value: stats.employees },
+    {
+      label: t("dashPages.activeListings"),
+      value: stats.listings,
+      icon: Building2,
+      tint: TINTS.purple,
+    },
+    {
+      label: t("dashPages.newLeads30d"),
+      value: stats.leads,
+      icon: UserPlus,
+      tint: TINTS.blue,
+    },
+    {
+      label: t("dashPages.pendingTasks"),
+      value: stats.tasks,
+      icon: ListChecks,
+      tint: TINTS.amber,
+    },
+    {
+      label: t("dashPages.teamMembers"),
+      value: stats.employees,
+      icon: Users,
+      tint: TINTS.teal,
+    },
   ];
 
   return (
@@ -140,25 +172,44 @@ export default async function DashboardPage() {
         <h2 className="text-2xl font-semibold tracking-tight">
           {t("dashPages.welcomeBack")}
         </h2>
+        <p className="mt-1 text-sm">{t("dashPages.overviewSubtitle")}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map((s) => (
-          <div
-            key={s.label}
-            className="rounded-xl border border-border bg-card p-5"
-          >
-            <div className="text-xs font-medium text-muted-foreground">
-              {s.label}
+        {cards.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <div
+              key={s.label}
+              className="stat-rise group relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-transparent hover:shadow-lg hover:shadow-black/[0.06]"
+              style={{ animationDelay: `${i * 70}ms` }}
+            >
+              {/* Top accent rail — brand-tinted per metric. */}
+              <span
+                aria-hidden
+                className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-l ${s.tint.bar}`}
+              />
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-medium text-muted-foreground">
+                    {s.label}
+                  </div>
+                  <div className="mt-2.5 text-[2rem] font-bold leading-none tabular-nums text-slate-800">
+                    {s.value}
+                  </div>
+                </div>
+                <span
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110 ${s.tint.chip}`}
+                >
+                  <Icon className="h-[1.35rem] w-[1.35rem]" strokeWidth={2} />
+                </span>
+              </div>
             </div>
-            <div className="mt-2 text-2xl font-semibold tabular-nums">
-              {s.value}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      <OverviewCharts
+      <OverviewChartsLazy
         funnel={stats.funnel}
         sources={stats.sources}
         trend={stats.trend}
@@ -166,3 +217,25 @@ export default async function DashboardPage() {
     </div>
   );
 }
+
+// Per-metric tint: soft chip background + full-strength icon, and a gradient
+// accent rail. Colors stay within the Wazi brand family (purple/blue/teal)
+// with a warm amber for the "pending" attention metric.
+const TINTS = {
+  purple: {
+    chip: "bg-[#662d91]/[0.1] text-[#662d91]",
+    bar: "from-[#662d91] to-[#9a5bc9]",
+  },
+  blue: {
+    chip: "bg-[#0071bc]/[0.1] text-[#0071bc]",
+    bar: "from-[#0071bc] to-[#4aa3e0]",
+  },
+  amber: {
+    chip: "bg-[#e0891f]/[0.12] text-[#c1771a]",
+    bar: "from-[#e0891f] to-[#f2b45e]",
+  },
+  teal: {
+    chip: "bg-[#00a99d]/[0.1] text-[#008d83]",
+    bar: "from-[#00a99d] to-[#4fcabf]",
+  },
+} as const;

@@ -47,6 +47,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "publish_listing",
     "assign_listing",
     "feature_listing",
+    "manage_bids",
     "view_owner_info",
     "create_employee",
     "edit_employee",
@@ -78,6 +79,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "publish_listing",
     "assign_listing",
     "feature_listing",
+    "manage_bids",
     "view_owner_info",
     "create_employee",
     "edit_employee",
@@ -104,6 +106,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "publish_listing",
     "assign_listing",
     "feature_listing",
+    "manage_bids",
     "view_owner_info",
     "create_employee",
     "edit_employee",
@@ -128,6 +131,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "publish_listing",
     "assign_listing",
     "feature_listing",
+    "manage_bids",
     "view_employees",
     "create_task",
     "assign_tasks",
@@ -142,6 +146,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   sales: [
     "create_listing",
     "edit_own_listing",
+    "manage_bids",
     "manage_leads",
     "view_own_leads",
     "complete_tasks",
@@ -191,6 +196,25 @@ function startOfCurrentMonth(date = new Date()): Timestamp {
 
 function globalListingDocId(companyId: string, listingId: string): string {
   return `${companyId}_${listingId}`;
+}
+
+/**
+ * Project a listing's `auction` object down to the public-safe fields for the
+ * marketplace mirror. Drops the employee audit fields (highBidByEmployee*).
+ * Returns null when there is no enabled auction.
+ */
+function publicAuctionSummary(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "object" || value === null) return null;
+  const a = value as Record<string, unknown>;
+  if (a.enabled !== true) return null;
+  return {
+    enabled: true,
+    status: a.status === "closed" ? "closed" : "open",
+    startPrice: typeof a.startPrice === "number" ? a.startPrice : 0,
+    currentBid: typeof a.currentBid === "number" ? a.currentBid : null,
+    bidCount: typeof a.bidCount === "number" ? a.bidCount : 0,
+    endsAt: typeof a.endsAt === "number" ? a.endsAt : null,
+  };
 }
 
 function companyIdFromTaskPath(path: string): string | null {
@@ -430,6 +454,8 @@ export const syncGlobalListing = onDocumentWritten(
           typeof details.planNumber === "string" ? details.planNumber : "",
         blockNumber:
           typeof details.blockNumber === "string" ? details.blockNumber : "",
+        parcelNumber:
+          typeof details.parcelNumber === "string" ? details.parcelNumber : "",
         lat: typeof location.lat === "number" ? location.lat : null,
         lng: typeof location.lng === "number" ? location.lng : null,
         // Must be mirrored: the public map jitters any pin that isn't flagged
@@ -468,6 +494,9 @@ export const syncGlobalListing = onDocumentWritten(
           : [],
         status: "published",
         featured: Boolean(listingAfter.featured),
+        // Public-safe auction summary (no employee identity). Null when the
+        // listing has no enabled auction.
+        auction: publicAuctionSummary(listingAfter.auction),
         createdAt: listingAfter.createdAt ?? FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       },

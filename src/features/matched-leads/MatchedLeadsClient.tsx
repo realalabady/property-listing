@@ -90,7 +90,10 @@ export function MatchedLeadsClient({ companyId }: { companyId: string }) {
     let active = true;
     setLoading(true);
     setError(null);
-    fetch(`/api/companies/${companyId}/matched-leads?min=${min}`, {
+    // Fetch once at the lowest threshold; the higher pills (65/80) are strict
+    // subsets, applied client-side in `filtered` — so switching thresholds
+    // never re-runs the server's expensive per-search matching scan.
+    fetch(`/api/companies/${companyId}/matched-leads?min=${THRESHOLDS[0]}`, {
       credentials: "same-origin",
     })
       .then(async (res) => {
@@ -109,17 +112,19 @@ export function MatchedLeadsClient({ companyId }: { companyId: string }) {
     return () => {
       active = false;
     };
-  }, [companyId, min, authLoading]);
+  }, [companyId, authLoading]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return leads;
-    return leads.filter(
-      (l) =>
+    return leads.filter((l) => {
+      if (l.score < min) return false;
+      if (!q) return true;
+      return (
         l.customer.name.toLowerCase().includes(q) ||
-        l.customer.phone.includes(q),
-    );
-  }, [leads, search]);
+        l.customer.phone.includes(q)
+      );
+    });
+  }, [leads, search, min]);
 
   return (
     <div className="space-y-4">

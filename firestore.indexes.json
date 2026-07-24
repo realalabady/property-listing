@@ -94,6 +94,14 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "trialEndsAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "recipientId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

@@ -21,6 +21,7 @@ export const GROUP_ASSIGNABLE_PERMISSIONS: Permission[] = [
   PERMISSIONS.EDIT_OWN_LISTING,
   PERMISSIONS.DELETE_LISTING,
   PERMISSIONS.PUBLISH_LISTING,
+  PERMISSIONS.MANAGE_BIDS,
   PERMISSIONS.VIEW_OWNER_INFO,
   PERMISSIONS.CREATE_EMPLOYEE,
   PERMISSIONS.EDIT_EMPLOYEE,
@@ -49,6 +50,7 @@ export const PERMISSION_LABELS: Record<Permission, LocalizedLabel> = {
   [PERMISSIONS.PUBLISH_LISTING]: { en: "Publish listing", ar: "نشر العقار" },
   [PERMISSIONS.ASSIGN_LISTING]: { en: "Assign listing", ar: "اسناد العقار" },
   [PERMISSIONS.FEATURE_LISTING]: { en: "Feature listing", ar: "تمييز العقار" },
+  [PERMISSIONS.MANAGE_BIDS]: { en: "Manage auction bids", ar: "إدارة المزايدة" },
   [PERMISSIONS.VIEW_OWNER_INFO]: {
     en: "View owner and deed info",
     ar: "عرض بيانات المالك والصك",
@@ -126,6 +128,7 @@ export const PERMISSION_MODULES: PermissionModule[] = [
       PERMISSIONS.EDIT_OWN_LISTING,
       PERMISSIONS.DELETE_LISTING,
       PERMISSIONS.PUBLISH_LISTING,
+      PERMISSIONS.MANAGE_BIDS,
       PERMISSIONS.VIEW_OWNER_INFO,
     ],
   },

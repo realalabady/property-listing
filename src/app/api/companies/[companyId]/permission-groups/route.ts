@@ -67,6 +67,12 @@ function canManageCompanyPermissions(
   if (!user) return false;
   if (user.role === ROLES.SUPER_ADMIN) return true;
   if (user.companyId !== companyId) return false;
+  // Owner/admin authority comes from the role itself — their `permissions`
+  // claim can be empty under the groups-based model, so authorize by role
+  // (consistent with the other company routes).
+  if (user.role === ROLES.COMPANY_OWNER || user.role === ROLES.COMPANY_ADMIN) {
+    return true;
+  }
 
   return hasAnyPermission(user.permissions, [
     PERMISSIONS.MANAGE_PERMISSION_GROUPS,

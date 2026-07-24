@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -32,6 +33,9 @@ import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils/cn";
 import { formatDate } from "@/lib/utils/format";
 import { DiscountedPrice } from "@/components/ui/DiscountedPrice";
+import { AuctionBadge } from "@/components/ui/AuctionBadge";
+import { parsePublicAuction } from "@/features/public/data";
+import type { PublicListingAuction } from "@/types/listing";
 import { t } from "@/lib/i18n";
 
 type StatusFilter = "all" | ListingStatus;
@@ -49,6 +53,7 @@ interface ListingRow {
   region: string;
   status: ListingStatus;
   featured: boolean;
+  auction: PublicListingAuction | null;
   mediaCount: number;
   coverImage: string | null;
   updatedAt: Date | null;
@@ -124,6 +129,7 @@ function mapListingDoc(id: string, data: DocumentData): ListingRow {
         : "",
     status,
     featured: Boolean(data.featured),
+    auction: parsePublicAuction(data.auction),
     mediaCount: Array.isArray(data.media) ? data.media.length : 0,
     coverImage:
       typeof data.coverImage === "string" && data.coverImage.length > 0
@@ -184,7 +190,13 @@ export function DashboardListingsClient({
     // created before this field was denormalized only carry `createdBy`, so
     // the roster is the reliable source. Reading employees needs the
     // view_employees permission — if it's denied we just omit the name.
-    getDocs(collection(getFirebaseDb(), `companies/${companyId}/employees`))
+    getDocs(
+      query(
+        collection(getFirebaseDb(), `companies/${companyId}/employees`),
+        orderBy("name", "asc"),
+        limit(300),
+      ),
+    )
       .then((snap) => {
         const names: Record<string, string> = {};
         snap.docs.forEach((d) => {
@@ -405,11 +417,13 @@ export function DashboardListingsClient({
             >
               <div className="relative h-44 w-full bg-secondary">
                 {listing.coverImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={listing.coverImage}
                     alt={listing.title}
-                    className="h-full w-full object-cover transition group-hover:scale-[1.02]"
+                    fill
+                    loading="lazy"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                    className="object-cover transition group-hover:scale-[1.02]"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
@@ -475,6 +489,10 @@ export function DashboardListingsClient({
                     {t("listings.mediaCount", { count: listing.mediaCount })}
                   </span>
                 </div>
+
+                {listing.auction && (
+                  <AuctionBadge auction={listing.auction} />
+                )}
 
                 <p className="text-xs text-muted-foreground">
                   {listing.updatedAt

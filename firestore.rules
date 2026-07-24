@@ -175,6 +175,18 @@ service cloud.firestore {
                            ));
         }
 
+        // Auction bid log (append-only audit). Bids record which employee
+        // placed them, so the history is company-internal (staff read). All
+        // writes go through the Admin API (/api/.../auction/bids) which runs a
+        // transaction to keep the current-bid summary race-safe — direct
+        // client writes are denied. The PUBLIC current bid rides on the
+        // `auction` field of the (public) listing doc + global mirror, so no
+        // public read of this subcollection is needed.
+        match /bids/{bidId} {
+          allow read: if isSuperAdmin() || isCompanyMember(cid);
+          allow create, update, delete: if false;
+        }
+
         // Protected owner/deed data. Field-level privacy is impossible on the
         // parent doc (rules allow/deny whole documents), so confidential data
         // lives in this subdoc with its own gate: super admin, the listing

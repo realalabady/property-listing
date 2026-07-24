@@ -32,10 +32,14 @@ export async function GET(req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  const visibility = await getLeadsVisibility(companyId);
+  // Visibility settings and stage definitions are independent — fetch together.
+  // (The leads query below still depends on both: scope from visibility, and
+  // the row limit from the stage count.)
+  const [visibility, stages] = await Promise.all([
+    getLeadsVisibility(companyId),
+    loadStages(companyId),
+  ]);
   const scope = resolveLeadListScope(user, companyId, visibility);
-
-  const stages = await loadStages(companyId);
   const stageKeys = new Set(stages.map((s) => s.key));
 
   let leadsQuery: FirebaseFirestore.Query = adminDb().collection(

@@ -16,7 +16,10 @@ import {
   type ListingCategory,
   type ListingType,
 } from "@/constants/listing-categories";
-import type { PublicListingUnit } from "@/types/listing";
+import type {
+  PublicListingUnit,
+  PublicListingAuction,
+} from "@/types/listing";
 
 export interface PublicCompanyTheme {
   primaryColor: string;
@@ -61,6 +64,7 @@ export interface PublicListing {
   /** Optional registry identifiers, shown on cards when present. */
   planNumber: string;
   blockNumber: string;
+  parcelNumber: string;
   lat: number | null;
   lng: number | null;
   /** Coords came from an exact map pin — render without fallback jitter. */
@@ -94,6 +98,28 @@ export interface PublicListing {
   unitsAnyFurnished: boolean;
   /** Sanitized available units (tenant-free) for the unit details popup. */
   units: PublicListingUnit[];
+  /** Public-safe auction summary; null when the listing has no auction. */
+  auction: PublicListingAuction | null;
+}
+
+/**
+ * Parse the public-safe auction summary. Works for both shapes: the lean
+ * summary already on the global mirror, and the full auction object on a
+ * source company listing (extra employee-audit fields are simply ignored).
+ * Returns null unless the auction is explicitly enabled.
+ */
+export function parsePublicAuction(value: unknown): PublicListingAuction | null {
+  if (typeof value !== "object" || value === null) return null;
+  const a = value as Record<string, unknown>;
+  if (a.enabled !== true) return null;
+  return {
+    enabled: true,
+    status: a.status === "closed" ? "closed" : "open",
+    startPrice: typeof a.startPrice === "number" ? a.startPrice : 0,
+    currentBid: typeof a.currentBid === "number" ? a.currentBid : null,
+    bidCount: typeof a.bidCount === "number" ? a.bidCount : 0,
+    endsAt: typeof a.endsAt === "number" ? a.endsAt : null,
+  };
 }
 
 /**
@@ -204,6 +230,12 @@ export function mapPublicListing(
         : typeof data.details?.blockNumber === "string"
           ? (data.details.blockNumber as string)
           : "",
+    parcelNumber:
+      typeof data.parcelNumber === "string"
+        ? data.parcelNumber
+        : typeof data.details?.parcelNumber === "string"
+          ? (data.details.parcelNumber as string)
+          : "",
     lat:
       typeof data.lat === "number"
         ? data.lat
@@ -264,6 +296,7 @@ export function mapPublicListing(
         units: parsePublicUnits(data.publicUnits),
       };
     })(),
+    auction: parsePublicAuction(data.auction),
   };
 }
 

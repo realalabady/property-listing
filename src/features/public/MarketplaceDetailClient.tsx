@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, MapPin, MessageCircle, Share2 } from "lucide-react";
 import { UnitsDialog } from "./UnitsDialog";
+import { ListingGallery } from "./ListingGallery";
 import { ROUTES } from "@/constants/routes";
 import { DiscountedPrice } from "@/components/ui/DiscountedPrice";
+import { AuctionBadge } from "@/components/ui/AuctionBadge";
 import {
   LISTING_CATEGORY_LABELS,
   LISTING_TYPE_LABELS,
@@ -42,7 +44,6 @@ export function MarketplaceDetailClient({
   );
   const [loading, setLoading] = useState(!seeded);
   const [error, setError] = useState<string | null>(null);
-  const [activeMedia, setActiveMedia] = useState(0);
   const [unitsOpen, setUnitsOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
 
@@ -189,84 +190,16 @@ export function MarketplaceDetailClient({
       </div>
 
       <article className="overflow-hidden rounded-2xl border border-border bg-card">
-        {(() => {
-          // Prefer the full media gallery; fall back to the cover image alone.
-          const gallery =
+        <ListingGallery
+          media={
             listing.media.length > 0
               ? listing.media
               : listing.coverImage
-                ? [
-                    {
-                      url: listing.coverImage,
-                      type: "image" as const,
-                      order: 0,
-                      isCover: true,
-                    },
-                  ]
-                : [];
-          const selected = gallery[activeMedia] ?? gallery[0];
-
-          if (!selected) {
-            return (
-              <div className="flex h-72 w-full items-center justify-center bg-secondary text-sm text-muted-foreground">
-                {t("marketplace.noMedia")}
-              </div>
-            );
+                ? [{ url: listing.coverImage, type: "image" as const }]
+                : []
           }
-
-          return (
-            <div>
-              <div className="h-80 w-full bg-secondary md:h-96">
-                {selected.type === "video" ? (
-                  <video
-                    src={selected.url}
-                    className="h-full w-full object-contain"
-                    controls
-                  />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={selected.url}
-                    alt={listing.title}
-                    className="h-full w-full object-cover"
-                  />
-                )}
-              </div>
-
-              {gallery.length > 1 && (
-                <div className="flex flex-wrap gap-2 p-3">
-                  {gallery.map((item, index) => (
-                    <button
-                      key={`${item.url}-${index}`}
-                      type="button"
-                      onClick={() => setActiveMedia(index)}
-                      className={
-                        "h-16 w-20 overflow-hidden rounded-md border bg-secondary transition " +
-                        (index === activeMedia
-                          ? "border-primary ring-2 ring-primary/30"
-                          : "border-border hover:border-primary/50")
-                      }
-                    >
-                      {item.type === "video" ? (
-                        <video
-                          src={item.url}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={item.url}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })()}
+          title={listing.title}
+        />
 
         <div className="space-y-4 p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -291,6 +224,8 @@ export function MarketplaceDetailClient({
               badge
             />
           </p>
+
+          <AuctionBadge auction={listing.auction} variant="block" />
 
           {/* Location + map link */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
@@ -335,6 +270,30 @@ export function MarketplaceDetailClient({
                 {t("marketplace.sqm", { n: listing.area })}
               </p>
             </div>
+            {listing.planNumber && (
+              <div>
+                <p className="text-xs text-muted-foreground">رقم المخطط</p>
+                <p className="font-semibold text-foreground">
+                  {listing.planNumber}
+                </p>
+              </div>
+            )}
+            {listing.parcelNumber && (
+              <div>
+                <p className="text-xs text-muted-foreground">رقم القطعة</p>
+                <p className="font-semibold text-foreground">
+                  {listing.parcelNumber}
+                </p>
+              </div>
+            )}
+            {listing.blockNumber && (
+              <div>
+                <p className="text-xs text-muted-foreground">رقم البلوك</p>
+                <p className="font-semibold text-foreground">
+                  {listing.blockNumber}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Multi-unit building (note 6): the public side only ever sees the
@@ -393,23 +352,25 @@ export function MarketplaceDetailClient({
               );
             })()}
 
-          {/* Actions: contact the advertiser + share the offer */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Actions: contact the advertiser + share the offer. Full-width
+              stacked on mobile so the primary CTA never wraps; inline row on
+              larger screens. */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <a
               href={contactHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 sm:flex-none"
+              className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 sm:w-auto"
             >
-              <MessageCircle className="h-4 w-4" aria-hidden />
+              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
               {t("marketplace.contactAdvertiser")}
             </a>
             <button
               type="button"
               onClick={handleShare}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-secondary sm:flex-none"
+              className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-border px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-secondary sm:w-auto"
             >
-              <Share2 className="h-4 w-4" aria-hidden />
+              <Share2 className="h-4 w-4 shrink-0" aria-hidden />
               {shareCopied
                 ? t("marketplace.shareCopied")
                 : t("marketplace.shareOffer")}
@@ -417,7 +378,7 @@ export function MarketplaceDetailClient({
             {companySlug && (
               <Link
                 href={ROUTES.COMPANY_LANDING(companySlug)}
-                className="inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary/5"
+                className="inline-flex w-full items-center justify-center whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-primary/5 sm:w-auto"
               >
                 {t("marketplace.visitCompany")}
               </Link>

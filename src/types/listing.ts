@@ -223,6 +223,67 @@ export interface ListingDetails {
   deposit?: number;
 }
 
+/**
+ * Optional auction layered on a FOR-SALE listing. The listing's original
+ * `price` is untouched — the auction is an add-on. This object is the
+ * denormalized live summary kept ON the listing doc so "current bid" is a
+ * single cheap read; the individual bids live in the `bids` subcollection.
+ */
+export interface ListingAuction {
+  enabled: boolean;
+  status: "open" | "closed";
+  /** Opening bid (employee-set; may default to the asking price). */
+  startPrice: number;
+  /** Minimum raise over the current bid; 0 means any higher amount wins. */
+  minIncrement: number;
+  /** Highest bid so far; null before the first bid. */
+  currentBid: number | null;
+  bidCount: number;
+  highBidId: string | null;
+  /** AUDIT — the employee holding the leading bid. Never public. */
+  highBidByEmployeeId: string | null;
+  highBidByEmployeeName: string | null;
+  /** Optional auto-close time as epoch milliseconds; null = open-ended. */
+  endsAt: number | null;
+  startedByEmployeeId: string;
+  startedAt: Timestamp | Date;
+  updatedAt: Timestamp | Date;
+  closedAt?: Timestamp | Date | null;
+}
+
+/**
+ * One immutable bid stored at
+ * `companies/{cid}/listings/{lid}/bids/{bidId}`. Append-only audit log —
+ * records which employee placed each bid. Never exposed publicly.
+ */
+export interface ListingBid {
+  id: string;
+  amount: number;
+  placedByEmployeeId: string;
+  placedByEmployeeName: string;
+  /** The bidder the employee logged this bid for (required, validated). */
+  bidderName: string;
+  bidderPhone: string; // canonical +9665XXXXXXXX
+  /** How the bidder reached the company (see BID_SOURCES). */
+  bidderSource: string;
+  createdAt: Timestamp | Date;
+}
+
+/**
+ * Public-safe projection of a listing's auction. Deliberately omits the
+ * employee audit fields (highBidByEmployeeId/Name) and the bids subcollection.
+ * Mirrored onto `global_listings` and the published listing doc.
+ */
+export interface PublicListingAuction {
+  enabled: boolean;
+  status: "open" | "closed";
+  startPrice: number;
+  currentBid: number | null;
+  bidCount: number;
+  /** Auto-close time as epoch milliseconds; null = open-ended. */
+  endsAt: number | null;
+}
+
 export interface ListingMedia {
   url: string;
   path: string; // full Storage path (for deletion)
@@ -313,6 +374,9 @@ export interface Listing {
   featured: boolean;
   publishedAt?: Timestamp | Date | null;
 
+  /** Optional bidding layer (for-sale only); absent = no auction. */
+  auction?: ListingAuction;
+
   analytics: ListingAnalytics;
 
   createdBy: string;
@@ -356,6 +420,9 @@ export interface GlobalListing {
   coverImage?: string;
   status: "published";
   featured: boolean;
+
+  /** Public-safe auction summary; null = no active auction. */
+  auction?: PublicListingAuction | null;
 
   createdAt: Timestamp | Date;
   updatedAt: Timestamp | Date;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { ROUTES } from "@/constants/routes";
@@ -18,7 +18,6 @@ function toPublicAuthMessage(error: unknown): string {
 }
 
 export default function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || ROUTES.DASHBOARD;
   const blocked = params.get("blocked") === "company_inactive";
@@ -108,11 +107,14 @@ export default function LoginForm() {
           : claims.role === "super_admin"
             ? ROUTES.ADMIN
             : next;
-      router.push(destination);
-      router.refresh();
+      // Hard navigation (not router.push) so the httpOnly session cookie we just
+      // set is guaranteed to be sent on the request for `destination`. A soft
+      // client navigation could render from a router-cache entry produced before
+      // the cookie existed, which made the first click appear to do nothing.
+      // Leave `loading` true through the unload so the button stays disabled.
+      window.location.assign(destination);
     } catch (err) {
       setError(toPublicAuthMessage(err));
-    } finally {
       setLoading(false);
     }
   }

@@ -13,7 +13,11 @@ const CSP = [
   // 'unsafe-eval' is required only by React Fast Refresh / dev tooling — never
   // shipped to production. 'unsafe-inline' is still needed for Next.js
   // hydration inline scripts until we migrate to a nonce-based CSP.
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  // apis.google.com is the gapi loader Firebase Auth pulls in for its auth
+  // iframe / session management.
+  `script-src 'self' 'unsafe-inline' https://apis.google.com${isDev ? " 'unsafe-eval'" : ""}`,
+  // Firebase Auth iframe (__/auth/iframe on *.firebaseapp.com) + the gapi iframe.
+  "frame-src 'self' https://apis.google.com https://*.firebaseapp.com",
   // Tailwind inline styles
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
@@ -42,6 +46,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   images: {
+    // Serve modern formats from the built-in optimizer (originals are
+    // full-resolution Firebase Storage uploads — see next/image adoption).
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       { protocol: "https", hostname: "firebasestorage.googleapis.com" },
       { protocol: "https", hostname: "storage.googleapis.com" },
@@ -51,6 +58,10 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react"],
+    // Reuse the RSC payload for recently-visited routes so client back/forward
+    // and repeat navigation paint instantly instead of re-rendering server
+    // components (and re-hitting Firestore) on every visit.
+    staleTimes: { dynamic: 30, static: 180 },
   },
   async headers() {
     return [

@@ -231,11 +231,10 @@ export function DashboardLeadsClient({
   const [noteText, setNoteText] = useState("");
   const [noteBusy, setNoteBusy] = useState(false);
 
+  // Fetch the full working set once; the status pills filter client-side
+  // (see filteredLeads) so switching pills is instant with no round-trip.
   const loadLeads = useCallback(async () => {
     const params = new URLSearchParams({ limit: "150" });
-    if (statusFilter !== "all") {
-      params.set("status", statusFilter);
-    }
 
     const response = await fetch(
       `/api/companies/${companyId}/leads?${params.toString()}`,
@@ -250,7 +249,7 @@ export function DashboardLeadsClient({
     }
 
     setLeads(normalizeLeadRows(payload.leads));
-  }, [companyId, statusFilter]);
+  }, [companyId]);
 
   const loadEmployees = useCallback(async () => {
     if (!canAssignLeads) {
@@ -372,8 +371,9 @@ export function DashboardLeadsClient({
 
   const filteredLeads = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return leads;
     return leads.filter((lead) => {
+      if (statusFilter !== "all" && lead.status !== statusFilter) return false;
+      if (!term) return true;
       return (
         lead.name.toLowerCase().includes(term) ||
         lead.phone.toLowerCase().includes(term) ||
@@ -382,7 +382,7 @@ export function DashboardLeadsClient({
         lead.source.toLowerCase().includes(term)
       );
     });
-  }, [leads, search]);
+  }, [leads, search, statusFilter]);
 
   const visibleLeadIds = useMemo(
     () => filteredLeads.map((lead) => lead.id),
@@ -418,6 +418,21 @@ export function DashboardLeadsClient({
     setError(null);
     setNotice(null);
 
+    // Optimistic: reflect the new assignee immediately, snapshot for rollback.
+    const previousLeads = leads;
+    const optimisticName =
+      assignedTo === null
+        ? t("leadsDash.unassigned")
+        : (employees.find((employee) => employee.id === assignedTo)?.name ??
+          t("leadsDash.unassigned"));
+    setLeads((prev) =>
+      prev.map((lead) =>
+        lead.id === leadId
+          ? { ...lead, assignedTo, assignedToName: optimisticName }
+          : lead,
+      ),
+    );
+
     try {
       const response = await fetch(
         `/api/companies/${companyId}/leads/${leadId}/assign`,
@@ -437,12 +452,31 @@ export function DashboardLeadsClient({
         throw new Error(getErrorMessage(payload, t("leadsDash.assignFailed")));
       }
 
-      await loadLeads();
+      // Reconcile with the server's canonical assignee name.
+      const assignment =
+        typeof payload.assignment === "object" && payload.assignment !== null
+          ? (payload.assignment as Record<string, unknown>)
+          : null;
+      const serverName =
+        assignment && typeof assignment.assignedToName === "string"
+          ? assignment.assignedToName
+          : null;
+      if (serverName !== null && serverName !== optimisticName) {
+        setLeads((prev) =>
+          prev.map((lead) =>
+            lead.id === leadId
+              ? { ...lead, assignedToName: serverName }
+              : lead,
+          ),
+        );
+      }
+
       if (activityLead?.id === leadId) {
         await loadLeadActivity(leadId);
       }
       setNotice(t("leadsDash.assigneeUpdated"));
     } catch (assignError) {
+      setLeads(previousLeads); // roll back the optimistic assignment
       setError(
         assignError instanceof Error
           ? assignError.message
@@ -459,6 +493,22 @@ export function DashboardLeadsClient({
     setBulkBusy(true);
     setError(null);
     setNotice(null);
+
+    // Optimistic: apply the assignee to every selected row up front.
+    const previousLeads = leads;
+    const targetId = bulkAssignedTo || null;
+    const targetName =
+      targetId === null
+        ? t("leadsDash.unassigned")
+        : (employees.find((employee) => employee.id === targetId)?.name ??
+          t("leadsDash.unassigned"));
+    setLeads((prev) =>
+      prev.map((lead) =>
+        selectedLeadIds.has(lead.id)
+          ? { ...lead, assignedTo: targetId, assignedToName: targetName }
+          : lead,
+      ),
+    );
 
     try {
       const response = await fetch(`/api/companies/${companyId}/leads/bulk`, {
@@ -485,10 +535,10 @@ export function DashboardLeadsClient({
           ? payload.updatedCount
           : selectedLeadIds.size;
 
-      await loadLeads();
       setSelectedLeadIds(new Set());
       setNotice(t("leadsDash.bulkAssignDone", { n: updatedCount }));
     } catch (bulkError) {
+      setLeads(previousLeads); // roll back; keep the selection for retry
       setError(
         bulkError instanceof Error
           ? bulkError.message
@@ -559,9 +609,24 @@ export function DashboardLeadsClient({
     setError(null);
     setNotice(null);
 
+    const leadId = activityLead.id;
+
+    // Optimistic: show the note at once (notes render newest-first, so prepend).
+    const previousNotes = leadNotes;
+    const optimisticNote: LeadNoteRow = {
+      id: `optimistic-${Date.now()}`,
+      authorId: "",
+      authorName: t("leadsDash.teamMember"),
+      text,
+      createdAt: new Date().toISOString(),
+      updatedAt: null,
+    };
+    setLeadNotes((prev) => [optimisticNote, ...prev]);
+    setNoteText("");
+
     try {
       const response = await fetch(
-        `/api/companies/${companyId}/leads/${activityLead.id}/notes`,
+        `/api/companies/${companyId}/leads/${leadId}/notes`,
         {
           method: "POST",
           headers: {
@@ -576,10 +641,15 @@ export function DashboardLeadsClient({
         throw new Error(getErrorMessage(payload, t("leadsDash.addNoteFailed")));
       }
 
-      setNoteText("");
-      await Promise.all([loadLeadActivity(activityLead.id), loadLeads()]);
+      // Reconcile notes + timeline (adds the new activity event) with the
+      // server — a small per-lead read, not the full 150-row leads reload.
+      if (activityLead?.id === leadId) {
+        await loadLeadActivity(leadId);
+      }
       setNotice(t("leadsDash.noteAdded"));
     } catch (noteError) {
+      setLeadNotes(previousNotes); // roll back the optimistic note
+      setNoteText(text); // restore the draft so it isn't lost
       setError(
         noteError instanceof Error
           ? noteError.message

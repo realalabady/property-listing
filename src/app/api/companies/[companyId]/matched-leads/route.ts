@@ -55,12 +55,6 @@ export async function GET(
   const { companyId } = await params;
 
   const user = await getSessionUser();
-  if (process.env.NODE_ENV !== "production")
-    console.log(
-      "[auth-debug] matched-leads: user=%s companyId=%s",
-      user ? user.uid : "NULL",
-      companyId,
-    );
   if (!user) {
     return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
   }
@@ -74,24 +68,25 @@ export async function GET(
       ? minParam
       : MATCH_THRESHOLD;
 
-  // 1) This company's published inventory.
-  const listingsSnap = await adminDb()
-    .collection(`companies/${companyId}/listings`)
-    .where("status", "==", "published")
-    .limit(300)
-    .get();
+  // 1) This company's published inventory + 2) recent customer searches, in
+  // parallel (independent reads — no reason to serialize the round-trips).
+  const [listingsSnap, searchesSnap] = await Promise.all([
+    adminDb()
+      .collection(`companies/${companyId}/listings`)
+      .where("status", "==", "published")
+      .limit(300)
+      .get(),
+    adminDb()
+      .collection("customer_searches")
+      .orderBy("lastSearchedAt", "desc")
+      .limit(200)
+      .get(),
+  ]);
   const listings = listingsSnap.docs.map((d) => mapListing(d.id, d.data()));
 
   if (listings.length === 0) {
     return NextResponse.json({ leads: [], threshold });
   }
-
-  // 2) Recent customer searches.
-  const searchesSnap = await adminDb()
-    .collection("customer_searches")
-    .orderBy("lastSearchedAt", "desc")
-    .limit(200)
-    .get();
 
   // 3) Score each search against the inventory; keep the best per search.
   const leads = searchesSnap.docs

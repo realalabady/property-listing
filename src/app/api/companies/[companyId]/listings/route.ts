@@ -325,6 +325,39 @@ export async function POST(req: NextRequest, context: RouteContext) {
     restrictPhones,
   );
 
+  // Optional auction, only for for-sale listings. The form sends
+  // `auction.enabled` + a starting bid; bids themselves are placed later from
+  // the detail page. Starts open with no bids yet.
+  const listingType = typeof body.type === "string" ? body.type : "sale";
+  const auctionInput =
+    typeof body.auction === "object" && body.auction !== null
+      ? (body.auction as Record<string, unknown>)
+      : null;
+  const auctionEnabled =
+    listingType === "sale" && auctionInput?.enabled === true;
+  const auctionDoc = auctionEnabled
+    ? {
+        auction: {
+          enabled: true,
+          status: "open" as const,
+          startPrice: num(auctionInput?.startPrice) ?? price,
+          minIncrement: Math.max(
+            0,
+            Math.round(Number(auctionInput?.minIncrement) || 0),
+          ),
+          currentBid: null,
+          bidCount: 0,
+          highBidId: null,
+          highBidByEmployeeId: null,
+          highBidByEmployeeName: null,
+          startedByEmployeeId: user.uid,
+          startedAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+          closedAt: null,
+        },
+      }
+    : {};
+
   const doc: Record<string, unknown> = {
     companyId,
     title,
@@ -363,6 +396,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       ? { brokerInfo: sanitizeBrokerInfo(body.brokerInfo) }
       : {}),
     publishedOn: sanitizePublishedOn(body.publishedOn),
+    ...auctionDoc,
     status: listingStatus,
     media: [],
     coverImage: null,

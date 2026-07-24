@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { requireCompanyMember } from "@/lib/auth/guards";
 import { adminDb } from "@/lib/firebase/admin";
 import { formatDate } from "@/lib/utils/format";
@@ -17,7 +18,8 @@ interface KpiOverview {
   tasksOverdue: number;
   totalEmployees: number;
   period: string;
-  updatedAt: Date | null;
+  // Epoch ms (not Date) so the value survives unstable_cache serialization.
+  updatedAtMs: number | null;
 }
 
 interface SnapshotRow {
@@ -48,10 +50,9 @@ function asNumber(value: unknown): number {
   return typeof value === "number" ? value : 0;
 }
 
-export default async function DashboardKPIPage() {
-  const user = await requireCompanyMember();
-  const companyId = user.companyId as string;
-
+async function loadKpi(
+  companyId: string,
+): Promise<{ overview: KpiOverview | null; rows: SnapshotRow[] }> {
   const [overviewSnap, snapshotsSnap] = await Promise.all([
     adminDb().doc(`companies/${companyId}/kpi/current`).get(),
     adminDb()
@@ -79,7 +80,7 @@ export default async function DashboardKPIPage() {
           typeof overviewData.period === "string"
             ? overviewData.period
             : t("kpi.notAvailable"),
-        updatedAt: toDate(overviewData.updatedAt),
+        updatedAtMs: toDate(overviewData.updatedAt)?.getTime() ?? null,
       }
     : null;
 
@@ -104,6 +105,23 @@ export default async function DashboardKPIPage() {
     (a, b) =>
       b.period.localeCompare(a.period) || b.leadsConverted - a.leadsConverted,
   );
+
+  return { overview, rows };
+}
+
+// KPI data is computed periodically (not live) — cache per company for 5min so
+// repeat visits skip the Firestore reads. `companyId` is part of the cache key.
+const getCachedKpi = unstable_cache(
+  (companyId: string) => loadKpi(companyId),
+  ["dashboard-kpi"],
+  { revalidate: 300 },
+);
+
+export default async function DashboardKPIPage() {
+  const user = await requireCompanyMember();
+  const companyId = user.companyId as string;
+
+  const { overview, rows } = await getCachedKpi(companyId);
 
   return (
     <div className="space-y-6">
@@ -147,7 +165,9 @@ export default async function DashboardKPIPage() {
           </p>
           <p className="mt-1">
             {t("kpi.updated")}{" "}
-            {overview.updatedAt ? formatDate(overview.updatedAt) : "-"}
+            {overview.updatedAtMs
+              ? formatDate(new Date(overview.updatedAtMs))
+              : "-"}
           </p>
           <p className="mt-1">
             {t("kpi.totalsLine", {

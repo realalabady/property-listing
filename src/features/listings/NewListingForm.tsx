@@ -94,6 +94,11 @@ interface FormState {
   deposit: string;
   discount: string;
   priceNegotiable: boolean;
+  // Optional auction (sale only). Enables bidding on the detail page; the
+  // starting bid seeds the auction. Bids are placed later, not here.
+  auctionEnabled: boolean;
+  auctionStartPrice: string;
+  auctionMinIncrement: string;
   // Unit specifications & amenities
   bedrooms: string;
   bathrooms: string;
@@ -174,6 +179,9 @@ const initialState: FormState = {
   deposit: "",
   discount: "",
   priceNegotiable: false,
+  auctionEnabled: false,
+  auctionStartPrice: "",
+  auctionMinIncrement: "",
   bedrooms: "",
   bathrooms: "",
   parking: "",
@@ -335,6 +343,9 @@ function listingDocToForm(data: Record<string, unknown>): {
     deposit: numStr(details.deposit),
     discount: numStr(data.discount),
     priceNegotiable: Boolean(data.priceNegotiable),
+    auctionEnabled: obj(data.auction).enabled === true,
+    auctionStartPrice: numStr(obj(data.auction).startPrice),
+    auctionMinIncrement: numStr(obj(data.auction).minIncrement),
     bedrooms: numStr(data.bedrooms),
     bathrooms: numStr(data.bathrooms),
     parking: numStr(amenities.parking),
@@ -470,6 +481,10 @@ export function NewListingForm({
   const [originalStatus, setOriginalStatus] = useState<ListingStatus | null>(
     null,
   );
+  // Whether the listing already had an ENABLED auction when the edit form
+  // loaded. Used so a listing edit never clobbers a live auction's bid data —
+  // the auction is only (re)written from the form when this toggle changes.
+  const [originalAuctionEnabled, setOriginalAuctionEnabled] = useState(false);
   // Protected owner/deed subdoc state for edit mode:
   //  - "none":     legacy listing (no subdoc) → deed stays in `details`
   //  - "readable": subdoc loaded → deed/owner edit against the subdoc
@@ -605,6 +620,7 @@ export function NewListingForm({
         setContacts(mapped.contacts);
         setPendingLoc(mapped.locationNames);
         setOriginalStatus(mapped.form.status);
+        setOriginalAuctionEnabled(mapped.form.auctionEnabled);
         setHydrated(true);
       } catch (loadError) {
         if (mounted) {
@@ -905,6 +921,32 @@ export function NewListingForm({
         status: form.status,
       };
 
+      // Optional auction (sale only). CREATE sends a light payload the API
+      // route seeds into a full auction object. EDIT must never clobber a live
+      // auction's bid data, so it only writes when the toggle actually changes:
+      // newly enabled → seed fresh; turned off → disable + close (bid history
+      // in the subcollection is untouched). Ongoing tweaks happen on the detail
+      // page, not here.
+      const isSale = form.type === LISTING_TYPES.SALE;
+      const auctionStart = form.auctionStartPrice.trim()
+        ? Number(form.auctionStartPrice)
+        : Number(form.price) || 0;
+      const auctionMinInc = form.auctionMinIncrement.trim()
+        ? Math.max(0, Number(form.auctionMinIncrement))
+        : 0;
+      const auctionCreatePayload =
+        isSale && form.auctionEnabled
+          ? {
+              auction: {
+                enabled: true,
+                ...(form.auctionStartPrice.trim()
+                  ? { startPrice: auctionStart }
+                  : {}),
+                minIncrement: auctionMinInc,
+              },
+            }
+          : {};
+
       // Confidential owner block (goes to the protected private subdoc).
       const ownerBlock: Record<string, string> = {};
       if (form.ownerName.trim()) ownerBlock.name = form.ownerName.trim();
@@ -918,6 +960,30 @@ export function NewListingForm({
           ...corePayload,
           updatedAt: serverTimestamp(),
         };
+        // Auction: only write when the toggle changed, so a routine edit never
+        // resets a live auction's currentBid/bidCount.
+        if (isSale && form.auctionEnabled && !originalAuctionEnabled) {
+          updatePayload.auction = {
+            enabled: true,
+            status: "open",
+            startPrice: auctionStart,
+            minIncrement: auctionMinInc,
+            currentBid: null,
+            bidCount: 0,
+            highBidId: null,
+            highBidByEmployeeId: null,
+            highBidByEmployeeName: null,
+            startedByEmployeeId: userId,
+            startedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            closedAt: null,
+          };
+        } else if (originalAuctionEnabled && (!form.auctionEnabled || !isSale)) {
+          updatePayload["auction.enabled"] = false;
+          updatePayload["auction.status"] = "closed";
+          updatePayload["auction.updatedAt"] = serverTimestamp();
+          updatePayload["auction.closedAt"] = serverTimestamp();
+        }
         // Stamp publishedAt only on the first transition into "published".
         if (
           form.status === LISTING_STATUSES.PUBLISHED &&
@@ -1000,6 +1066,7 @@ export function NewListingForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...corePayload,
+          ...auctionCreatePayload,
           ...(Object.keys(ownerBlock).length > 0
             ? { privateData: { owner: ownerBlock } }
             : {}),
@@ -1081,6 +1148,31 @@ export function NewListingForm({
                 placeholder={t("listings.titlePlaceholder")}
                 aria-invalid={Boolean(submitted && errors.title)}
               />
+            </Field>
+            <Field label="نوع الإستخدام">
+              <Select
+                value={form.usageType}
+                onChange={(e) => set("usageType")(e.target.value)}
+              >
+                <option value="">— غير محدد —</option>
+                {USAGE_TYPES.map((u) => (
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label={t("listings.initialStatus")}>
+              <Select
+                value={form.status}
+                onChange={(e) => set("status")(e.target.value as ListingStatus)}
+              >
+                {Object.values(LISTING_STATUSES).map((value) => (
+                  <option key={value} value={value}>
+                    {LISTING_STATUS_LABELS[value].ar}
+                  </option>
+                ))}
+              </Select>
             </Field>
             <Field label="نوع الإعلان">
               <Select
@@ -1202,6 +1294,52 @@ export function NewListingForm({
                   السعر قابل للتفاوض
                 </label>
               </Field>
+            )}
+
+            {/* Optional auction (sale only). Turning this on opens bidding on
+                the listing's detail page, seeded at the starting bid below. */}
+            {form.type === LISTING_TYPES.SALE && (
+              <>
+                <Field label="المزايدة" className="md:col-span-2">
+                  <label className="flex h-11 cursor-pointer items-center gap-2.5 rounded-lg border border-input bg-card px-3.5 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={form.auctionEnabled}
+                      onChange={(e) => set("auctionEnabled")(e.target.checked)}
+                      className="h-4 w-4 cursor-pointer accent-[hsl(var(--primary))]"
+                    />
+                    تفعيل المزايدة على هذا العقار
+                  </label>
+                </Field>
+                {form.auctionEnabled && (
+                  <>
+                    <Field label="سعر بداية المزايدة">
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        placeholder="يُترك فارغًا = سعر العرض"
+                        value={form.auctionStartPrice}
+                        onChange={(e) =>
+                          set("auctionStartPrice")(e.target.value)
+                        }
+                      />
+                    </Field>
+                    <Field label="أقل زيادة للمزايدة (اختياري)">
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        placeholder="0"
+                        value={form.auctionMinIncrement}
+                        onChange={(e) =>
+                          set("auctionMinIncrement")(e.target.value)
+                        }
+                      />
+                    </Field>
+                  </>
+                )}
+              </>
             )}
           </div>
         </AccordionSection>
@@ -1395,18 +1533,6 @@ export function NewListingForm({
                 </div>
               </div>
             </Field>
-            <Field label={t("listings.initialStatus")} className="md:col-span-2">
-              <Select
-                value={form.status}
-                onChange={(e) => set("status")(e.target.value as ListingStatus)}
-              >
-                {Object.values(LISTING_STATUSES).map((value) => (
-                  <option key={value} value={value}>
-                    {LISTING_STATUS_LABELS[value].ar}
-                  </option>
-                ))}
-              </Select>
-            </Field>
           </div>
         </AccordionSection>
 
@@ -1538,19 +1664,6 @@ export function NewListingForm({
             </div>
           )}
           <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">
-            <Field label="نوع الإستخدام">
-              <Select
-                value={form.usageType}
-                onChange={(e) => set("usageType")(e.target.value)}
-              >
-                <option value="">— غير محدد —</option>
-                {USAGE_TYPES.map((u) => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
-              </Select>
-            </Field>
             {showConfidential && (
               <Field label="رقم العقار">
                 <Input

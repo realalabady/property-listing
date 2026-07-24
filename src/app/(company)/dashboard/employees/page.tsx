@@ -32,11 +32,19 @@ export default async function DashboardEmployeesPage() {
       PERMISSIONS.REMOVE_EMPLOYEE,
     ]);
 
-  const employeesSnap = await adminDb()
-    .collection(`companies/${user.companyId}/employees`)
-    .orderBy("name", "asc")
-    .limit(300)
-    .get();
+  // Independent reads — run them together instead of one-after-another.
+  const [employeesSnap, invitationsSnap] = await Promise.all([
+    adminDb()
+      .collection(`companies/${user.companyId}/employees`)
+      .orderBy("name", "asc")
+      .limit(300)
+      .get(),
+    adminDb()
+      .collection(`companies/${user.companyId}/invitations`)
+      .orderBy("createdAt", "desc")
+      .limit(200)
+      .get(),
+  ]);
 
   const initialEmployees = employeesSnap.docs.map((doc) => {
     const data = doc.data();
@@ -69,12 +77,6 @@ export default async function DashboardEmployeesPage() {
           : null,
     };
   });
-
-  const invitationsSnap = await adminDb()
-    .collection(`companies/${user.companyId}/invitations`)
-    .orderBy("createdAt", "desc")
-    .limit(200)
-    .get();
 
   const initialInvitations = invitationsSnap.docs.map((doc) => {
     const data = doc.data();

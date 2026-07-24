@@ -82,11 +82,7 @@ const getSessionUserCached = cache(async (): Promise<SessionUser | null> => {
   try {
     const store = await cookies();
     const sessionCookie = store.get(SESSION_COOKIE)?.value;
-    if (!sessionCookie) {
-      if (process.env.NODE_ENV !== "production")
-        console.log("[auth-debug] getSessionUser: NO __session cookie");
-      return null;
-    }
+    if (!sessionCookie) return null;
 
     // checkRevoked=false: a stale `tokensValidAfterTime` (from a past
     // revokeRefreshTokens / persisted client session) was wrongly flagging
@@ -108,12 +104,7 @@ const getSessionUserCached = cache(async (): Promise<SessionUser | null> => {
       email: decoded.email,
       ...claims,
     };
-  } catch (err) {
-    if (process.env.NODE_ENV !== "production")
-      console.log(
-        "[auth-debug] getSessionUser: verifySessionCookie FAILED:",
-        err instanceof Error ? err.message : err,
-      );
+  } catch {
     return null;
   }
 });

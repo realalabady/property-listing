@@ -110,6 +110,7 @@
   "dashPages": {
     "overviewMeta": "لوحة التحكم",
     "welcomeBack": "مرحباً بعودتك",
+    "overviewSubtitle": "نظرة سريعة على أداء شركتك اليوم",
     "activeListings": "العقارات النشطة",
     "newLeads30d": "عملاء محتملون جدد (30 يوماً)",
     "pendingTasks": "المهام المعلّقة",
@@ -126,6 +127,7 @@
     "matchedLeadsSubtitle": "عملاء بحثوا عن عقارات تطابق مخزونك — مرتّبون حسب نسبة التطابق مع أقرب عقار لديك.",
     "chartsFunnelTitle": "مسار العملاء المحتملين",
     "chartsSourcesTitle": "مصادر العملاء",
+    "chartsSourcesTotal": "الإجمالي {n}",
     "chartsTrendTitle": "العملاء والتحويلات عبر الأشهر",
     "chartsEmpty": "لا توجد بيانات كافية بعد",
     "employeeFallback": "موظف"

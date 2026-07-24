@@ -22,6 +22,21 @@ function globalListingDocId(companyId: string, listingId: string): string {
   return `${companyId}_${listingId}`;
 }
 
+/** Public-safe auction projection for the mirror (no employee identity). */
+function publicAuctionSummary(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "object" || value === null) return null;
+  const a = value as Record<string, unknown>;
+  if (a.enabled !== true) return null;
+  return {
+    enabled: true,
+    status: a.status === "closed" ? "closed" : "open",
+    startPrice: typeof a.startPrice === "number" ? a.startPrice : 0,
+    currentBid: typeof a.currentBid === "number" ? a.currentBid : null,
+    bidCount: typeof a.bidCount === "number" ? a.bidCount : 0,
+    endsAt: typeof a.endsAt === "number" ? a.endsAt : null,
+  };
+}
+
 async function syncGlobalListing(
   companyId: string,
   listingId: string,
@@ -94,6 +109,7 @@ async function syncGlobalListing(
         : [],
       status: "published",
       featured: Boolean(listingData.featured),
+      auction: publicAuctionSummary(listingData.auction),
       createdAt: listingData.createdAt ?? FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     },

@@ -364,6 +364,28 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Overview stat/chart cards: a soft staggered rise on first paint so the
+     dashboard feels composed rather than dumped. Delay is set inline. */
+  .stat-rise {
+    animation: stat-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes stat-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stat-rise {
+    animation: none;
+  }
 }
 
 @keyframes marquee {
@@ -403,6 +425,38 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-bounce-up,
   .animate-bounce-down {
+    animation: none;
+  }
+}
+
+/* Gallery lightbox: soft fade for the backdrop, a gentle zoom for the photo. */
+@keyframes dar-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dar-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-fade-in {
+  animation: dar-fade-in 0.2s ease-out both;
+}
+.animate-zoom-in {
+  animation: dar-zoom-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-zoom-in {
     animation: none;
   }
 }

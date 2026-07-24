@@ -22,6 +22,9 @@ export const PERMISSIONS = {
   PUBLISH_LISTING: "publish_listing",
   ASSIGN_LISTING: "assign_listing",
   FEATURE_LISTING: "feature_listing",
+  // Run the optional auction on a for-sale listing: enable/close it and
+  // place bids (each bid records the placing employee — audit trail).
+  MANAGE_BIDS: "manage_bids",
   // Field-level privacy: read the listing's protected owner/deed subdocument
   // (companies/{cid}/listings/{lid}/private/data). Listing creators can always
   // read their own listing's private data regardless of this permission.
@@ -78,6 +81,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.PUBLISH_LISTING,
     PERMISSIONS.ASSIGN_LISTING,
     PERMISSIONS.FEATURE_LISTING,
+    PERMISSIONS.MANAGE_BIDS,
     PERMISSIONS.VIEW_OWNER_INFO,
     PERMISSIONS.CREATE_EMPLOYEE,
     PERMISSIONS.EDIT_EMPLOYEE,
@@ -106,6 +110,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.PUBLISH_LISTING,
     PERMISSIONS.ASSIGN_LISTING,
     PERMISSIONS.FEATURE_LISTING,
+    PERMISSIONS.MANAGE_BIDS,
     PERMISSIONS.VIEW_OWNER_INFO,
     PERMISSIONS.CREATE_EMPLOYEE,
     PERMISSIONS.EDIT_EMPLOYEE,
@@ -132,6 +137,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.PUBLISH_LISTING,
     PERMISSIONS.ASSIGN_LISTING,
     PERMISSIONS.FEATURE_LISTING,
+    PERMISSIONS.MANAGE_BIDS,
     PERMISSIONS.VIEW_EMPLOYEES,
     PERMISSIONS.CREATE_TASK,
     PERMISSIONS.ASSIGN_TASKS,
@@ -148,6 +154,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   [ROLES.SALES]: [
     PERMISSIONS.CREATE_LISTING,
     PERMISSIONS.EDIT_OWN_LISTING,
+    PERMISSIONS.MANAGE_BIDS,
     PERMISSIONS.MANAGE_LEADS,
     PERMISSIONS.VIEW_OWN_LEADS,
     PERMISSIONS.VIEW_MATCHED_LEADS,

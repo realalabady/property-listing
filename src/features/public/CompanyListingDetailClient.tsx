@@ -6,6 +6,7 @@ import { ChevronLeft, MapPin, MessageCircle, Share2 } from "lucide-react";
 import { UnitsDialog } from "./UnitsDialog";
 import { ROUTES } from "@/constants/routes";
 import { DiscountedPrice } from "@/components/ui/DiscountedPrice";
+import { AuctionBadge } from "@/components/ui/AuctionBadge";
 import {
   LISTING_CATEGORY_LABELS,
   LISTING_TYPE_LABELS,
@@ -283,6 +284,8 @@ export function CompanyListingDetailClient({
               badge
             />
           </p>
+
+          <AuctionBadge auction={listing.auction} variant="block" />
 
           {/* Location + map link */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">

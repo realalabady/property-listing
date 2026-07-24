@@ -35,6 +35,8 @@ import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils/cn";
 import { formatDate } from "@/lib/utils/format";
 import { DiscountedPrice } from "@/components/ui/DiscountedPrice";
+import { AuctionPanel } from "./AuctionPanel";
+import { PERMISSIONS, hasPermission } from "@/constants/permissions";
 import { t } from "@/lib/i18n";
 
 interface MediaItem {
@@ -44,6 +46,37 @@ interface MediaItem {
   order: number;
   alt?: string;
   isCover?: boolean;
+}
+
+/** Denormalized auction summary read off the listing doc (audit name kept). */
+export interface AuctionSummary {
+  enabled: boolean;
+  status: "open" | "closed";
+  startPrice: number;
+  minIncrement: number;
+  currentBid: number | null;
+  bidCount: number;
+  highBidByEmployeeName: string | null;
+  endsAt: number | null;
+}
+
+function parseAuctionSummary(value: unknown): AuctionSummary | null {
+  if (typeof value !== "object" || value === null) return null;
+  const a = value as Record<string, unknown>;
+  if (a.enabled !== true) return null;
+  return {
+    enabled: true,
+    status: a.status === "closed" ? "closed" : "open",
+    startPrice: typeof a.startPrice === "number" ? a.startPrice : 0,
+    minIncrement: typeof a.minIncrement === "number" ? a.minIncrement : 0,
+    currentBid: typeof a.currentBid === "number" ? a.currentBid : null,
+    bidCount: typeof a.bidCount === "number" ? a.bidCount : 0,
+    highBidByEmployeeName:
+      typeof a.highBidByEmployeeName === "string"
+        ? a.highBidByEmployeeName
+        : null,
+    endsAt: typeof a.endsAt === "number" ? a.endsAt : null,
+  };
 }
 
 interface ListingDetail {
@@ -59,6 +92,8 @@ interface ListingDetail {
   rentPeriod?: string;
   status: ListingStatus;
   featured: boolean;
+  /** Live auction summary (from the same listing snapshot). Null = none. */
+  auction: AuctionSummary | null;
   bedrooms?: number;
   bathrooms?: number;
   area?: number;
@@ -147,6 +182,7 @@ function mapDetail(data: DocumentData): ListingDetail {
     rentPeriod: str(data.rentPeriod),
     status: coerceListingStatus(data.status),
     featured: Boolean(data.featured),
+    auction: parseAuctionSummary(data.auction),
     bedrooms: num(data.bedrooms),
     bathrooms: num(data.bathrooms),
     area: num(data.area),
@@ -309,6 +345,11 @@ export function DashboardListingDetailClient({
 
   const { user: authUser, loading: authLoading } = useAuth();
   const authReady = !authLoading && Boolean(authUser);
+  // manage_bids holders, or anyone who can already edit this listing
+  // (owner/creator/editors) — mirrors the API guard so controls show before
+  // the new permission propagates into token claims.
+  const canManageBids =
+    canEdit || hasPermission(authUser?.permissions, PERMISSIONS.MANAGE_BIDS);
 
   useEffect(() => {
     if (!authReady) return;
@@ -414,6 +455,14 @@ export function DashboardListingDetailClient({
     phone: string;
   } | null>(null);
   const agentUid = authUser?.uid ?? null;
+
+  // Deed number (رقم الصك) and the publishing employee are confidential: only
+  // the offer's creator and viewers allowed to read the protected subdoc
+  // (super admin / members with `view_owner_info`) may see them. `privateData`
+  // is non-null only when that gated read succeeded; the uid check also covers
+  // the creator on legacy listings that have no private subdoc.
+  const canViewConfidential =
+    privateData !== null || (agentUid !== null && agentUid === createdBy);
   useEffect(() => {
     if (!authReady || !agentUid) {
       setAgentContact(null);
@@ -492,11 +541,16 @@ export function DashboardListingDetailClient({
         ? (privateData.deed as Record<string, unknown>)
         : {};
     return DEED_FIELDS.map(({ key, label }) => {
-      const raw = privateDeed[key] ?? listing.details[key];
+      // Never fall back to the public `details` copy for unauthorized viewers —
+      // that main-doc field is readable by every employee, which would leak the
+      // deed number. Only authorized viewers see the legacy `details` fallback.
+      const raw =
+        privateDeed[key] ??
+        (canViewConfidential ? listing.details[key] : undefined);
       if (raw === undefined || raw === null || raw === "") return null;
       return { label, value: String(raw) };
     }).filter((x): x is { label: string; value: string } => x !== null);
-  }, [listing, privateData]);
+  }, [listing, privateData, canViewConfidential]);
 
   const mapsHref = useMemo(() => {
     const lat = num(listing?.location.lat);
@@ -1007,6 +1061,21 @@ export function DashboardListingDetailClient({
         </p>
       </Section>
 
+      {/* Auction / bidding — for-sale listings only. Live summary comes from
+          the listing snapshot above; the panel adds a bids listener + controls. */}
+      {listing.type === LISTING_TYPES.SALE && (
+        <Section title="المزايدة">
+          <AuctionPanel
+            companyId={companyId}
+            listingId={listingId}
+            auction={listing.auction}
+            askingPrice={listing.price}
+            canManage={canManageBids}
+            authReady={authReady}
+          />
+        </Section>
+      )}
+
       {/* Key specs */}
       <Section title={t("listings.sectionSpecs")}>
         <InfoGrid
@@ -1278,10 +1347,17 @@ export function DashboardListingDetailClient({
       <Section title={t("listings.sectionMeta")}>
         <InfoGrid
           rows={[
-            {
-              label: t("listings.metaPublishedBy"),
-              value: publisherName ?? t("listings.metaUnknownPublisher"),
-            },
+            // The offer's creator/publisher is confidential — hide it from
+            // employees who can't see protected info.
+            ...(canViewConfidential
+              ? [
+                  {
+                    label: t("listings.metaPublishedBy"),
+                    value:
+                      publisherName ?? t("listings.metaUnknownPublisher"),
+                  },
+                ]
+              : []),
             {
               label: t("listings.metaAssignedEmployee"),
               value:

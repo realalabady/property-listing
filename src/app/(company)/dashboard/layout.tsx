@@ -1,10 +1,12 @@
 import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { Toaster } from "sonner";
-import { requireCompanyMember } from "@/lib/auth/guards";
+import {
+  requireCompanyMember,
+  getCompanyDoc,
+  getEmployeeDoc,
+} from "@/lib/auth/guards";
 import { ROUTES } from "@/constants/routes";
-import { ROLE_LABELS, ROLES } from "@/constants/roles";
-import { adminDb } from "@/lib/firebase/admin";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { SessionEndedSignOut } from "@/components/auth/SessionEndedSignOut";
 import { IdleTimeout } from "@/components/auth/IdleTimeout";
@@ -23,9 +25,12 @@ export default async function DashboardLayout({
 }) {
   const user = await requireCompanyMember();
   const companyId = user.companyId as string;
+  // These read from the same cached fetchers the guard already used during
+  // requireCompanyMember(), so React `cache()` dedupes them to zero extra
+  // Firestore reads this render.
   const [companySnap, employeeSnap] = await Promise.all([
-    adminDb().doc(`companies/${companyId}`).get(),
-    adminDb().doc(`companies/${companyId}/employees/${user.uid}`).get(),
+    getCompanyDoc(companyId),
+    getEmployeeDoc(companyId, user.uid),
   ]);
   const company = companySnap.exists
     ? (companySnap.data() as Record<string, unknown>)
@@ -54,12 +59,10 @@ export default async function DashboardLayout({
       : "") ||
     (typeof user.email === "string" ? user.email.split("@")[0] : "") ||
     t("dashboard.teamMember");
-  const roleLabel =
-    user.role === ROLES.COMPANY_OWNER
-      ? t("dashboard.owner")
-      : user.role
-        ? ROLE_LABELS[user.role]
-        : t("dashboard.member");
+  const jobTitle =
+    employeeSnap.exists && typeof employeeSnap.get("title") === "string"
+      ? String(employeeSnap.get("title")).trim()
+      : "";
   const userInitial = (userName.trim()[0] ?? "?").toUpperCase();
 
   return (
@@ -117,9 +120,11 @@ export default async function DashboardLayout({
               <p className="truncate text-sm font-semibold text-foreground">
                 {userName}
               </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {roleLabel}
-              </p>
+              {jobTitle ? (
+                <p className="truncate text-xs text-muted-foreground">
+                  {jobTitle}
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="flex items-center gap-2">
