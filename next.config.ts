@@ -46,15 +46,15 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   images: {
-    // Serve modern formats from the built-in optimizer (originals are
-    // full-resolution Firebase Storage uploads — see next/image adoption).
-    formats: ["image/avif", "image/webp"],
-    remotePatterns: [
-      { protocol: "https", hostname: "firebasestorage.googleapis.com" },
-      { protocol: "https", hostname: "storage.googleapis.com" },
-      { protocol: "https", hostname: "lh3.googleusercontent.com" },
-      { protocol: "https", hostname: "images.unsplash.com" },
-    ],
+    // Bypass Next's built-in image optimizer via a custom loader. Firebase
+    // Hosting's frameworks adapter doesn't wire `remotePatterns` into the
+    // production optimizer, so `/_next/image` 400s on every remote URL. The
+    // loader serves images from their origin (Firebase Storage / Google CDN)
+    // instead — see src/lib/image-loader.ts. `remotePatterns`/`formats` only
+    // affect the optimizer we no longer use, so they're intentionally omitted;
+    // the CSP `img-src` allow-list remains the security boundary.
+    loader: "custom",
+    loaderFile: "./src/lib/image-loader.ts",
   },
   experimental: {
     optimizePackageImports: ["lucide-react"],
