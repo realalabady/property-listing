@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ROLES } from "@/constants/roles";
 import { getSessionUser } from "@/lib/auth/session";
 import { adminDb } from "@/lib/firebase/admin";
+import { normalizeCommercialRegistration } from "@/lib/api/partner-requests";
 import type { CompanyStatus, SubscriptionPlanId } from "@/types/company";
 import { limitsForPlan } from "@/constants/plans";
 
@@ -16,6 +17,7 @@ interface CreateCompanyBody {
   status?: unknown;
   contactEmail?: string;
   contactPhone?: string;
+  commercialRegistrationNumber?: string;
   trialDays?: unknown;
 }
 
@@ -229,6 +231,19 @@ export async function POST(req: NextRequest) {
   const contactEmail = normalizeOptionalText(body.contactEmail);
   const contactPhone = normalizeOptionalText(body.contactPhone);
 
+  // Optional here (the admin may create a company before the CR is on hand),
+  // but when supplied it must be a valid unified registration number.
+  const crInput = normalizeText(body.commercialRegistrationNumber);
+  const commercialRegistrationNumber = crInput
+    ? normalizeCommercialRegistration(crInput)
+    : null;
+  if (crInput && !commercialRegistrationNumber) {
+    return NextResponse.json(
+      { error: "رقم السجل التجاري يجب أن يتكوّن من 10 أرقام ويبدأ بالرقم 7." },
+      { status: 400 },
+    );
+  }
+
   const companyRef = adminDb().collection("companies").doc();
   const trialDays = parseTrialDays(body.trialDays);
   const trialEndsAt =
@@ -253,6 +268,7 @@ export async function POST(req: NextRequest) {
     limits: limitsForPlan(subscriptionPlan),
     ownerId: "",
     status,
+    ...(commercialRegistrationNumber ? { commercialRegistrationNumber } : {}),
     contact: {
       ...(contactEmail ? { email: contactEmail } : {}),
       ...(contactPhone ? { phone: contactPhone } : {}),

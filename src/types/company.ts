@@ -45,6 +45,8 @@ export interface Company {
   subscriptionPlan: SubscriptionPlanId;
   ownerId: string; // uid of company_owner
   status: CompanyStatus;
+  /** Saudi unified commercial registration — 10 digits starting with 7. */
+  commercialRegistrationNumber?: string;
   contact: CompanyContact;
   supportedLanguages: ("en" | "ar")[];
   defaultLanguage: "en" | "ar";

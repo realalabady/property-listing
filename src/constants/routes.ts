@@ -6,6 +6,7 @@ export const ROUTES = {
   HOME: "/",
   MARKETPLACE: "/properties",
   MARKETPLACE_LISTING: (id: string) => `/properties/${id}`,
+  PARTNER: "/partner",
 
   // Company public
   COMPANY_LANDING: (slug: string) => `/c/${slug}`,
@@ -43,6 +44,7 @@ export const ROUTES = {
   ADMIN_COMPANIES: "/admin/companies",
   ADMIN_COMPANY_NEW: "/admin/companies/new",
   ADMIN_COMPANY_DETAIL: (companyId: string) => `/admin/companies/${companyId}`,
+  ADMIN_PARTNER_REQUESTS: "/admin/partner-requests",
   ADMIN_LISTINGS: "/admin/listings",
   ADMIN_LEADS: "/admin/leads",
   ADMIN_EMPLOYEES: "/admin/employees",

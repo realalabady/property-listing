@@ -322,6 +322,15 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ---------- Partner (agency) applications ----------
+    // Submitted publicly from /partner and reviewed by the super admin. Written
+    // and read only through Admin SDK routes (/api/partner-requests*), so
+    // clients — which would otherwise see other agencies' CR numbers and
+    // contact details — are denied entirely.
+    match /partner_requests/{requestId} {
+      allow read, write: if false;
+    }
+
     // ---------- Marketplace customers ----------
     // Self-registered customer profiles. Created by the Admin SDK at signup
     // (so the role claim stays trustworthy); the owner may read/update their

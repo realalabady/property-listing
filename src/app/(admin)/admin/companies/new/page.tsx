@@ -8,8 +8,18 @@ export const metadata = {
   title: "إنشاء شركة",
 };
 
-export default async function AdminCreateCompanyPage() {
+function firstParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+}
+
+export default async function AdminCreateCompanyPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requireSuperAdmin();
+  // Prefilled when the admin arrives from an agency's partner application.
+  const params = await searchParams;
 
   return (
     <div className="space-y-6">
@@ -31,7 +41,14 @@ export default async function AdminCreateCompanyPage() {
         </Link>
       </header>
 
-      <AdminCreateCompanyForm />
+      <AdminCreateCompanyForm
+        initialName={firstParam(params.name)}
+        initialContactEmail={firstParam(params.email)}
+        initialContactPhone={firstParam(params.phone)}
+        initialDescription={firstParam(params.description)}
+        initialCommercialRegistration={firstParam(params.cr)}
+        partnerRequestId={firstParam(params.partnerRequestId)}
+      />
     </div>
   );
 }

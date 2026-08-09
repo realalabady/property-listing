@@ -35,16 +35,36 @@ interface CreateCompanyResponse {
   };
 }
 
-export function AdminCreateCompanyForm() {
+interface AdminCreateCompanyFormProps {
+  initialName?: string;
+  initialContactEmail?: string;
+  initialContactPhone?: string;
+  initialDescription?: string;
+  initialCommercialRegistration?: string;
+  /** Set when created from a partner application — approved once the company exists. */
+  partnerRequestId?: string;
+}
+
+export function AdminCreateCompanyForm({
+  initialName = "",
+  initialContactEmail = "",
+  initialContactPhone = "",
+  initialDescription = "",
+  initialCommercialRegistration = "",
+  partnerRequestId = "",
+}: AdminCreateCompanyFormProps = {}) {
   const router = useRouter();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName);
   const [slug, setSlug] = useState("");
   const [plan, setPlan] = useState<SubscriptionPlanId>("starter");
   const [status, setStatus] = useState<CompanyStatus>("trial");
   const [trialDays, setTrialDays] = useState("14");
-  const [description, setDescription] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
+  const [description, setDescription] = useState(initialDescription);
+  const [contactEmail, setContactEmail] = useState(initialContactEmail);
+  const [contactPhone, setContactPhone] = useState(initialContactPhone);
+  const [commercialRegistration, setCommercialRegistration] = useState(
+    initialCommercialRegistration,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -67,6 +87,7 @@ export function AdminCreateCompanyForm() {
           description,
           contactEmail,
           contactPhone,
+          commercialRegistrationNumber: commercialRegistration,
           ...(status === "trial" ? { trialDays: Number(trialDays) } : {}),
         }),
       });
@@ -74,6 +95,18 @@ export function AdminCreateCompanyForm() {
       const payload = (await response.json()) as CreateCompanyResponse;
       if (!response.ok || !payload.company) {
         throw new Error(payload.error || t("adminForm.createFailed"));
+      }
+
+      // Close the loop on the partner application this company came from.
+      if (partnerRequestId) {
+        await fetch(`/api/admin/partner-requests/${partnerRequestId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "approved",
+            companyId: payload.company.id,
+          }),
+        }).catch(() => undefined);
       }
 
       setNotice(t("adminForm.createdNotice"));
@@ -148,6 +181,12 @@ export function AdminCreateCompanyForm() {
           </label>
         )}
 
+        <Field
+          label={t("adminForm.commercialRegistration")}
+          value={commercialRegistration}
+          onChange={setCommercialRegistration}
+          placeholder="70xxxxxxxx"
+        />
         <Field
           label={t("adminForm.contactEmailOptional")}
           value={contactEmail}

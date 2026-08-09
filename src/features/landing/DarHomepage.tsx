@@ -253,6 +253,16 @@ export function DarHomepage() {
             >
               <Link href={ROUTES.LOGIN}>{isArabic ? "تسجيل الدخول" : "Sign in"}</Link>
             </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="hidden sm:inline-flex"
+            >
+              <Link href={ROUTES.PARTNER}>
+                {isArabic ? "انضم كشريك" : "Become a partner"}
+              </Link>
+            </Button>
             <Button size="sm" onClick={() => setRequestOpen(true)}>
               {isArabic ? "اطلب عقارك" : "Request property"}
             </Button>
@@ -593,6 +603,9 @@ export function DarHomepage() {
           <div className="flex items-center gap-4">
             <Link href={ROUTES.MARKETPLACE} className="hover:text-foreground">
               {isArabic ? "العقارات" : "Properties"}
+            </Link>
+            <Link href={ROUTES.PARTNER} className="hover:text-foreground">
+              {isArabic ? "انضم كشريك" : "Become a partner"}
             </Link>
             <Link href={ROUTES.LOGIN} className="hover:text-foreground">
               {isArabic ? "تسجيل الدخول" : "Sign in"}

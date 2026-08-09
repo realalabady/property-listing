@@ -47,6 +47,12 @@ export default async function AdminLayout({
             {t("admin.createCompany")}
           </Link>
           <Link
+            href={ROUTES.ADMIN_PARTNER_REQUESTS}
+            className="rounded-md px-3 py-2 hover:bg-secondary"
+          >
+            {t("admin.partnerRequests")}
+          </Link>
+          <Link
             href={ROUTES.ADMIN_LISTINGS}
             className="rounded-md px-3 py-2 hover:bg-secondary"
           >

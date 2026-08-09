@@ -151,7 +151,7 @@ export function NotificationsButton({ companyId }: { companyId: string }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 z-50 w-[22rem] overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+        <div className="fixed left-5 top-16 z-50 w-[22rem] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-xl border border-border bg-card shadow-lg lg:absolute lg:left-0 lg:top-10 lg:max-w-[calc(100vw-1.5rem)]">
           <div className="border-b border-border px-4 py-3">
             <h3 className="text-sm font-semibold">
               {t("notifications.yourNotifications")}
