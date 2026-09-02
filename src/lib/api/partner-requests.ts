@@ -1,5 +1,11 @@
 import { normalizeText } from "@/lib/api/company-leads";
 import { normalizeEmail } from "@/lib/api/lead-requests";
+import {
+  hearAboutLabelAr,
+  isHearAboutSource,
+  isPartnerCity,
+  partnerCityLabelAr,
+} from "@/constants/partner-form";
 
 /**
  * Shared validation for "become a partner" applications — a real-estate agency
@@ -45,7 +51,14 @@ export interface NormalizedPartnerRequest {
   commercialRegistrationNumber: string;
   email: string;
   phone: string;
-  city: string | null;
+  /** Closed-list value from PARTNER_CITIES. */
+  city: string;
+  /** Arabic label for the city, denormalized so admin views need no lookup. */
+  cityLabel: string;
+  /** Closed-list value from HEAR_ABOUT_SOURCES. */
+  hearAbout: string;
+  /** Arabic label for the attribution channel. */
+  hearAboutLabel: string;
   message: string | null;
 }
 
@@ -91,9 +104,15 @@ export function validatePartnerRequestBody(
     return { ok: false, error: "الرجاء إدخال رقم جوال صحيح." };
   }
 
+  // Closed lists: anything not offered by the form is rejected outright.
   const city = normalizeText(body.city);
-  if (city.length > 120) {
-    return { ok: false, error: "اسم المدينة طويل جدًا." };
+  if (!isPartnerCity(city)) {
+    return { ok: false, error: "الرجاء اختيار المدينة من القائمة." };
+  }
+
+  const hearAbout = normalizeText(body.hearAbout);
+  if (!isHearAboutSource(hearAbout)) {
+    return { ok: false, error: "الرجاء اختيار كيف تعرفت علينا من القائمة." };
   }
 
   const message = normalizeText(body.message);
@@ -109,7 +128,10 @@ export function validatePartnerRequestBody(
       commercialRegistrationNumber,
       email,
       phone,
-      city: city || null,
+      city,
+      cityLabel: partnerCityLabelAr(city),
+      hearAbout,
+      hearAboutLabel: hearAboutLabelAr(hearAbout),
       message: message || null,
     },
   };

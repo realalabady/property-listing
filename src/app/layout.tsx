@@ -38,26 +38,29 @@ const cairo = Cairo({
 
 export const metadata: Metadata = {
   title: {
-    default: "دار — منصة العقارات الموثوقة في السعودية",
-    template: "%s | دار",
+    default: "راعي — منصة العقارات الموثوقة في السعودية",
+    template: "%s | راعي",
   },
   description:
-    "دار منصة عقارية سعودية بسيطة وموثوقة — ابحث في آلاف العقارات للبيع والإيجار في جميع مدن المملكة وتواصل مباشرة مع الشركات العقارية.",
+    "راعي منصة عقارية سعودية بسيطة وموثوقة — ابحث في آلاف العقارات للبيع والإيجار في جميع مدن المملكة وتواصل مباشرة مع الشركات العقارية.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   ),
   openGraph: {
     type: "website",
-    siteName: "دار",
+    siteName: "راعي",
   },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Browser UI tint. Matches the Wazi light surface the app actually paints —
+  // it used to be the legacy dark green, which read as a flash of the old brand
+  // on load and coloured the mobile address bar off-brand.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#08150f" },
-    { media: "(prefers-color-scheme: dark)", color: "#06100b" },
+    { media: "(prefers-color-scheme: light)", color: "#faf9fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#faf9fb" },
   ],
 };
 

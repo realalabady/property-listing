@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { MarketplaceDetailClient } from "@/features/public/MarketplaceDetailClient";
-import { DarPublicShell } from "@/features/public/DarPublicShell";
+import { RaeiPublicShell } from "@/features/public/RaeiPublicShell";
 import { adminDb } from "@/lib/firebase/admin";
 import {
   getCompanyByIdServer,
@@ -39,7 +39,7 @@ export async function generateMetadata({
     if (price) descParts.push(`${price.toLocaleString("en-US")} ريال`);
     const place = [city, district].filter(Boolean).join(" - ");
     if (place) descParts.push(place);
-    const description = descParts.join(" • ") || "عقار معروض على منصة دار";
+    const description = descParts.join(" • ") || "عقار معروض على منصة راعي";
 
     // Prefer the company logo (branding), fall back to the listing cover photo.
     const image =
@@ -93,12 +93,12 @@ export default async function MarketplaceDetailPage({
   }
 
   return (
-    <DarPublicShell>
+    <RaeiPublicShell>
       <MarketplaceDetailClient
         listingId={id}
         initialListing={initialListing}
         initialCompany={initialCompany}
       />
-    </DarPublicShell>
+    </RaeiPublicShell>
   );
 }

@@ -54,7 +54,7 @@ type Localized = { ar: string; en: string };
 
 const tr = (value: Localized, locale: Locale) => value[locale];
 
-const brand: Localized = { ar: "دار", en: "Dar" };
+const brand: Localized = { ar: "راعي", en: "Raei" };
 const brandTagline: Localized = {
   ar: "ابحث عن عقارك التالي",
   en: "Find your next property",
@@ -143,7 +143,7 @@ const steps: Array<{ title: Localized; body: Localized }> = [
   },
 ];
 
-export function DarHomepage() {
+export function RaeiHomepage() {
   const router = useRouter();
   const { user } = useAuth();
   const [locale, setLocale] = useState<Locale>("ar");
@@ -204,11 +204,11 @@ export function DarHomepage() {
       style={{
         fontFamily: isArabic ? "var(--font-arabic)" : "var(--font-sans)",
       }}
-      className="dar-light min-h-screen bg-background text-foreground"
+      className="raei-light min-h-screen bg-background text-foreground"
     >
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-lg">
-        <div className="container-tight flex h-16 items-center justify-between gap-4">
+        <div className="container-tight flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2 sm:flex-nowrap sm:py-0">
           <Link href="/" className="flex items-center gap-2.5">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <Home className="h-5 w-5" />
@@ -217,7 +217,7 @@ export function DarHomepage() {
               <span className="text-lg font-extrabold tracking-tight">
                 {tr(brand, locale)}
               </span>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="hidden text-[11px] text-muted-foreground sm:block">
                 {tr(brandTagline, locale)}
               </span>
             </span>
@@ -235,35 +235,31 @@ export function DarHomepage() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full shrink-0 items-center justify-between gap-1 sm:w-auto sm:justify-end sm:gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setLocale((p) => (p === "ar" ? "en" : "ar"))}
-              className="gap-1.5"
+              className="gap-1.5 px-2 sm:px-3"
             >
               <Globe className="h-4 w-4" />
               {isArabic ? "EN" : "AR"}
             </Button>
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="hidden sm:inline-flex"
-            >
-              <Link href={ROUTES.LOGIN}>{isArabic ? "تسجيل الدخول" : "Sign in"}</Link>
+            <Button asChild variant="ghost" size="sm" className="px-2 sm:px-3">
+              <Link href={ROUTES.LOGIN} className="whitespace-nowrap">
+                {isArabic ? "تسجيل الدخول" : "Sign in"}
+              </Link>
             </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="hidden sm:inline-flex"
-            >
-              <Link href={ROUTES.PARTNER}>
+            <Button asChild variant="outline" size="sm" className="px-2 sm:px-3">
+              <Link href={ROUTES.PARTNER} className="whitespace-nowrap">
                 {isArabic ? "انضم كشريك" : "Become a partner"}
               </Link>
             </Button>
-            <Button size="sm" onClick={() => setRequestOpen(true)}>
+            <Button
+              size="sm"
+              onClick={() => setRequestOpen(true)}
+              className="whitespace-nowrap px-2 sm:px-3"
+            >
               {isArabic ? "اطلب عقارك" : "Request property"}
             </Button>
           </div>
@@ -349,13 +345,13 @@ export function DarHomepage() {
                   <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="sr-only">{isArabic ? "المدينة" : "City"}</span>
                   <input
-                    list="dar-cities"
+                    list="raei-cities"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     placeholder={isArabic ? "المدينة أو الحي" : "City or district"}
                     className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                   />
-                  <datalist id="dar-cities">
+                  <datalist id="raei-cities">
                     {SAUDI_CITIES.map((c) => (
                       <option key={c.en} value={isArabic ? c.ar : c.en} />
                     ))}
@@ -531,7 +527,7 @@ export function DarHomepage() {
         <section id="how" className="container-tight py-16">
           <div className="mx-auto mb-10 max-w-2xl text-center">
             <h2 className="text-2xl font-bold tracking-tight md:text-3xl">
-              {isArabic ? "كيف يعمل دار؟" : "How Dar works"}
+              {isArabic ? "كيف يعمل راعي؟" : "How Raei works"}
             </h2>
             <p className="mt-3 text-sm text-muted-foreground">
               {isArabic
@@ -559,8 +555,8 @@ export function DarHomepage() {
           <div className="overflow-hidden rounded-3xl bg-primary px-6 py-12 text-center text-primary-foreground md:px-12 md:py-16">
             <h2 className="mx-auto max-w-2xl text-2xl font-extrabold tracking-tight md:text-4xl">
               {isArabic
-                ? "هل تملك شركة عقارية؟ اعرض عقاراتك على دار"
-                : "Run an agency? List your properties on Dar"}
+                ? "هل تملك شركة عقارية؟ اعرض عقاراتك على راعي"
+                : "Run an agency? List your properties on Raei"}
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-sm text-primary-foreground/80 md:text-base">
               {isArabic
@@ -597,8 +593,17 @@ export function DarHomepage() {
             <span className="font-bold text-foreground">{tr(brand, locale)}</span>
           </div>
           <p>
-            © {new Date().getFullYear()} {tr(brand, locale)}.{" "}
-            {isArabic ? "جميع الحقوق محفوظة." : "All rights reserved."}
+            {isArabic ? (
+              <>
+                جميع الحقوق محفوظة{" "}
+                <bdi>© {new Date().getFullYear()}</bdi> {tr(brand, locale)}
+              </>
+            ) : (
+              <>
+                <bdi>© {new Date().getFullYear()}</bdi> {tr(brand, locale)}. All
+                rights reserved.
+              </>
+            )}
           </p>
           <div className="flex items-center gap-4">
             <Link href={ROUTES.MARKETPLACE} className="hover:text-foreground">

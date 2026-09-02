@@ -153,7 +153,7 @@ export default function LocationPicker({
       ).addTo(map);
 
       iconRef.current = L.divIcon({
-        className: "dar-pick-pin",
+        className: "raei-pick-pin",
         html: PIN_HTML,
         iconSize: [32, 40],
         iconAnchor: [16, 40],

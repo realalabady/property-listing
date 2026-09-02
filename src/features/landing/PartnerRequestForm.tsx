@@ -6,7 +6,12 @@ import { Building2, CheckCircle2, Globe, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { ROUTES } from "@/constants/routes";
+import {
+  HEAR_ABOUT_SOURCES,
+  PARTNER_CITIES,
+} from "@/constants/partner-form";
 
 type Locale = "ar" | "en";
 type Localized = { ar: string; en: string };
@@ -37,6 +42,7 @@ export function PartnerRequestForm() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
+  const [hearAbout, setHearAbout] = useState("");
   const [message, setMessage] = useState("");
   const [website, setWebsite] = useState(""); // honeypot
 
@@ -59,6 +65,7 @@ export function PartnerRequestForm() {
           email,
           phone,
           city,
+          hearAbout,
           message,
           website, // honeypot
         }),
@@ -93,7 +100,7 @@ export function PartnerRequestForm() {
       style={{
         fontFamily: isArabic ? "var(--font-arabic)" : "var(--font-sans)",
       }}
-      className="dar-light min-h-screen bg-background text-foreground"
+      className="raei-light min-h-screen bg-background text-foreground"
     >
       <header className="border-b border-border bg-background/85 backdrop-blur-lg">
         <div className="container-tight flex h-16 items-center justify-between gap-4">
@@ -102,7 +109,7 @@ export function PartnerRequestForm() {
               <Home className="h-5 w-5" />
             </span>
             <span className="text-lg font-extrabold tracking-tight">
-              {isArabic ? "دار" : "Dar"}
+              {isArabic ? "راعي" : "Raei"}
             </span>
           </Link>
 
@@ -133,8 +140,8 @@ export function PartnerRequestForm() {
           </span>
           <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
             {isArabic
-              ? "انضم إلى دار كشركة عقارية"
-              : "Join Dar as a real-estate agency"}
+              ? "انضم إلى راعي كشركة عقارية"
+              : "Join Raei as a real-estate agency"}
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">
             {isArabic
@@ -209,7 +216,7 @@ export function PartnerRequestForm() {
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder={
-                      isArabic ? "شركة دار للعقارات" : "Dar Real Estate Co."
+                      isArabic ? "شركة راعي للعقارات" : "Raei Real Estate Co."
                     }
                     required
                     autoComplete="organization"
@@ -279,15 +286,41 @@ export function PartnerRequestForm() {
                   />
                 </Field>
 
-                <Field
-                  label={isArabic ? "المدينة" : "City"}
-                  className="sm:col-span-2"
-                >
-                  <Input
+                <Field label={isArabic ? "المدينة" : "City"} required>
+                  <Select
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    placeholder={isArabic ? "الرياض" : "Riyadh"}
-                  />
+                    required
+                  >
+                    <option value="" disabled>
+                      {isArabic ? "اختر المدينة" : "Select a city"}
+                    </option>
+                    {PARTNER_CITIES.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {isArabic ? option.ar : option.en}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+
+                <Field
+                  label={isArabic ? "كيف تعرفت علينا؟" : "How did you find us?"}
+                  required
+                >
+                  <Select
+                    value={hearAbout}
+                    onChange={(e) => setHearAbout(e.target.value)}
+                    required
+                  >
+                    <option value="" disabled>
+                      {isArabic ? "اختر إجابة" : "Select an answer"}
+                    </option>
+                    {HEAR_ABOUT_SOURCES.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {isArabic ? option.ar : option.en}
+                      </option>
+                    ))}
+                  </Select>
                 </Field>
               </div>
 

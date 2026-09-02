@@ -50,12 +50,12 @@ export default function CustomerSignupForm() {
     "w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition focus:ring-2 focus:ring-ring";
 
   return (
-    <main className="dar-light flex min-h-screen items-center justify-center bg-background px-4 py-10 text-foreground">
+    <main className="raei-light flex min-h-screen items-center justify-center bg-background px-4 py-10 text-foreground">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary" />
-            <span className="text-lg font-semibold">دار</span>
+            <span className="text-lg font-semibold">راعي</span>
           </Link>
           <h1 className="mt-6 text-2xl font-semibold tracking-tight">
             إنشاء حساب عميل

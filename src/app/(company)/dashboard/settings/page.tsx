@@ -10,6 +10,7 @@ import { requireCompanyMember } from "@/lib/auth/guards";
 import { limitsForPlan } from "@/constants/plans";
 import type { SubscriptionPlanId } from "@/types/company";
 import { adminDb } from "@/lib/firebase/admin";
+import { DEFAULT_COMPANY_THEME } from "@/constants/brand";
 import {
   PersonalInfoSection,
   type PersonalInfo,
@@ -117,19 +118,19 @@ export default async function DashboardSettingsPage() {
       ? theme.primaryColor
       : typeof company["theme.primaryColor"] === "string"
         ? (company["theme.primaryColor"] as string)
-        : "#0f6d45";
+        : DEFAULT_COMPANY_THEME.primaryColor;
   const secondaryColor =
     typeof theme.secondaryColor === "string"
       ? theme.secondaryColor
       : typeof company["theme.secondaryColor"] === "string"
         ? (company["theme.secondaryColor"] as string)
-        : "#e8d9bf";
+        : DEFAULT_COMPANY_THEME.secondaryColor;
   const accentColor =
     typeof theme.accentColor === "string"
       ? theme.accentColor
       : typeof company["theme.accentColor"] === "string"
         ? (company["theme.accentColor"] as string)
-        : "#11935d";
+        : DEFAULT_COMPANY_THEME.accentColor;
 
   const planId: SubscriptionPlanId =
     company.subscriptionPlan === "starter" ||

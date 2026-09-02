@@ -8,7 +8,7 @@ export function publicCompanyThemeStyle(
   if (!company?.theme) return undefined;
 
   // Only tint the brand accent (buttons, ring). Surfaces stay on the shared
-  // Dar light theme so company pages match the rest of the site — overriding
+  // Raei light theme so company pages match the rest of the site — overriding
   // --secondary/--input/--border with a company colour made them off-brand.
   const primary = hexToHslChannels(company.theme.primaryColor);
   const accent = hexToHslChannels(company.theme.accentColor);

@@ -140,6 +140,7 @@ export function mapBoardLead(
     quality: typeof data.quality === "string" ? data.quality : "unrated",
     listingTitle:
       typeof data.listingTitle === "string" ? data.listingTitle : null,
+    reference: typeof data.reference === "string" ? data.reference : null,
     assignedTo: typeof data.assignedTo === "string" ? data.assignedTo : null,
     assignedToName:
       typeof data.assignedToName === "string" ? data.assignedToName : null,

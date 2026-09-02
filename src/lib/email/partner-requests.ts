@@ -1,6 +1,7 @@
 import "server-only";
 import { createTransport, escapeHtml } from "./transport";
 import type { NormalizedPartnerRequest } from "@/lib/api/partner-requests";
+import { WAZI_COLORS } from "@/constants/brand";
 
 export interface PartnerRequestEmailResult {
   sent: boolean;
@@ -56,7 +57,8 @@ export async function sendPartnerRequestEmail(
     ["السجل التجاري", request.commercialRegistrationNumber],
     ["البريد الإلكتروني", request.email],
     ["الجوال", request.phone],
-    ["المدينة", request.city ?? "—"],
+    ["المدينة", request.cityLabel],
+    ["كيف عرفنا", request.hearAboutLabel],
     ["نبذة", request.message ?? "—"],
   ];
 
@@ -85,7 +87,7 @@ export async function sendPartnerRequestEmail(
           )
           .join("")}
       </table>
-      <p><a href="${escapeHtml(reviewUrl)}" style="display:inline-block;padding:10px 18px;background:#0f6d45;color:#fff;border-radius:6px;text-decoration:none;">مراجعة الطلب وإنشاء الشركة</a></p>
+      <p><a href="${escapeHtml(reviewUrl)}" style="display:inline-block;padding:10px 18px;background:${WAZI_COLORS.purple};color:#fff;border-radius:6px;text-decoration:none;">مراجعة الطلب وإنشاء الشركة</a></p>
     </div>
   `;
 

@@ -6,6 +6,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { assertActiveMember } from "@/lib/api/guards";
 import { normalizeHexColor } from "@/lib/utils/color";
 import { adminDb } from "@/lib/firebase/admin";
+import { DEFAULT_COMPANY_THEME } from "@/constants/brand";
 
 export const runtime = "nodejs";
 
@@ -156,14 +157,24 @@ export async function GET(_req: NextRequest, context: RouteContext) {
         email: typeof contact.email === "string" ? contact.email : "",
       },
       theme: {
-        primaryColor: pickThemeColor(company, theme, "primaryColor", "#0f6d45"),
+        primaryColor: pickThemeColor(
+          company,
+          theme,
+          "primaryColor",
+          DEFAULT_COMPANY_THEME.primaryColor,
+        ),
         secondaryColor: pickThemeColor(
           company,
           theme,
           "secondaryColor",
-          "#e8d9bf",
+          DEFAULT_COMPANY_THEME.secondaryColor,
         ),
-        accentColor: pickThemeColor(company, theme, "accentColor", "#11935d"),
+        accentColor: pickThemeColor(
+          company,
+          theme,
+          "accentColor",
+          DEFAULT_COMPANY_THEME.accentColor,
+        ),
         darkMode: Boolean(theme.darkMode),
       },
       leadAutoAssignStrategy:
@@ -273,7 +284,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       const primaryColor = normalizeHexColor(body.theme.primaryColor);
       if (!primaryColor) {
         return NextResponse.json(
-          { error: "Primary color must be a valid hex color (e.g., #0f6d45)." },
+          { error: "Primary color must be a valid hex color (e.g., #662d91)." },
           { status: 400 },
         );
       }

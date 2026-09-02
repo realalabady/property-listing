@@ -10,6 +10,7 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase/client";
+import { DEFAULT_COMPANY_THEME } from "@/constants/brand";
 import {
   coerceListingCategory,
   coerceListingType,
@@ -333,13 +334,17 @@ export async function getCompanyBySlug(
     email: typeof data.contact?.email === "string" ? data.contact.email : "",
     theme: {
       primaryColor:
-        typeof theme.primaryColor === "string" ? theme.primaryColor : "#0f6d45",
+        typeof theme.primaryColor === "string"
+          ? theme.primaryColor
+          : DEFAULT_COMPANY_THEME.primaryColor,
       secondaryColor:
         typeof theme.secondaryColor === "string"
           ? theme.secondaryColor
-          : "#e8d9bf",
+          : DEFAULT_COMPANY_THEME.secondaryColor,
       accentColor:
-        typeof theme.accentColor === "string" ? theme.accentColor : "#11935d",
+        typeof theme.accentColor === "string"
+          ? theme.accentColor
+          : DEFAULT_COMPANY_THEME.accentColor,
     },
   };
 }
@@ -365,13 +370,17 @@ export function mapPublicCompany(id: string, data: DocumentData): PublicCompany 
     email: typeof data.contact?.email === "string" ? data.contact.email : "",
     theme: {
       primaryColor:
-        typeof theme.primaryColor === "string" ? theme.primaryColor : "#0f6d45",
+        typeof theme.primaryColor === "string"
+          ? theme.primaryColor
+          : DEFAULT_COMPANY_THEME.primaryColor,
       secondaryColor:
         typeof theme.secondaryColor === "string"
           ? theme.secondaryColor
-          : "#e8d9bf",
+          : DEFAULT_COMPANY_THEME.secondaryColor,
       accentColor:
-        typeof theme.accentColor === "string" ? theme.accentColor : "#11935d",
+        typeof theme.accentColor === "string"
+          ? theme.accentColor
+          : DEFAULT_COMPANY_THEME.accentColor,
     },
   };
 }

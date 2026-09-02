@@ -1,6 +1,6 @@
-# Dar — Real Estate CRM & Marketplace
+# Raei — Real Estate CRM & Marketplace
 
-Dar is a multi-tenant platform that gives each real estate company its own
+Raei is a multi-tenant platform that gives each real estate company its own
 branded presence and a complete CRM to run the business behind it — listings,
 leads, team, and performance, all in one place. Built Arabic-first with full
 RTL support for the Saudi market.

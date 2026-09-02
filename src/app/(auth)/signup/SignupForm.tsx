@@ -54,7 +54,7 @@ export default function SignupForm() {
   }
 
   return (
-    <main className="dar-light flex min-h-screen items-center justify-center bg-background px-4 py-12 text-foreground">
+    <main className="raei-light flex min-h-screen items-center justify-center bg-background px-4 py-12 text-foreground">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2">

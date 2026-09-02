@@ -107,7 +107,7 @@ function escapeHtml(value: string): string {
  */
 function styleHighlight(el: HTMLElement | null, on: boolean) {
   if (!el) return;
-  const pill = (el.querySelector(".dar-price-pin__pill") ??
+  const pill = (el.querySelector(".raei-price-pin__pill") ??
     el.firstElementChild ??
     el) as HTMLElement;
   pill.style.transition = "transform .15s ease, box-shadow .15s ease";
@@ -288,8 +288,8 @@ export default function SaudiClusterMap({
         const [jx, jy] = base.precise ? [0, 0] : jitter(listing.id);
 
         const icon = L.divIcon({
-          className: "dar-price-pin",
-          html: `<div class="dar-price-pin__pill">${escapeHtml(compactPrice(listing.price))} <span class="icon-saudi_riyal" aria-hidden="true">&#xea;</span></div>`,
+          className: "raei-price-pin",
+          html: `<div class="raei-price-pin__pill">${escapeHtml(compactPrice(listing.price))} <span class="icon-saudi_riyal" aria-hidden="true">&#xea;</span></div>`,
           iconSize: [0, 0],
           iconAnchor: [0, 0],
           popupAnchor: [0, -14],
@@ -298,11 +298,11 @@ export default function SaudiClusterMap({
         const marker = L.marker([base.lat + jy, base.lng + jx], { icon });
         const href = ROUTES.MARKETPLACE_LISTING(listing.id);
         marker.bindPopup(
-          `<div dir="rtl" class="dar-popup">
-             <strong class="dar-popup__title">${escapeHtml(listing.title)}</strong>
-             <div class="dar-popup__city">${escapeHtml(listing.city || "")}</div>
-             <div class="dar-popup__price"><span class="icon-saudi_riyal" aria-hidden="true">&#xea;</span> ${formatNumber(listing.price)} <span class="dar-popup__suffix">${escapeHtml(rentPeriodSuffix(listing.type, listing.rentPeriod))}</span></div>
-             <a href="${href}" class="dar-popup__link">عرض التفاصيل</a>
+          `<div dir="rtl" class="raei-popup">
+             <strong class="raei-popup__title">${escapeHtml(listing.title)}</strong>
+             <div class="raei-popup__city">${escapeHtml(listing.city || "")}</div>
+             <div class="raei-popup__price"><span class="icon-saudi_riyal" aria-hidden="true">&#xea;</span> ${formatNumber(listing.price)} <span class="raei-popup__suffix">${escapeHtml(rentPeriodSuffix(listing.type, listing.rentPeriod))}</span></div>
+             <a href="${href}" class="raei-popup__link">عرض التفاصيل</a>
            </div>`,
         );
 
@@ -329,10 +329,10 @@ export default function SaudiClusterMap({
         if (!count) continue;
         const size = count < 10 ? 40 : count < 100 ? 46 : 54;
         const bubble = L.divIcon({
-          className: "dar-region",
-          html: `<div class="dar-region__bubble" style="width:${size}px;height:${size}px;">
-                   <span class="dar-region__name">${escapeHtml(region.ar.replace(/^منطقة\s+|^المنطقة\s+/, ""))}</span>
-                   <span class="dar-region__count">${count}</span>
+          className: "raei-region",
+          html: `<div class="raei-region__bubble" style="width:${size}px;height:${size}px;">
+                   <span class="raei-region__name">${escapeHtml(region.ar.replace(/^منطقة\s+|^المنطقة\s+/, ""))}</span>
+                   <span class="raei-region__count">${count}</span>
                  </div>`,
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],

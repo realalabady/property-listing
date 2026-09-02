@@ -955,6 +955,8 @@ function StageManagerModal({
     <Modal
       open={open}
       onClose={onClose}
+      // Portalled to <body> — carry the dashboard's Wazi scope with it.
+      themeClass="enterprise"
       title={tr("pipeline.manageStages")}
       footer={
         <Button variant="outline" size="sm" onClick={onClose}>

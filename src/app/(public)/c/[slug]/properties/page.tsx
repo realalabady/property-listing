@@ -1,5 +1,5 @@
 import { CompanyPropertiesClient } from "@/features/public/CompanyPropertiesClient";
-import { DarPublicShell } from "@/features/public/DarPublicShell";
+import { RaeiPublicShell } from "@/features/public/RaeiPublicShell";
 
 export const metadata = {
   title: "عقارات الشركة",
@@ -12,8 +12,8 @@ export default async function CompanyPropertiesPage({
 }) {
   const { slug } = await params;
   return (
-    <DarPublicShell>
+    <RaeiPublicShell>
       <CompanyPropertiesClient slug={slug} />
-    </DarPublicShell>
+    </RaeiPublicShell>
   );
 }

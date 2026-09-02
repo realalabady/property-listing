@@ -1,5 +1,5 @@
 import { CompanyContactClient } from "@/features/public/CompanyContactClient";
-import { DarPublicShell } from "@/features/public/DarPublicShell";
+import { RaeiPublicShell } from "@/features/public/RaeiPublicShell";
 
 export const metadata = {
   title: "تواصل مع الشركة",
@@ -12,8 +12,8 @@ export default async function CompanyContactPage({
 }) {
   const { slug } = await params;
   return (
-    <DarPublicShell>
+    <RaeiPublicShell>
       <CompanyContactClient slug={slug} />
-    </DarPublicShell>
+    </RaeiPublicShell>
   );
 }

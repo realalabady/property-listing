@@ -213,6 +213,9 @@ export function PropertyRequestModal({
     <Modal
       open={open}
       onClose={close}
+      // Portalled to <body>, so it needs the Wazi scope explicitly — otherwise
+      // it inherits the legacy `:root` green instead of the brand palette.
+      themeClass="wazi-light"
       title={isArabic ? "اطلب عقارك" : "Request a property"}
       description={
         done

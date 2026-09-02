@@ -46,7 +46,7 @@ export function createTransport(): MailTransport | null {
   return {
     transporter,
     from: process.env.EMAIL_FROM?.trim() || "noreply@listingproperty.app",
-    appName: process.env.NEXT_PUBLIC_APP_NAME?.trim() || "Dar",
+    appName: process.env.NEXT_PUBLIC_APP_NAME?.trim() || "Raei",
   };
 }
 

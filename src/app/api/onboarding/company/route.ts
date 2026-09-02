@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { ROLES } from "@/constants/roles";
 import { ROLE_PERMISSIONS } from "@/constants/permissions";
+import { DEFAULT_COMPANY_THEME } from "@/constants/brand";
 
 export const runtime = "nodejs";
 
@@ -154,9 +155,7 @@ export async function POST(req: NextRequest) {
         description: "",
         logo: "",
         theme: {
-          primaryColor: "#0f6d45",
-          secondaryColor: "#e8d9bf",
-          accentColor: "#11935d",
+          ...DEFAULT_COMPANY_THEME,
           darkMode: false,
         },
         subscriptionPlan: "starter",

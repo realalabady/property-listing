@@ -14,6 +14,13 @@ interface ModalProps {
   /** Sticky footer area for actions (Cancel / Save). */
   footer?: React.ReactNode;
   className?: string;
+  /**
+   * Theme scope class for the portal root. The modal renders into
+   * `document.body`, so it does NOT inherit the theme class of the tree that
+   * opened it — without this it falls back to the legacy `:root` palette.
+   * Pass the caller's scope (e.g. `"wazi-light"`, `"enterprise"`).
+   */
+  themeClass?: string;
 }
 
 /**
@@ -28,6 +35,7 @@ function Modal({
   children,
   footer,
   className,
+  themeClass,
 }: ModalProps) {
   const [mounted, setMounted] = React.useState(false);
 
@@ -51,7 +59,10 @@ function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className={cn(
+        themeClass,
+        "fixed inset-0 z-50 flex items-center justify-center p-4",
+      )}
       role="dialog"
       aria-modal="true"
       aria-label={title}

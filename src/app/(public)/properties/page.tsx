@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { MarketplaceClient } from "@/features/public/MarketplaceClient";
-import { DarPublicShell } from "@/features/public/DarPublicShell";
+import { RaeiPublicShell } from "@/features/public/RaeiPublicShell";
 
 export const metadata = {
   title: "العقارات",
@@ -8,10 +8,10 @@ export const metadata = {
 
 export default function MarketplacePage() {
   return (
-    <DarPublicShell>
+    <RaeiPublicShell>
       <Suspense fallback={null}>
         <MarketplaceClient />
       </Suspense>
-    </DarPublicShell>
+    </RaeiPublicShell>
   );
 }

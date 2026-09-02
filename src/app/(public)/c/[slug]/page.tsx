@@ -1,5 +1,5 @@
 import { CompanyLandingClient } from "@/features/public/CompanyLandingClient";
-import { DarPublicShell } from "@/features/public/DarPublicShell";
+import { RaeiPublicShell } from "@/features/public/RaeiPublicShell";
 
 export const metadata = {
   title: "الشركة",
@@ -12,8 +12,8 @@ export default async function CompanyLandingPage({
 }) {
   const { slug } = await params;
   return (
-    <DarPublicShell>
+    <RaeiPublicShell>
       <CompanyLandingClient slug={slug} />
-    </DarPublicShell>
+    </RaeiPublicShell>
   );
 }

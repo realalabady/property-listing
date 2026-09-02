@@ -28,6 +28,8 @@ export interface BoardLead {
   source: string;
   quality: string;
   listingTitle: string | null;
+  /** Human-facing lead code shown on the card (#ABC-123). Null until a lead carries one. */
+  reference: string | null;
   assignedTo: string | null;
   assignedToName: string | null;
   priority: LeadPriority | null;

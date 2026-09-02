@@ -16,6 +16,7 @@ export interface AdminPartnerRequestRow {
   email: string;
   phone: string;
   city: string;
+  hearAbout: string;
   message: string;
   status: string;
   companyId: string | null;
@@ -42,7 +43,9 @@ async function fetchPartnerRequests(): Promise<AdminPartnerRequestRow[]> {
       commercialRegistrationNumber: str(data.commercialRegistrationNumber),
       email: str(data.email),
       phone: str(data.phone),
-      city: str(data.city),
+      // Older rows stored a free-text city and no label; fall back to it.
+      city: str(data.cityLabel) || str(data.city),
+      hearAbout: str(data.hearAboutLabel) || str(data.hearAbout),
       message: str(data.message),
       status: str(data.status) || "new",
       companyId: str(data.companyId) || null,

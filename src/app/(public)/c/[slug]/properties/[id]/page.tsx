@@ -1,5 +1,5 @@
 import { CompanyListingDetailClient } from "@/features/public/CompanyListingDetailClient";
-import { DarPublicShell } from "@/features/public/DarPublicShell";
+import { RaeiPublicShell } from "@/features/public/RaeiPublicShell";
 import {
   getCompanyBySlugServer,
   getCompanyListingByIdServer,
@@ -26,13 +26,13 @@ export default async function CompanyListingPage({
     : null;
 
   return (
-    <DarPublicShell>
+    <RaeiPublicShell>
       <CompanyListingDetailClient
         slug={slug}
         listingId={id}
         initialCompany={initialCompany}
         initialListing={initialListing}
       />
-    </DarPublicShell>
+    </RaeiPublicShell>
   );
 }

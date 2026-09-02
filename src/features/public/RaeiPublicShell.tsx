@@ -4,14 +4,14 @@ import { Home } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 
 /**
- * Shared light "Dar" chrome for public, no-auth pages (marketplace, listing
+ * Shared light "Raei" chrome for public, no-auth pages (marketplace, listing
  * detail). Keeps the rebranded marketing experience consistent across the
- * Dar-owned public surface. Per-agency `/c/[slug]` storefronts intentionally
+ * Raei-owned public surface. Per-agency `/c/[slug]` storefronts intentionally
  * keep their own white-label theme and do NOT use this shell.
  */
-export function DarPublicShell({ children }: { children: ReactNode }) {
+export function RaeiPublicShell({ children }: { children: ReactNode }) {
   return (
-    <div className="dar-light min-h-screen bg-background text-foreground">
+    <div className="raei-light min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-lg">
         <div className="container-tight flex h-16 items-center justify-between gap-4">
           <Link href={ROUTES.HOME} className="flex items-center gap-2.5">
@@ -19,7 +19,7 @@ export function DarPublicShell({ children }: { children: ReactNode }) {
               <Home className="h-5 w-5" />
             </span>
             <span className="flex flex-col leading-none">
-              <span className="text-lg font-extrabold tracking-tight">دار</span>
+              <span className="text-lg font-extrabold tracking-tight">راعي</span>
               <span className="text-[11px] text-muted-foreground">
                 ابحث عن عقارك التالي
               </span>
@@ -57,9 +57,12 @@ export function DarPublicShell({ children }: { children: ReactNode }) {
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Home className="h-4 w-4" />
             </span>
-            <span className="font-bold text-foreground">دار</span>
+            <span className="font-bold text-foreground">راعي</span>
           </div>
-          <p>© {new Date().getFullYear()} دار. جميع الحقوق محفوظة.</p>
+          <p>
+            جميع الحقوق محفوظة{" "}
+            <bdi>© {new Date().getFullYear()}</bdi> راعي
+          </p>
           <div className="flex items-center gap-4">
             <Link href={ROUTES.MARKETPLACE} className="hover:text-foreground">
               العقارات

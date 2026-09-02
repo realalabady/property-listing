@@ -226,6 +226,8 @@ export function LeadDetailsModal({
     <Modal
       open={open}
       onClose={onClose}
+      // Portalled to <body> — carry the dashboard's Wazi scope with it.
+      themeClass="enterprise"
       title={lead.name}
       description={lead.listingTitle ?? undefined}
       className="max-w-2xl"

@@ -1,10 +1,10 @@
-import { DarPublicShell } from "@/features/public/DarPublicShell";
+import { RaeiPublicShell } from "@/features/public/RaeiPublicShell";
 import { ListingDetailSkeleton } from "@/features/public/ListingDetailSkeleton";
 
 export default function Loading() {
   return (
-    <DarPublicShell>
+    <RaeiPublicShell>
       <ListingDetailSkeleton />
-    </DarPublicShell>
+    </RaeiPublicShell>
   );
 }

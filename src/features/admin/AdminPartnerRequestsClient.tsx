@@ -75,6 +75,7 @@ export function AdminPartnerRequestsClient({
         row.email,
         row.phone,
         row.city,
+        row.hearAbout,
       ]
         .join(" ")
         .toLowerCase()
@@ -142,6 +143,7 @@ export function AdminPartnerRequestsClient({
                 <th className="px-4 py-3">{t("admin.colContactPerson")}</th>
                 <th className="px-4 py-3">{t("admin.colCommercialReg")}</th>
                 <th className="px-4 py-3">{t("admin.colPhone")}</th>
+                <th className="px-4 py-3">{t("admin.colHearAbout")}</th>
                 <th className="px-4 py-3">{t("admin.colStatus")}</th>
                 <th className="px-4 py-3">{t("admin.colCreatedAt")}</th>
                 <th className="px-4 py-3">{t("admin.colActions")}</th>
@@ -151,7 +153,7 @@ export function AdminPartnerRequestsClient({
               {filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-8 text-center text-muted-foreground"
                   >
                     {t("admin.noPartnerRequests")}
@@ -186,6 +188,9 @@ export function AdminPartnerRequestsClient({
                     </td>
                     <td className="px-4 py-4 text-muted-foreground">
                       {row.phone || "-"}
+                    </td>
+                    <td className="px-4 py-4 text-muted-foreground">
+                      {row.hearAbout || "-"}
                     </td>
                     <td className="px-4 py-4">
                       <span

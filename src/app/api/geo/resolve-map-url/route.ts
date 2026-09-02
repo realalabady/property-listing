@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   try {
     const res = await fetch(target.toString(), {
       redirect: "follow",
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; DarBot/1.0)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; RaeiBot/1.0)" },
       signal: AbortSignal.timeout(6000),
     });
 

@@ -6,6 +6,7 @@ import { adminDb } from "@/lib/firebase/admin";
 import { normalizeCommercialRegistration } from "@/lib/api/partner-requests";
 import type { CompanyStatus, SubscriptionPlanId } from "@/types/company";
 import { limitsForPlan } from "@/constants/plans";
+import { DEFAULT_COMPANY_THEME } from "@/constants/brand";
 
 export const runtime = "nodejs";
 
@@ -259,9 +260,7 @@ export async function POST(req: NextRequest) {
     description,
     logo: "",
     theme: {
-      primaryColor: "#0f6d45",
-      secondaryColor: "#e8d9bf",
-      accentColor: "#11935d",
+      ...DEFAULT_COMPANY_THEME,
       darkMode: false,
     },
     subscriptionPlan,

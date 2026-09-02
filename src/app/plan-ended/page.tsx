@@ -61,7 +61,7 @@ export default async function PlanEndedPage() {
   return (
     <main
       dir="rtl"
-      className="dar-light flex min-h-screen items-center justify-center bg-background px-4 text-foreground"
+      className="raei-light flex min-h-screen items-center justify-center bg-background px-4 text-foreground"
     >
       <div className="w-full max-w-md text-center">
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10">

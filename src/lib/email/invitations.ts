@@ -60,7 +60,7 @@ export async function sendInvitationEmail(
 
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111;max-width:640px;margin:0 auto;">
-      <h2 style="margin-bottom:8px;">You are invited to join Dar</h2>
+      <h2 style="margin-bottom:8px;">You are invited to join Raei</h2>
       <p>Hello ${escapeHtml(inviteeName)},</p>
       <p>
         You have been invited to join <strong>${escapeHtml(input.companyName)}</strong>
