@@ -34,6 +34,13 @@ function isPublicHost(hostWithPort: string): boolean {
     return false;
   }
 
+  // Emailed links must be reachable by the recipient, so localhost is rejected
+  // in production. In development that rule made every locally generated reset
+  // link point at the deployed site, so the flow could not be tested locally.
+  if (process.env.NODE_ENV !== "production") {
+    return true;
+  }
+
   return !LOCAL_HOST_RE.test(hostWithPort);
 }
 
@@ -84,5 +91,5 @@ export function resolveAppBaseUrl(req: NextRequest): string {
     // Ignore parse errors and fall through to deterministic fallback.
   }
 
-  return "https://property-listing-7f3db.web.app";
+  return "https://raei-sa.com";
 }

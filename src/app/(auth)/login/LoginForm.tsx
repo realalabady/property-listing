@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Home } from "lucide-react";
+import { CheckCircle2, Loader2, MailCheck } from "lucide-react";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { ROUTES } from "@/constants/routes";
 import { t } from "@/lib/i18n";
@@ -23,6 +27,7 @@ export default function LoginForm() {
   const next = params.get("next") || ROUTES.DASHBOARD;
   const blocked = params.get("blocked") === "company_inactive";
   const sessionEnded = params.get("idle") === "1";
+  const justReset = params.get("reset") === "1";
   const inviteCompany = params.get("inviteCompany");
   const inviteId = params.get("inviteId");
   const inviteToken = params.get("token");
@@ -120,168 +125,183 @@ export default function LoginForm() {
     }
   }
 
-  return (
-    <main className="raei-light flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary" />
-            <span className="text-lg font-semibold">{t("common.appName")}</span>
-          </Link>
-          <h1 className="mt-6 text-2xl font-semibold tracking-tight">
-            {mode === "reset" ? t("auth.resetTitle") : t("auth.signInTitle")}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {mode === "reset"
-              ? t("auth.resetSubtitle")
-              : t("auth.signInSubtitle")}
-          </p>
-        </div>
+  const errorBanner = error && (
+    <div
+      role="alert"
+      className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+    >
+      {error}
+    </div>
+  );
 
-        {mode === "reset" ? (
-          <form
-            onSubmit={onResetSubmit}
-            className="space-y-4 rounded-xl border border-border bg-card p-6"
+  if (mode === "reset") {
+    return (
+      <AuthShell
+        title={resetSent ? t("auth.resetLinkSentTitle") : t("auth.resetTitle")}
+        subtitle={resetSent ? undefined : t("auth.resetSubtitle")}
+        footer={
+          <button
+            type="button"
+            onClick={() => switchMode("signin")}
+            className="font-semibold text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:text-[hsl(274_60%_30%)] hover:decoration-primary"
           >
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">
-                {t("common.email")}
-              </label>
-              <input
+            {t("auth.backToSignIn")}
+          </button>
+        }
+      >
+        {resetSent ? (
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <MailCheck className="h-12 w-12 text-primary" aria-hidden="true" />
+            <p
+              className="text-sm leading-relaxed text-muted-foreground"
+              role="status"
+            >
+              {t("auth.resetEmailSent")}
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={onResetSubmit} className="space-y-4">
+            <Field label={t("common.email")} htmlFor="reset-email" required>
+              <Input
+                id="reset-email"
                 type="email"
                 required
                 autoComplete="email"
+                autoFocus
+                dir="ltr"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition focus:ring-2 focus:ring-ring"
                 placeholder={t("auth.emailPlaceholder")}
               />
-            </div>
+            </Field>
 
-            {resetSent && (
-              <div className="rounded-md border border-emerald-300/60 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-                {t("auth.resetEmailSent")}
-              </div>
-            )}
+            {errorBanner}
 
-            {error && (
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </div>
-            )}
-
-            <button
+            <Button
               type="submit"
-              disabled={loading || resetSent}
-              className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+              variant="brand"
+              disabled={loading}
+              size="lg"
+              className="w-full"
             >
-              {loading
-                ? t("auth.sendingResetLink")
-                : t("auth.sendResetLink")}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => switchMode("signin")}
-              className="w-full text-center text-sm font-medium text-primary hover:underline"
-            >
-              {t("auth.backToSignIn")}
-            </button>
+              {loading && <Loader2 className="animate-spin" aria-hidden="true" />}
+              {loading ? t("auth.sendingResetLink") : t("auth.sendResetLink")}
+            </Button>
           </form>
-        ) : (
-        <form
-          onSubmit={onSubmit}
-          className="space-y-4 rounded-xl border border-border bg-card p-6"
-        >
-          {sessionEnded && (
-            <div className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              <p>{t("auth.sessionEndedIdle")}</p>
-              <Link
-                href="/"
-                className="mt-1 inline-block font-medium text-amber-900 underline underline-offset-2 hover:opacity-80"
-              >
-                {t("auth.goHome")}
-              </Link>
-            </div>
-          )}
+        )}
+      </AuthShell>
+    );
+  }
 
-          {blocked && (
-            <div className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              {t("auth.companyInactive")}
-            </div>
-          )}
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">
-              {t("common.email")}
-            </label>
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition focus:ring-2 focus:ring-ring"
-              placeholder={t("auth.emailPlaceholder")}
-            />
-          </div>
-
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label className="block text-sm font-medium">
-                {t("common.password")}
-              </label>
-              <button
-                type="button"
-                onClick={() => switchMode("reset")}
-                className="text-xs font-medium text-primary hover:underline"
-              >
-                {t("auth.forgotPassword")}
-              </button>
-            </div>
-            <input
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition focus:ring-2 focus:ring-ring"
-              placeholder={t("auth.passwordPlaceholder")}
-            />
-          </div>
-
-          {error && (
-            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+  return (
+    <AuthShell
+      title={t("auth.signInTitle")}
+      subtitle={t("auth.signInSubtitle")}
+      aside={{
+        heading: t("auth.signInAsideHeading"),
+        points: [
+          t("auth.signInAsidePoint1"),
+          t("auth.signInAsidePoint2"),
+          t("auth.signInAsidePoint3"),
+        ],
+      }}
+      footer={
+        <Link href={ROUTES.HOME} className="font-semibold text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:text-[hsl(274_60%_30%)] hover:decoration-primary">
+          {t("auth.goHome")}
+        </Link>
+      }
+    >
+      <form onSubmit={onSubmit} className="space-y-4">
+        {justReset && (
+          <div
+            role="status"
+            className="flex items-start gap-2.5 rounded-lg border border-success/40 bg-success/10 px-3 py-2.5 text-sm text-foreground"
           >
-            {loading ? t("auth.signingIn") : t("auth.signInTitle")}
-          </button>
-
-          <p className="text-center text-sm text-muted-foreground">
-            {t("auth.accountsByOwner")}
-          </p>
-        </form>
+            <CheckCircle2
+              className="mt-0.5 h-4 w-4 shrink-0 text-success"
+              aria-hidden="true"
+            />
+            <span>{t("auth.passwordUpdatedTitle")}</span>
+          </div>
         )}
 
-        {/* The logo alone isn't an obvious way out — give visitors an explicit
-            route back to the public site from either form mode. */}
-        <p className="mt-6 text-center">
-          <Link
-            href={ROUTES.HOME}
-            className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+        {sessionEnded && (
+          <div
+            role="status"
+            className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm"
           >
-            <Home className="h-4 w-4" />
-            {t("auth.goHome")}
-          </Link>
+            <p>{t("auth.sessionEndedIdle")}</p>
+            <Link
+              href={ROUTES.HOME}
+              className="mt-1 inline-block font-semibold text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:text-[hsl(274_60%_30%)] hover:decoration-primary"
+            >
+              {t("auth.goHome")}
+            </Link>
+          </div>
+        )}
+
+        {blocked && (
+          <div
+            role="alert"
+            className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm"
+          >
+            {t("auth.companyInactive")}
+          </div>
+        )}
+
+        <Field label={t("common.email")} htmlFor="email" required>
+          <Input
+            id="email"
+            type="email"
+            required
+            autoComplete="email"
+            dir="ltr"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={t("auth.emailPlaceholder")}
+          />
+        </Field>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <label
+              htmlFor="password"
+              className="block text-[13px] font-medium text-muted-foreground"
+            >
+              {t("common.password")}
+              <span className="text-destructive"> *</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => switchMode("reset")}
+              className="text-xs font-semibold text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:text-[hsl(274_60%_30%)] hover:decoration-primary"
+            >
+              {t("auth.forgotPassword")}
+            </button>
+          </div>
+          <Input
+            id="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            dir="ltr"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={t("auth.passwordPlaceholder")}
+          />
+        </div>
+
+        {errorBanner}
+
+        <Button type="submit" variant="brand" disabled={loading} size="lg" className="w-full">
+          {loading && <Loader2 className="animate-spin" aria-hidden="true" />}
+          {loading ? t("auth.signingIn") : t("auth.signInTitle")}
+        </Button>
+
+        <p className="pt-1 text-center text-xs leading-relaxed text-muted-foreground">
+          {t("auth.accountsByOwner")}
         </p>
-      </div>
-    </main>
+      </form>
+    </AuthShell>
   );
 }

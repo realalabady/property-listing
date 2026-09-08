@@ -18,6 +18,7 @@ import {
 import { assertActiveMember } from "@/lib/api/guards";
 import { sendInvitationEmail } from "@/lib/email/invitations";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { buildPasswordResetUrl } from "@/lib/auth/password-reset-link";
 import { resolveAppBaseUrl } from "@/lib/url/app-base-url";
 
 export const runtime = "nodejs";
@@ -228,7 +229,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
     }
 
-    passwordResetLink = await adminAuth().generatePasswordResetLink(email);
+    passwordResetLink = await buildPasswordResetUrl(email, appBaseUrl);
   } catch {
     passwordResetLink = null;
   }

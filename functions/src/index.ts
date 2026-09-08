@@ -992,6 +992,21 @@ function createTransporter(): nodemailer.Transporter | null {
   });
 }
 
+/**
+ * Escape a value before interpolating it into notification-email HTML.
+ *
+ * Lead names and messages come from the public, unauthenticated enquiry form,
+ * so without this a submitter can inject markup into staff inboxes.
+ */
+function esc(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function sendEmail(opts: {
   to: string;
   subject: string;
@@ -1053,12 +1068,12 @@ export const onLeadCreatedSendEmail = onDocumentCreated(
         : "General inquiry";
 
     const html = `
-      <h2>New lead received — ${companyName}</h2>
-      <p><strong>Name:</strong> ${leadName}</p>
-      <p><strong>Phone:</strong> ${leadPhone}</p>
-      <p><strong>Email:</strong> ${leadEmail}</p>
-      <p><strong>Property:</strong> ${listingTitle}</p>
-      <p><strong>Message:</strong> ${leadMessage}</p>
+      <h2>New lead received — ${esc(companyName)}</h2>
+      <p><strong>Name:</strong> ${esc(leadName)}</p>
+      <p><strong>Phone:</strong> ${esc(leadPhone)}</p>
+      <p><strong>Email:</strong> ${esc(leadEmail)}</p>
+      <p><strong>Property:</strong> ${esc(listingTitle)}</p>
+      <p><strong>Message:</strong> ${esc(leadMessage)}</p>
       <hr/>
       <p style="color:#666;font-size:12px">
         Log in to your dashboard to follow up on this lead.
@@ -1143,11 +1158,11 @@ export const onTaskEscalationSendEmail = onDocumentCreated(
 
     const taskTitle = typeof task.title === "string" ? task.title : "A task";
     const html = `
-      <h2>Task escalated — ${companyName}</h2>
+      <h2>Task escalated — ${esc(companyName)}</h2>
       <p>The following task is overdue and has been escalated:</p>
-      <p><strong>${taskTitle}</strong></p>
+      <p><strong>${esc(taskTitle)}</strong></p>
       <p>
-        Assignee: ${typeof task.assignedToName === "string" ? task.assignedToName : "—"}
+        Assignee: ${esc(typeof task.assignedToName === "string" ? task.assignedToName : "—")}
       </p>
       <hr/>
       <p style="color:#666;font-size:12px">

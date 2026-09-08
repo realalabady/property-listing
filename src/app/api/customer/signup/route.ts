@@ -4,6 +4,8 @@ import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { validateCustomerSignup } from "@/lib/api/customers";
 import { ROLES } from "@/constants/roles";
 import { getClientIp, rateLimit } from "@/lib/utils/rate-limit";
+import { sendCustomerWelcomeEmail } from "@/lib/email/accounts";
+import { resolveAppBaseUrl } from "@/lib/url/app-base-url";
 
 // firebase-admin is not Edge-compatible.
 export const runtime = "nodejs";
@@ -85,6 +87,14 @@ export async function POST(req: NextRequest) {
 
     const customToken = await adminAuth().createCustomToken(userRecord.uid, {
       role: ROLES.CUSTOMER,
+    });
+
+    // Best-effort welcome. Deliberately AFTER the token is minted and outside
+    // the rollback path: the account is valid whether or not the mail lands.
+    await sendCustomerWelcomeEmail({
+      to: email,
+      name,
+      appUrl: resolveAppBaseUrl(req),
     });
 
     return NextResponse.json({ ok: true, customToken }, { status: 201 });

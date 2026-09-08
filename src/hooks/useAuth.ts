@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import {
   onAuthStateChanged,
   onIdTokenChanged,
-  sendPasswordResetEmail,
   signOut as fbSignOut,
   signInWithEmailAndPassword,
   signInWithCustomToken,
@@ -220,21 +219,27 @@ export function useAuth() {
       return cred.user;
     },
     /**
-     * Send a password-reset email. Treats `auth/user-not-found` as success so
-     * the UI never reveals whether an email is registered (anti-enumeration).
+     * Request a password-reset email.
+     *
+     * Goes through our own API rather than the Firebase client SDK so the mail
+     * is sent over our SMTP transport, uses our Arabic template, and links to
+     * our /reset-password page instead of Firebase's hosted handler on
+     * firebaseapp.com. The route answers ok for unknown addresses too
+     * (anti-enumeration), so the only error surfaced here is rate limiting.
      */
     resetPassword: async (email: string): Promise<void> => {
-      try {
-        await sendPasswordResetEmail(getFirebaseAuth(), email);
-      } catch (error) {
-        if (
-          error instanceof FirebaseError &&
-          error.code === "auth/user-not-found"
-        ) {
-          return;
-        }
-        throw new Error(mapFirebaseAuthError(error));
+      const res = await fetch("/api/auth/password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      if (res.ok) return;
+
+      if (res.status === 429) {
+        throw new Error("Too many attempts. Please wait a while and try again.");
       }
+      throw new Error("Unable to send the reset email. Please try again.");
     },
     signOut: async () => {
       await fbSignOut(getFirebaseAuth());

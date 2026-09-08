@@ -4,7 +4,9 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 import { ROLE_PERMISSIONS } from "@/constants/permissions";
 import { ROLE_LABELS, ROLES } from "@/constants/roles";
+import { ROUTES } from "@/constants/routes";
 import { applyRoleClaims } from "@/lib/auth/claims";
+import { buildPasswordResetUrl } from "@/lib/auth/password-reset-link";
 import { getSessionUser } from "@/lib/auth/session";
 import {
   emptyEmployeeKpi,
@@ -14,7 +16,9 @@ import {
   normalizeName,
   normalizeOptionalText,
 } from "@/lib/api/company-employees";
+import { sendOwnerWelcomeEmail } from "@/lib/email/accounts";
 import { sendInvitationEmail } from "@/lib/email/invitations";
+import { sendPasswordResetEmail } from "@/lib/email/password-reset";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { resolveAppBaseUrl } from "@/lib/url/app-base-url";
 
@@ -46,6 +50,13 @@ interface ResetOwnerPayload {
 }
 
 type OwnerPayload = DirectOwnerPayload | InviteOwnerPayload | ResetOwnerPayload;
+
+/** Display name for the company in emails, with an Arabic fallback. */
+function companyName(data: Record<string, unknown>): string {
+  return typeof data.name === "string" && data.name.trim()
+    ? data.name
+    : "شركتك";
+}
 
 async function getActiveOwnerDocs(companyId: string) {
   return adminDb()
@@ -195,14 +206,22 @@ export async function POST(req: NextRequest, context: RouteContext) {
       ownerPermissions,
     );
 
+    const appBaseUrl = resolveAppBaseUrl(req);
+
     let passwordResetLink: string | null = null;
     if (authUserCreated || body.issueResetLink === true) {
-      try {
-        passwordResetLink = await adminAuth().generatePasswordResetLink(email);
-      } catch {
-        passwordResetLink = null;
-      }
+      passwordResetLink = await buildPasswordResetUrl(email, appBaseUrl);
     }
+
+    // Previously the link was only returned for the admin to copy by hand.
+    // Mail it too — the temporary password stays out of the email.
+    const ownerEmail = await sendOwnerWelcomeEmail({
+      to: email,
+      name: ownerName,
+      companyName: companyName(companyData),
+      resetUrl: passwordResetLink,
+      loginUrl: `${appBaseUrl}${ROUTES.LOGIN}`,
+    });
 
     return NextResponse.json({
       ok: true,
@@ -213,6 +232,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
         name: ownerName,
       },
       authUserCreated,
+      ownerEmailSent: ownerEmail.sent,
+      ownerEmailSkipped: ownerEmail.skipped,
+      ...(ownerEmail.reason ? { ownerEmailReason: ownerEmail.reason } : {}),
       ...(temporaryPassword ? { temporaryPassword } : {}),
       ...(passwordResetLink ? { passwordResetLink } : {}),
     });
@@ -293,6 +315,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
+    const appBaseUrl = resolveAppBaseUrl(req);
+
     let passwordResetLink: string | null = null;
     try {
       const ownerDisplayName =
@@ -314,12 +338,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
         }
       }
 
-      passwordResetLink = await adminAuth().generatePasswordResetLink(email);
+      passwordResetLink = await buildPasswordResetUrl(email, appBaseUrl);
     } catch {
       passwordResetLink = null;
     }
-
-    const appBaseUrl = resolveAppBaseUrl(req);
 
     const acceptApiUrl = `${appBaseUrl}/api/companies/${companyId}/invitations/${invitationRef.id}/accept?token=${encodeURIComponent(token)}`;
     const suggestedLoginUrl = `${appBaseUrl}/login?inviteCompany=${companyId}&inviteId=${invitationRef.id}&token=${encodeURIComponent(token)}`;
@@ -369,13 +391,29 @@ export async function POST(req: NextRequest, context: RouteContext) {
       );
     }
 
-    const passwordResetLink =
-      await adminAuth().generatePasswordResetLink(ownerEmail);
+    const appBaseUrl = resolveAppBaseUrl(req);
+    const passwordResetLink = await buildPasswordResetUrl(
+      ownerEmail,
+      appBaseUrl,
+    );
+
+    // Mail the link as well as returning it, so the admin no longer has to
+    // relay a reset URL through WhatsApp for it to reach the owner.
+    const resetEmail = passwordResetLink
+      ? await sendPasswordResetEmail({
+          to: ownerEmail,
+          name: normalizeName(activeOwnersSnap.docs[0]?.get("name")) || null,
+          resetUrl: passwordResetLink,
+        })
+      : { sent: false, skipped: true, reason: "RESET_LINK_UNAVAILABLE" };
 
     return NextResponse.json({
       ok: true,
       mode: body.mode,
       email: ownerEmail,
+      resetEmailSent: resetEmail.sent,
+      resetEmailSkipped: resetEmail.skipped,
+      ...(resetEmail.reason ? { resetEmailReason: resetEmail.reason } : {}),
       passwordResetLink,
     });
   }

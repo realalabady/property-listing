@@ -1,7 +1,11 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 import { ROLES } from "@/constants/roles";
+import { ROUTES } from "@/constants/routes";
 import { getSessionUser } from "@/lib/auth/session";
+import { sendCompanyActivatedEmail } from "@/lib/email/accounts";
+import type { EmailResult } from "@/lib/email/send";
+import { resolveAppBaseUrl } from "@/lib/url/app-base-url";
 import { adminDb } from "@/lib/firebase/admin";
 import type { CompanyStatus, SubscriptionPlanId } from "@/types/company";
 import { limitsForPlan } from "@/constants/plans";
@@ -283,5 +287,73 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
   await companyRef.update(updates);
 
-  return NextResponse.json({ ok: true, action });
+  // Tell the owner their workspace is live. Best-effort: a mail failure must
+  // not undo an activation that already succeeded.
+  let activationEmail: EmailResult | null = null;
+  if (action === "activate" || action === "restore") {
+    activationEmail = await notifyOwnerOfActivation(
+      req,
+      companyId,
+      companySnap.data() as Record<string, unknown>,
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    action,
+    ...(activationEmail
+      ? {
+          ownerEmailSent: activationEmail.sent,
+          ownerEmailSkipped: activationEmail.skipped,
+          ...(activationEmail.reason
+            ? { ownerEmailReason: activationEmail.reason }
+            : {}),
+        }
+      : {}),
+  });
+}
+
+/**
+ * Emails the company owner that the workspace is active.
+ *
+ * A company can be activated before an owner is ever assigned (`ownerId`
+ * defaults to ""), so a missing owner is a skip, not an error.
+ */
+async function notifyOwnerOfActivation(
+  req: NextRequest,
+  companyId: string,
+  companyData: Record<string, unknown>,
+): Promise<EmailResult> {
+  const ownerId =
+    typeof companyData.ownerId === "string" ? companyData.ownerId.trim() : "";
+  if (!ownerId) {
+    return { sent: false, skipped: true, reason: "NO_OWNER_ASSIGNED" };
+  }
+
+  const ownerSnap = await adminDb()
+    .doc(`companies/${companyId}/employees/${ownerId}`)
+    .get();
+
+  const ownerEmail =
+    typeof ownerSnap.get("email") === "string"
+      ? (ownerSnap.get("email") as string)
+      : "";
+  if (!ownerEmail) {
+    return { sent: false, skipped: true, reason: "NO_OWNER_EMAIL" };
+  }
+
+  const appBaseUrl = resolveAppBaseUrl(req);
+
+  return sendCompanyActivatedEmail({
+    to: ownerEmail,
+    name:
+      typeof ownerSnap.get("name") === "string"
+        ? (ownerSnap.get("name") as string)
+        : null,
+    companyName:
+      typeof companyData.name === "string" && companyData.name.trim()
+        ? companyData.name
+        : "شركتك",
+    loginUrl: `${appBaseUrl}${ROUTES.LOGIN}`,
+  });
 }

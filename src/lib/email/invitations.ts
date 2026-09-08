@@ -1,5 +1,9 @@
 import "server-only";
-import { createTransport, escapeHtml } from "./transport";
+import {
+  dispatch,
+  type DispatchInput,
+  type EmailResult,
+} from "./send";
 
 interface InvitationEmailInput {
   to: string;
@@ -9,92 +13,82 @@ interface InvitationEmailInput {
   invitedByEmail?: string | null;
   suggestedLoginUrl: string;
   acceptApiUrl: string;
+  /** Branded reset URL from `buildPasswordResetUrl`, when the account is new. */
   passwordResetLink?: string | null;
   expiresAtIso?: string | null;
 }
 
-export interface InvitationEmailResult {
-  sent: boolean;
-  skipped: boolean;
-  reason?: string;
-}
+/** @deprecated Use `EmailResult` from ./send. Kept for existing importers. */
+export type InvitationEmailResult = EmailResult;
 
 function displayDate(iso?: string | null): string {
   if (!iso) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toUTCString();
+  // Arabic-Saudi long date; the invitee should not have to parse a UTC string.
+  return new Intl.DateTimeFormat("ar-SA", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "Asia/Riyadh",
+  }).format(date);
+}
+
+export function buildInvitationEmail(
+  input: InvitationEmailInput,
+): DispatchInput {
+  const expiresText = displayDate(input.expiresAtIso);
+  const target = input.passwordResetLink ?? input.suggestedLoginUrl;
+
+  const rows: Array<[string, string]> = [
+    ["الشركة", input.companyName],
+    ["الصلاحية", input.roleLabel],
+    ["البريد الإلكتروني", input.to],
+  ];
+  if (input.invitedByEmail) {
+    rows.push(["الدعوة من", input.invitedByEmail]);
+  }
+  return {
+    to: input.to,
+    subject: `دعوة للانضمام إلى ${input.companyName}`,
+    heading: "لديك دعوة للانضمام",
+    preheader: `${input.companyName} دعتك للانضمام إلى فريقها على المنصة.`,
+    blocks: [
+      {
+        kind: "text",
+        value: input.inviteeName?.trim()
+          ? `مرحباً ${input.inviteeName.trim()}،`
+          : "مرحباً،",
+      },
+      {
+        kind: "text",
+        value: `تمت دعوتك للانضمام إلى ${input.companyName} بصلاحية ${input.roleLabel}.`,
+      },
+      { kind: "rows", rows },
+      ...(expiresText
+        ? [
+            {
+              kind: "note" as const,
+              value: `هذه الدعوة صالحة حتى ${expiresText}.`,
+            },
+          ]
+        : []),
+    ],
+    action: {
+      label: input.passwordResetLink
+        ? "تعيين كلمة المرور والانضمام"
+        : "قبول الدعوة",
+      url: target,
+    },
+    afterAction: [
+      { kind: "text", value: "إذا لم يعمل الزر، انسخ الرابط التالي:" },
+      { kind: "url", value: target },
+    ],
+    footNote: `تلقيت هذه الرسالة لأن ${input.companyName} دعتك للانضمام إلى فريقها. إذا لم تكن تتوقع هذه الدعوة، تجاهل الرسالة.`,
+  };
 }
 
 export async function sendInvitationEmail(
   input: InvitationEmailInput,
-): Promise<InvitationEmailResult> {
-  const transport = createTransport();
-  if (!transport) {
-    return {
-      sent: false,
-      skipped: true,
-      reason: "SMTP_NOT_CONFIGURED",
-    };
-  }
-
-  const inviteeName = input.inviteeName?.trim() || "there";
-  const expiresText = displayDate(input.expiresAtIso);
-
-  const subject = `Invitation to join ${input.companyName} on ${transport.appName}`;
-
-  const lines = [
-    `Hello ${inviteeName},`,
-    "",
-    `You have been invited to join ${input.companyName} as ${input.roleLabel}.`,
-    "",
-    input.passwordResetLink
-      ? `Set your password: ${input.passwordResetLink}`
-      : "",
-    `Sign in: ${input.suggestedLoginUrl}`,
-    `Invitation accept endpoint: ${input.acceptApiUrl}`,
-    expiresText ? `Invitation expires: ${expiresText}` : "",
-    "",
-    "If you did not expect this invitation, please ignore this email.",
-  ].filter(Boolean);
-
-  const html = `
-    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111;max-width:640px;margin:0 auto;">
-      <h2 style="margin-bottom:8px;">You are invited to join Raei</h2>
-      <p>Hello ${escapeHtml(inviteeName)},</p>
-      <p>
-        You have been invited to join <strong>${escapeHtml(input.companyName)}</strong>
-        as <strong>${escapeHtml(input.roleLabel)}</strong>.
-      </p>
-      ${input.passwordResetLink ? `<p><a href="${escapeHtml(input.passwordResetLink)}">Set your password</a></p>` : ""}
-      <p><a href="${escapeHtml(input.suggestedLoginUrl)}">Sign in with invitation link</a></p>
-      <p style="font-size:12px;color:#666;word-break:break-all;">Direct accept URL: ${escapeHtml(input.acceptApiUrl)}</p>
-      ${expiresText ? `<p style="font-size:12px;color:#666;">Expires: ${escapeHtml(expiresText)}</p>` : ""}
-      <hr style="border:none;border-top:1px solid #ddd;margin:20px 0;" />
-      <p style="font-size:12px;color:#666;">If you did not expect this invitation, please ignore this email.</p>
-    </div>
-  `;
-
-  try {
-    await transport.transporter.sendMail({
-      from: transport.from,
-      to: input.to,
-      subject,
-      text: lines.join("\n"),
-      html,
-    });
-
-    return {
-      sent: true,
-      skipped: false,
-    };
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "EMAIL_SEND_FAILED";
-    return {
-      sent: false,
-      skipped: false,
-      reason: message,
-    };
-  }
+): Promise<EmailResult> {
+  return dispatch(buildInvitationEmail(input));
 }

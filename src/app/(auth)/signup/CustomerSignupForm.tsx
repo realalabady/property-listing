@@ -3,6 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { ROUTES } from "@/constants/routes";
 
@@ -46,144 +52,135 @@ export default function CustomerSignupForm() {
     }
   }
 
-  const inputClass =
-    "w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition focus:ring-2 focus:ring-ring";
-
   return (
-    <main className="raei-light flex min-h-screen items-center justify-center bg-background px-4 py-10 text-foreground">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary" />
-            <span className="text-lg font-semibold">راعي</span>
-          </Link>
-          <h1 className="mt-6 text-2xl font-semibold tracking-tight">
-            إنشاء حساب عميل
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            سجّل لتصلك العقارات المطابقة لبحثك من الشركات العقارية.
-          </p>
-        </div>
-
-        <form
-          onSubmit={onSubmit}
-          className="space-y-4 rounded-xl border border-border bg-card p-6"
-        >
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">الاسم</label>
-            <input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={inputClass}
-              placeholder="الاسم الكامل"
-              autoComplete="name"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">
-              البريد الإلكتروني
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={inputClass}
-              placeholder="you@example.com"
-              autoComplete="email"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">
-              رقم الجوال
-            </label>
-            <input
-              required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className={inputClass}
-              placeholder="05xxxxxxxx"
-              autoComplete="tel"
-              inputMode="tel"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">
-              كلمة المرور
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={inputClass}
-              placeholder="8 أحرف على الأقل"
-              autoComplete="new-password"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">
-              طريقة التواصل المفضّلة
-            </label>
-            <select
-              value={preferredContactMethod}
-              onChange={(e) => setPreferredContactMethod(e.target.value)}
-              className={`${inputClass} cursor-pointer`}
-            >
-              <option value="phone">اتصال</option>
-              <option value="whatsapp">واتساب</option>
-              <option value="email">بريد إلكتروني</option>
-            </select>
-          </div>
-
-          <label className="flex items-start gap-2 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={contactConsent}
-              onChange={(e) => setContactConsent(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>أوافق على أن تتواصل معي الشركات العقارية بخصوص العقارات المطابقة لبحثي.</span>
-          </label>
-
-          {/* Honeypot */}
-          <input
-            type="text"
-            value={company}
-            onChange={(e) => setCompany(e.target.value)}
-            tabIndex={-1}
-            autoComplete="off"
-            aria-hidden="true"
-            className="hidden"
-          />
-
-          {error && (
-            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+    <AuthShell
+      title="إنشاء حساب عميل"
+      subtitle="سجّل لتصلك العقارات المطابقة لبحثك من الشركات العقارية."
+      aside={{
+        heading: "ابحث عن عقارك التالي بثقة",
+        points: [
+          "احفظ عمليات البحث وتابع العقارات التي تهمك.",
+          "تواصل مباشرة مع شركات عقارية موثوقة.",
+          "تصلك العقارات الجديدة المطابقة لبحثك أولاً.",
+        ],
+      }}
+      footer={
+        <>
+          لديك حساب؟{" "}
+          <Link
+            href={ROUTES.LOGIN}
+            className="font-semibold text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:text-[hsl(274_60%_30%)] hover:decoration-primary"
           >
-            {loading ? "جارٍ الإنشاء…" : "إنشاء الحساب"}
-          </button>
+            تسجيل الدخول
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={onSubmit} className="space-y-4">
+        <Field label="الاسم" htmlFor="signup-name" required>
+          <Input
+            id="signup-name"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="الاسم الكامل"
+            autoComplete="name"
+          />
+        </Field>
 
-          <p className="text-center text-sm text-muted-foreground">
-            لديك حساب؟{" "}
-            <Link href={ROUTES.LOGIN} className="text-primary hover:underline">
-              تسجيل الدخول
-            </Link>
-          </p>
-        </form>
-      </div>
-    </main>
+        <Field label="البريد الإلكتروني" htmlFor="signup-email" required>
+          <Input
+            id="signup-email"
+            type="email"
+            required
+            dir="ltr"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoComplete="email"
+          />
+        </Field>
+
+        <Field label="رقم الجوال" htmlFor="signup-phone" required>
+          <Input
+            id="signup-phone"
+            required
+            dir="ltr"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="05xxxxxxxx"
+            autoComplete="tel"
+            inputMode="tel"
+          />
+        </Field>
+
+        <Field
+          label="كلمة المرور"
+          htmlFor="signup-password"
+          required
+          hint="8 أحرف على الأقل"
+        >
+          <Input
+            id="signup-password"
+            type="password"
+            required
+            dir="ltr"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+          />
+        </Field>
+
+        <Field label="طريقة التواصل المفضّلة" htmlFor="signup-contact">
+          <Select
+            id="signup-contact"
+            value={preferredContactMethod}
+            onChange={(e) => setPreferredContactMethod(e.target.value)}
+          >
+            <option value="phone">اتصال</option>
+            <option value="whatsapp">واتساب</option>
+            <option value="email">بريد إلكتروني</option>
+          </Select>
+        </Field>
+
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={contactConsent}
+            onChange={(e) => setContactConsent(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+          />
+          <span className="leading-relaxed">
+            أوافق على أن تتواصل معي الشركات العقارية بخصوص العقارات المطابقة
+            لبحثي.
+          </span>
+        </label>
+
+        {/* Honeypot */}
+        <input
+          type="text"
+          value={company}
+          onChange={(e) => setCompany(e.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          className="hidden"
+        />
+
+        {error && (
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {error}
+          </div>
+        )}
+
+        <Button type="submit" variant="brand" disabled={loading} size="lg" className="w-full">
+          {loading && <Loader2 className="animate-spin" aria-hidden="true" />}
+          {loading ? "جارٍ الإنشاء…" : "إنشاء الحساب"}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

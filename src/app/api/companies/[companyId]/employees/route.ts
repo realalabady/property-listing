@@ -2,9 +2,13 @@ import { randomBytes } from "crypto";
 import { type UserRecord } from "firebase-admin/auth";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
-import { ROLES } from "@/constants/roles";
+import { ROLE_LABELS, ROLES } from "@/constants/roles";
+import { ROUTES } from "@/constants/routes";
 import { applyRoleClaims } from "@/lib/auth/claims";
+import { buildPasswordResetUrl } from "@/lib/auth/password-reset-link";
 import { getSessionUser } from "@/lib/auth/session";
+import { sendEmployeeWelcomeEmail } from "@/lib/email/accounts";
+import { resolveAppBaseUrl } from "@/lib/url/app-base-url";
 import {
   canManageCompanyEmployees,
   canViewCompanyEmployees,
@@ -327,8 +331,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
   // employee was already rejected above; inactive creates don't add headcount).
   const isNewActiveMember =
     active && (!employeeSnap.exists || employeeSnap.get("active") === false);
+  // Read once and reuse for both the quota check and the welcome email.
+  const companySnap = await adminDb().doc(`companies/${companyId}`).get();
   if (isNewActiveMember) {
-    const companySnap = await adminDb().doc(`companies/${companyId}`).get();
     const plan = parseSubscriptionPlan(companySnap.get("subscriptionPlan"));
     const { maxEmployees } = limitsForPlan(plan);
     if (!isUnlimited(maxEmployees)) {
@@ -414,18 +419,39 @@ export async function POST(req: NextRequest, context: RouteContext) {
     await clearEmployeeClaims(authUser.uid);
   }
 
+  const appBaseUrl = resolveAppBaseUrl(req);
+
   let passwordResetLink: string | null = null;
   if (authUserCreated) {
-    try {
-      passwordResetLink = await adminAuth().generatePasswordResetLink(email);
-    } catch {
-      passwordResetLink = null;
-    }
+    passwordResetLink = await buildPasswordResetUrl(email, appBaseUrl);
   }
+
+  // Tell the new employee their account exists. The generated temporary
+  // password is deliberately NOT emailed — it stays in this response for the
+  // manager to hand over out-of-band, and the email carries a single-use reset
+  // link instead.
+  const companyName =
+    typeof companySnap.get("name") === "string"
+      ? (companySnap.get("name") as string)
+      : "شركتك";
+
+  const welcomeEmail = await sendEmployeeWelcomeEmail({
+    to: email,
+    name,
+    companyName,
+    roleLabel: ROLE_LABELS[role],
+    resetUrl: passwordResetLink,
+    loginUrl: `${appBaseUrl}${ROUTES.LOGIN}`,
+  });
 
   return NextResponse.json(
     {
       ok: true,
+      welcomeEmailSent: welcomeEmail.sent,
+      welcomeEmailSkipped: welcomeEmail.skipped,
+      ...(welcomeEmail.reason
+        ? { welcomeEmailReason: welcomeEmail.reason }
+        : {}),
       employee: {
         id: authUser.uid,
         companyId,

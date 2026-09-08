@@ -9,6 +9,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        /**
+         * Brand-gradient CTA. Reserved for the single primary action on a
+         * screen (auth submits) — using it for every button flattens the
+         * hierarchy it exists to create.
+         */
+        brand:
+          "bg-gradient-to-l from-[hsl(274_53%_37%)] to-[hsl(274_58%_46%)] text-primary-foreground shadow-md shadow-[hsl(274_53%_37%)]/25 hover:from-[hsl(274_53%_32%)] hover:to-[hsl(274_58%_40%)] hover:shadow-lg hover:shadow-[hsl(274_53%_37%)]/30",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         outline:

@@ -41,6 +41,9 @@ interface EmployeeCreatedResult {
   passwordResetLink: string | null;
   groupNote: string;
   groupError: boolean;
+  /** Whether the welcome email reached the new employee. */
+  emailNote: string;
+  emailOk: boolean;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -206,6 +209,9 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
         authUserCreated?: boolean;
         temporaryPassword?: string;
         passwordResetLink?: string;
+        welcomeEmailSent?: boolean;
+        welcomeEmailSkipped?: boolean;
+        welcomeEmailReason?: string | null;
         employee?: { id?: string };
       };
 
@@ -235,6 +241,19 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
         groupAssignmentError = t("employeesDash.groupAssignFailed");
       }
 
+      // Mirror the invite tab: say plainly whether the welcome email landed,
+      // so the manager knows if they must hand over the link themselves.
+      let emailNote: string;
+      if (payload.welcomeEmailSent) {
+        emailNote = t("employeesDash.inviteEmailSent");
+      } else if (payload.welcomeEmailSkipped) {
+        emailNote = t("employeesDash.inviteEmailSkipped");
+      } else {
+        emailNote = payload.welcomeEmailReason
+          ? `${t("employeesDash.inviteEmailFailed")} ${t("employeesDash.emailError", { value: payload.welcomeEmailReason })}`
+          : t("employeesDash.inviteEmailFailed");
+      }
+
       setNotice(null);
       setCreated({
         authCreated: Boolean(payload.authUserCreated),
@@ -242,6 +261,8 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
         passwordResetLink: payload.passwordResetLink?.trim() || null,
         groupNote: groupAssignmentError ?? t("employeesDash.groupsAssigned"),
         groupError: Boolean(groupAssignmentError),
+        emailNote,
+        emailOk: Boolean(payload.welcomeEmailSent),
       });
       setDirect(initialDirect);
       setSubmitted(false);
@@ -393,13 +414,23 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
           )}
 
           <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3">
-            <span
-              className={cn(
-                "text-xs",
-                created.groupError ? "text-destructive" : "text-muted-foreground",
-              )}
-            >
-              {created.groupNote}
+            <span className="flex flex-col gap-1 text-xs">
+              <span
+                className={cn(
+                  created.groupError
+                    ? "text-destructive"
+                    : "text-muted-foreground",
+                )}
+              >
+                {created.groupNote}
+              </span>
+              <span
+                className={cn(
+                  created.emailOk ? "text-muted-foreground" : "text-warning",
+                )}
+              >
+                {created.emailNote}
+              </span>
             </span>
             <Button
               variant="outline"

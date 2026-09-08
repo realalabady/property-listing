@@ -1,7 +1,10 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 import { validatePartnerRequestBody } from "@/lib/api/partner-requests";
-import { sendPartnerRequestEmail } from "@/lib/email/partner-requests";
+import {
+  sendPartnerRequestAckEmail,
+  sendPartnerRequestEmail,
+} from "@/lib/email/partner-requests";
 import { adminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -63,10 +66,19 @@ export async function POST(req: NextRequest) {
 
   // The application is already saved — a failing mailbox must not lose it, so
   // a send failure is logged rather than surfaced to the applicant.
-  const email = await sendPartnerRequestEmail(result.value);
+  const [email, ack] = await Promise.all([
+    sendPartnerRequestEmail(result.value),
+    // Auto-reply so the applicant knows the form went somewhere.
+    sendPartnerRequestAckEmail(result.value),
+  ]);
   if (!email.sent) {
     console.error(
       `[partner-requests] notification not sent for ${ref.id}: ${email.reason}`,
+    );
+  }
+  if (!ack.sent) {
+    console.error(
+      `[partner-requests] acknowledgement not sent for ${ref.id}: ${ack.reason}`,
     );
   }
 
