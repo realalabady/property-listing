@@ -671,15 +671,15 @@ export function NewEmployeeForm({ companyId }: NewEmployeeFormProps) {
             >
               {t("common.cancel")}
             </Button>
-            {/* Email invitations are disabled until SMTP is configured. */}
-            <span
-              className="inline-flex cursor-not-allowed"
-              title={t("employeesDash.invitationsComingSoon")}
+            <Button
+              type="button"
+              onClick={sendInvitation}
+              disabled={submitting}
             >
-              <Button type="button" disabled>
-                {t("employeesDash.sendInvitation")}
-              </Button>
-            </span>
+              {submitting
+                ? t("common.saving")
+                : t("employeesDash.sendInvitation")}
+            </Button>
           </div>
         </Accordion>
       )}
