@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
-import { ROLE_LABELS, ROLES } from "@/constants/roles";
+import { ROLES } from "@/constants/roles";
 import { ROUTES } from "@/constants/routes";
 import { getSessionUser } from "@/lib/auth/session";
 import {
@@ -239,7 +239,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
     inviteeName: normalizeName(body.name),
     companyName:
       typeof companyData.name === "string" ? companyData.name : "Your company",
-    roleLabel: ROLE_LABELS[role],
     invitedByEmail: user.email ?? null,
     suggestedLoginUrl,
     acceptApiUrl,

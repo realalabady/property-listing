@@ -9,7 +9,6 @@ interface InvitationEmailInput {
   to: string;
   inviteeName?: string | null;
   companyName: string;
-  roleLabel: string;
   invitedByEmail?: string | null;
   suggestedLoginUrl: string;
   acceptApiUrl: string;
@@ -41,7 +40,6 @@ export function buildInvitationEmail(
 
   const rows: Array<[string, string]> = [
     ["الشركة", input.companyName],
-    ["الصلاحية", input.roleLabel],
     ["البريد الإلكتروني", input.to],
   ];
   if (input.invitedByEmail) {
@@ -61,7 +59,7 @@ export function buildInvitationEmail(
       },
       {
         kind: "text",
-        value: `تمت دعوتك للانضمام إلى ${input.companyName} بصلاحية ${input.roleLabel}.`,
+        value: `تمت دعوتك للانضمام إلى فريق ${input.companyName} على المنصة.`,
       },
       { kind: "rows", rows },
       ...(expiresText

@@ -3,7 +3,7 @@ import { type UserRecord } from "firebase-admin/auth";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 import { ROLE_PERMISSIONS } from "@/constants/permissions";
-import { ROLE_LABELS, ROLES } from "@/constants/roles";
+import { ROLES } from "@/constants/roles";
 import { ROUTES } from "@/constants/routes";
 import { applyRoleClaims } from "@/lib/auth/claims";
 import { buildPasswordResetUrl } from "@/lib/auth/password-reset-link";
@@ -352,7 +352,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
         typeof companyData.name === "string"
           ? companyData.name
           : "Your company",
-      roleLabel: ROLE_LABELS[ROLES.COMPANY_OWNER],
       invitedByEmail: user.email ?? null,
       suggestedLoginUrl,
       acceptApiUrl,
