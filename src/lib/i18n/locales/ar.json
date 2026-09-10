@@ -462,6 +462,17 @@
     "contactGeneric": "تواصل مع خدمة العملاء لتجديد اشتراكك وإعادة تفعيل حسابك.",
     "backToLogin": "العودة لتسجيل الدخول"
   },
+  "planLock": {
+    "badge": "باقة {plan}",
+    "title": "{feature} متاح في باقة {plan}",
+    "body": "باقتك الحالية ({current}) لا تشمل هذه الميزة. رقِّ اشتراكك إلى باقة {plan} لتفعيلها لكل فريقك.",
+    "featurePipeline": "مسار المبيعات",
+    "featureMatchedLeads": "العملاء المطابقون",
+    "viewPlans": "عرض الباقات",
+    "contactWhatsapp": "تواصل معنا للترقية عبر واتساب",
+    "contactEmail": "راسلنا للترقية",
+    "lockedHint": "يتطلب باقة {plan}"
+  },
   "onboarding": {
     "title": "أهلاً بك في راعي",
     "subtitle": "حسابك جاهز. أنشئ مساحة عمل شركتك للمتابعة.",
@@ -704,7 +715,6 @@
     "usageUnlimited": "غير محدود",
     "usageFormat": "{used} / {limit}",
     "usageUnlimitedFormat": "{used} / غير محدود",
-    "planFree": "مجاني",
     "planStarter": "مبتدئ",
     "planPro": "احترافي",
     "planEnterprise": "مؤسسات",
@@ -1016,7 +1026,6 @@
     "descriptionPlaceholder": "ملخص قصير عن الشركة",
     "creating": "جارٍ إنشاء الشركة...",
     "createCompany": "إنشاء شركة",
-    "planFree": "مجاني",
     "planStarter": "مبتدئ",
     "planPro": "احترافي",
     "planEnterprise": "مؤسسات",

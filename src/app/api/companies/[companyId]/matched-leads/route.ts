@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
+import { companyHasFeature, planFeatureForbidden } from "@/lib/auth/plan";
 import { canViewMatchedLeads, serializeDate } from "@/lib/api/company-leads";
 import { adminDb } from "@/lib/firebase/admin";
 import {
@@ -60,6 +61,9 @@ export async function GET(
   }
   if (user.companyId !== companyId || !canViewMatchedLeads(user, companyId)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+  if (!(await companyHasFeature(companyId, "matched_leads"))) {
+    return planFeatureForbidden();
   }
 
   const minParam = Number(req.nextUrl.searchParams.get("min"));

@@ -10,8 +10,6 @@ import {
   ArrowRight,
   ArrowUp,
   Building2,
-  Globe,
-  Home,
   KeyRound,
   MapPin,
   Search,
@@ -31,6 +29,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { ROLES } from "@/constants/roles";
 import { logCustomerSearch } from "@/features/matching/logSearch";
 import { PropertyRequestModal } from "./PropertyRequestModal";
+import {
+  RaeiSiteFooter,
+  RaeiSiteHeader,
+  tr,
+  type Locale,
+  type Localized,
+} from "./RaeiSiteChrome";
 
 const SaudiClusterMap = dynamic(
   () => import("@/features/public/SaudiClusterMap"),
@@ -48,23 +53,6 @@ import {
   SAUDI_CITIES,
   type ListingFilters,
 } from "@/features/public/filters";
-
-type Locale = "ar" | "en";
-type Localized = { ar: string; en: string };
-
-const tr = (value: Localized, locale: Locale) => value[locale];
-
-const brand: Localized = { ar: "راعي", en: "Raei" };
-const brandTagline: Localized = {
-  ar: "ابحث عن عقارك التالي",
-  en: "Find your next property",
-};
-
-const navLinks: Array<{ href: string; label: Localized }> = [
-  { href: ROUTES.MARKETPLACE, label: { ar: "العقارات", en: "Properties" } },
-  { href: "#how", label: { ar: "كيف يعمل", en: "How it works" } },
-  { href: "#companies", label: { ar: "للشركات", en: "For agencies" } },
-];
 
 const heroTitle: Localized = {
   ar: "عقارك المثالي يبدأ بعملية بحث واحدة",
@@ -206,65 +194,13 @@ export function RaeiHomepage() {
       }}
       className="raei-light min-h-screen bg-background text-foreground"
     >
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-lg">
-        <div className="container-tight flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2 sm:flex-nowrap sm:py-0">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Home className="h-5 w-5" />
-            </span>
-            <span className="flex flex-col leading-none">
-              <span className="text-lg font-extrabold tracking-tight">
-                {tr(brand, locale)}
-              </span>
-              <span className="hidden text-[11px] text-muted-foreground sm:block">
-                {tr(brandTagline, locale)}
-              </span>
-            </span>
-          </Link>
-
-          <nav className="hidden items-center gap-7 text-sm font-medium md:flex">
-            {navLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {tr(item.label, locale)}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="flex w-full shrink-0 items-center justify-between gap-1 sm:w-auto sm:justify-end sm:gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocale((p) => (p === "ar" ? "en" : "ar"))}
-              className="gap-1.5 px-2 sm:px-3"
-            >
-              <Globe className="h-4 w-4" />
-              {isArabic ? "EN" : "AR"}
-            </Button>
-            <Button asChild variant="ghost" size="sm" className="px-2 sm:px-3">
-              <Link href={ROUTES.LOGIN} className="whitespace-nowrap">
-                {isArabic ? "تسجيل الدخول" : "Sign in"}
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="sm" className="px-2 sm:px-3">
-              <Link href={ROUTES.PARTNER} className="whitespace-nowrap">
-                {isArabic ? "انضم كشريك" : "Become a partner"}
-              </Link>
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => setRequestOpen(true)}
-              className="whitespace-nowrap px-2 sm:px-3"
-            >
-              {isArabic ? "اطلب عقارك" : "Request property"}
-            </Button>
-          </div>
-        </div>
-      </header>
+      <RaeiSiteHeader
+        locale={locale}
+        onToggleLocale={() =>
+          setLocale((prev) => (prev === "ar" ? "en" : "ar"))
+        }
+        onRequestProperty={() => setRequestOpen(true)}
+      />
 
       <PropertyRequestModal
         open={requestOpen}
@@ -565,8 +501,8 @@ export function RaeiHomepage() {
             </p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <Button asChild size="lg" variant="secondary">
-                <Link href={ROUTES.SIGNUP}>
-                  {isArabic ? "ابدأ مجانًا" : "Start free"}
+                <Link href={ROUTES.PRICING}>
+                  {isArabic ? "عرض الباقات" : "View plans"}
                 </Link>
               </Button>
               <Button
@@ -584,40 +520,7 @@ export function RaeiHomepage() {
         </section>
       </main>
 
-      <footer className="border-t border-border">
-        <div className="container-tight flex flex-col items-center justify-between gap-4 py-8 text-sm text-muted-foreground sm:flex-row">
-          <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Home className="h-4 w-4" />
-            </span>
-            <span className="font-bold text-foreground">{tr(brand, locale)}</span>
-          </div>
-          <p>
-            {isArabic ? (
-              <>
-                جميع الحقوق محفوظة{" "}
-                <bdi>© {new Date().getFullYear()}</bdi> {tr(brand, locale)}
-              </>
-            ) : (
-              <>
-                <bdi>© {new Date().getFullYear()}</bdi> {tr(brand, locale)}. All
-                rights reserved.
-              </>
-            )}
-          </p>
-          <div className="flex items-center gap-4">
-            <Link href={ROUTES.MARKETPLACE} className="hover:text-foreground">
-              {isArabic ? "العقارات" : "Properties"}
-            </Link>
-            <Link href={ROUTES.PARTNER} className="hover:text-foreground">
-              {isArabic ? "انضم كشريك" : "Become a partner"}
-            </Link>
-            <Link href={ROUTES.LOGIN} className="hover:text-foreground">
-              {isArabic ? "تسجيل الدخول" : "Sign in"}
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <RaeiSiteFooter locale={locale} />
     </div>
   );
 }

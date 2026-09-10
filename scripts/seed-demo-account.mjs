@@ -686,7 +686,7 @@ async function seed(ownerUid) {
       darkMode: false,
       heroImageUrl: img("photo-1512453979798-5ea266f8880c", 2000),
     },
-    subscriptionPlan: "pro",
+    subscriptionPlan: "enterprise",
     ownerId: ownerUid,
     status: "active",
     commercialRegistrationNumber: "7001234567",

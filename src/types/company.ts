@@ -1,6 +1,6 @@
 import type { Timestamp } from "firebase/firestore";
 
-export type SubscriptionPlanId = "free" | "starter" | "pro" | "enterprise";
+export type SubscriptionPlanId = "starter" | "pro" | "enterprise";
 
 export type CompanyStatus = "active" | "suspended" | "trial" | "cancelled";
 

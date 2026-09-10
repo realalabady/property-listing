@@ -7,6 +7,7 @@ import {
   getEmployeeDoc,
 } from "@/lib/auth/guards";
 import { ROUTES } from "@/constants/routes";
+import { parseSubscriptionPlan } from "@/constants/plans";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { SessionEndedSignOut } from "@/components/auth/SessionEndedSignOut";
 import { IdleTimeout } from "@/components/auth/IdleTimeout";
@@ -43,6 +44,7 @@ export default async function DashboardLayout({
       : t("dashboard.fallbackTitle");
   const companyStatus =
     typeof company.status === "string" ? company.status : "";
+  const plan = parseSubscriptionPlan(company.subscriptionPlan);
   const trialEndsRaw = company.trialEndsAt;
   const trialEndsAtIso =
     trialEndsRaw &&
@@ -102,7 +104,7 @@ export default async function DashboardLayout({
           </Link>
         </div>
         <div className="flex-1 overflow-y-auto">
-          <DashboardSidebar />
+          <DashboardSidebar plan={plan} />
         </div>
       </aside>
 
@@ -112,6 +114,7 @@ export default async function DashboardLayout({
             <DashboardMobileNav
               companyName={companyName}
               companyLogo={companyLogo}
+              plan={plan}
             />
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
               {userInitial}

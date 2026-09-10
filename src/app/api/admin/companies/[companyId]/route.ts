@@ -7,8 +7,12 @@ import { sendCompanyActivatedEmail } from "@/lib/email/accounts";
 import type { EmailResult } from "@/lib/email/send";
 import { resolveAppBaseUrl } from "@/lib/url/app-base-url";
 import { adminDb } from "@/lib/firebase/admin";
-import type { CompanyStatus, SubscriptionPlanId } from "@/types/company";
-import { limitsForPlan } from "@/constants/plans";
+import type { CompanyStatus } from "@/types/company";
+import {
+  isSubscriptionPlanId,
+  limitsForPlan,
+  parseSubscriptionPlan,
+} from "@/constants/plans";
 
 export const runtime = "nodejs";
 
@@ -35,19 +39,6 @@ interface CompanyActionBody {
 function normalizeText(value: unknown): string {
   if (typeof value !== "string") return "";
   return value.replace(/\s+/g, " ").trim();
-}
-
-function parseSubscriptionPlan(value: unknown): SubscriptionPlanId | null {
-  const normalized = normalizeText(value);
-  if (
-    normalized === "free" ||
-    normalized === "starter" ||
-    normalized === "pro" ||
-    normalized === "enterprise"
-  ) {
-    return normalized;
-  }
-  return null;
 }
 
 function parseCompanyStatus(value: unknown): CompanyStatus {
@@ -160,8 +151,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       name: typeof company.name === "string" ? company.name : "Untitled",
       slug: typeof company.slug === "string" ? company.slug : "",
       status: parseCompanyStatus(company.status),
-      subscriptionPlan:
-        parseSubscriptionPlan(company.subscriptionPlan) ?? "starter",
+      subscriptionPlan: parseSubscriptionPlan(company.subscriptionPlan),
       ownerId: typeof company.ownerId === "string" ? company.ownerId : null,
       description:
         typeof company.description === "string" ? company.description : "",
@@ -248,8 +238,8 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       break;
     }
     case "set_plan": {
-      const plan = parseSubscriptionPlan(body.plan);
-      if (!plan) {
+      const plan = normalizeText(body.plan).toLowerCase();
+      if (!isSubscriptionPlanId(plan)) {
         return NextResponse.json(
           { error: "A valid subscription plan is required." },
           { status: 400 },

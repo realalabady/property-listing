@@ -115,7 +115,7 @@ Legend — Type: `str`, `num`, `bool`, `ts` (timestamp), `map` (nested object), 
 | description / descriptionAr | str? | |
 | logo | str? | logo URL |
 | theme | map | `{primaryColor, secondaryColor, accentColor?, fontFamily?, logoUrl?, heroImageUrl?, darkMode?}` |
-| subscriptionPlan | str enum | → plans (`free`/`starter`/`pro`/`enterprise`) |
+| subscriptionPlan | str enum | → plans (`starter`/`pro`/`enterprise`; catalog in `src/constants/plans.ts`, legacy `free` reads as `starter`) |
 | ownerId | str | → employees.id (company_owner) |
 | status | str enum | `active` / `suspended` / `trial` / `cancelled` |
 | contact | map | phone, whatsapp, email, address, city, country, mapUrl, website, socials{…} — **PII (business)** |

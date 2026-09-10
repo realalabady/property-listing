@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
+import { companyHasFeature, planFeatureForbidden } from "@/lib/auth/plan";
 import {
   canViewAssignedLeads,
   getLeadsVisibility,
@@ -30,6 +31,9 @@ export async function GET(req: NextRequest, context: RouteContext) {
   }
   if (!canViewAssignedLeads(user, companyId)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+  if (!(await companyHasFeature(companyId, "pipeline"))) {
+    return planFeatureForbidden();
   }
 
   // Visibility settings and stage definitions are independent — fetch together.

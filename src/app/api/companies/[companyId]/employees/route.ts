@@ -26,20 +26,11 @@ import { assertActiveMember } from "@/lib/api/guards";
 import { isFieldValueTaken } from "@/lib/api/uniqueness";
 import { isValidNationalId, normalizeSaudiPhone } from "@/lib/utils/validation";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { limitsForPlan, isUnlimited } from "@/constants/plans";
-import type { SubscriptionPlanId } from "@/types/company";
-
-function parseSubscriptionPlan(value: unknown): SubscriptionPlanId {
-  if (
-    value === "free" ||
-    value === "starter" ||
-    value === "pro" ||
-    value === "enterprise"
-  ) {
-    return value;
-  }
-  return "starter";
-}
+import {
+  limitsForPlan,
+  isUnlimited,
+  parseSubscriptionPlan,
+} from "@/constants/plans";
 
 export const runtime = "nodejs";
 

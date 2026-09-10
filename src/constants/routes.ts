@@ -7,6 +7,7 @@ export const ROUTES = {
   MARKETPLACE: "/properties",
   MARKETPLACE_LISTING: (id: string) => `/properties/${id}`,
   PARTNER: "/partner",
+  PRICING: "/pricing",
 
   // Company public
   COMPANY_LANDING: (slug: string) => `/c/${slug}`,

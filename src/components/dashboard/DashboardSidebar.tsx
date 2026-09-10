@@ -18,9 +18,17 @@ import {
   ChevronDown,
   Eye,
   Plus,
+  Lock,
   type LucideIcon,
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
+import {
+  lowestPlanWithFeature,
+  planHasFeature,
+  type PlanFeature,
+} from "@/constants/plans";
+import { PLAN_LABEL_KEYS } from "@/features/plans/plan-labels";
+import type { SubscriptionPlanId } from "@/types/company";
 import { cn } from "@/lib/utils/cn";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth.store";
@@ -39,6 +47,8 @@ interface NavItem {
   exact?: boolean;
   /** Hide this item unless the user holds at least one of these permissions. */
   requiredAnyPermission?: Permission[];
+  /** Plan feature this page needs; shown with a lock when the plan lacks it. */
+  requiredFeature?: PlanFeature;
   /** Sub-pages (e.g. View / Add) revealed when the group is expanded. */
   children?: NavItem[];
 }
@@ -94,6 +104,7 @@ function buildGroups(): NavGroup[] {
           label: t("dashboard.pipeline"),
           icon: SquareKanban,
           exact: true,
+          requiredFeature: "pipeline",
         },
         {
           href: ROUTES.DASHBOARD_LEADS_ARRIVED,
@@ -110,6 +121,7 @@ function buildGroups(): NavGroup[] {
             PERMISSIONS.VIEW_MATCHED_LEADS,
             PERMISSIONS.MANAGE_LEADS,
           ],
+          requiredFeature: "matched_leads",
         },
         {
           href: ROUTES.DASHBOARD_TASKS,
@@ -180,7 +192,7 @@ function itemClasses(active: boolean): string {
   );
 }
 
-export function DashboardSidebar() {
+export function DashboardSidebar({ plan }: { plan: SubscriptionPlanId }) {
   const pathname = usePathname() || "";
   const permissions = useAuthStore((s) => s.user?.permissions);
   const role = useAuthStore((s) => s.user?.role);
@@ -217,19 +229,43 @@ export function DashboardSidebar() {
             const active = matches(pathname, item);
 
             if (!item.children) {
+              const lockedHint =
+                item.requiredFeature &&
+                !planHasFeature(plan, item.requiredFeature)
+                  ? t("planLock.lockedHint", {
+                      plan: t(
+                        PLAN_LABEL_KEYS[
+                          lowestPlanWithFeature(item.requiredFeature)
+                        ],
+                      ),
+                    })
+                  : null;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  prefetch
+                  prefetch={!lockedHint}
                   aria-current={active ? "page" : undefined}
-                  className={itemClasses(active)}
+                  title={lockedHint ?? undefined}
+                  className={cn(
+                    itemClasses(active),
+                    lockedHint && !active && "opacity-70",
+                  )}
                 >
                   <Icon
                     className="h-[18px] w-[18px] shrink-0"
                     aria-hidden
                   />
                   <span className="truncate">{item.label}</span>
+                  {lockedHint && (
+                    <>
+                      <Lock
+                        className="ms-auto h-3.5 w-3.5 shrink-0"
+                        aria-hidden
+                      />
+                      <span className="sr-only">({lockedHint})</span>
+                    </>
+                  )}
                 </Link>
               );
             }

@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseStorage } from "@/lib/firebase/client";
 import { t } from "@/lib/i18n";
+import type { SubscriptionPlanId } from "@/types/company";
 
 export type LeadAssignStrategy = "round_robin" | "least_busy" | "manual";
 
-export type PlanId = "free" | "starter" | "pro" | "enterprise";
+export type PlanId = SubscriptionPlanId;
 
 export interface PlanUsageMetric {
   used: number;
@@ -421,7 +422,6 @@ export function DashboardSettingsClient({
 }
 
 const PLAN_LABELS: Record<PlanId, string> = {
-  free: "settings.planFree",
   starter: "settings.planStarter",
   pro: "settings.planPro",
   enterprise: "settings.planEnterprise",

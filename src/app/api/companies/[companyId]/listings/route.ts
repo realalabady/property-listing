@@ -1,6 +1,10 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
-import { limitsForPlan, isUnlimited } from "@/constants/plans";
+import {
+  limitsForPlan,
+  isUnlimited,
+  parseSubscriptionPlan,
+} from "@/constants/plans";
 import {
   LISTING_STATUSES,
   type ListingStatus,
@@ -10,7 +14,6 @@ import { ROLES } from "@/constants/roles";
 import { getSessionUser } from "@/lib/auth/session";
 import { assertActiveMember } from "@/lib/api/guards";
 import { adminDb } from "@/lib/firebase/admin";
-import type { SubscriptionPlanId } from "@/types/company";
 
 export const runtime = "nodejs";
 
@@ -19,18 +22,6 @@ interface RouteContext {
 }
 
 const VALID_STATUSES = new Set<string>(Object.values(LISTING_STATUSES));
-
-function parseSubscriptionPlan(value: unknown): SubscriptionPlanId {
-  if (
-    value === "free" ||
-    value === "starter" ||
-    value === "pro" ||
-    value === "enterprise"
-  ) {
-    return value;
-  }
-  return "starter";
-}
 
 function num(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;

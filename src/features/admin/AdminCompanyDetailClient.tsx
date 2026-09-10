@@ -4,13 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CompanyStatus, SubscriptionPlanId } from "@/types/company";
 import { t } from "@/lib/i18n";
-
-const PLAN_LABEL_KEYS: Record<SubscriptionPlanId, string> = {
-  free: "adminForm.planFree",
-  starter: "adminForm.planStarter",
-  pro: "adminForm.planPro",
-  enterprise: "adminForm.planEnterprise",
-};
+import { PLAN_OPTIONS, PLAN_PRICING_NOTE } from "@/features/plans/plan-labels";
 
 interface OwnerSummary {
   uid: string;
@@ -57,8 +51,6 @@ interface ActionResponse {
   invitationEmailSkipped?: boolean;
   invitationEmailReason?: string | null;
 }
-
-const PLANS: SubscriptionPlanId[] = ["free", "starter", "pro", "enterprise"];
 
 export function AdminCompanyDetailClient({
   company,
@@ -295,9 +287,9 @@ export function AdminCompanyDetailClient({
               }
               className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition focus:ring-2 focus:ring-ring"
             >
-              {PLANS.map((value) => (
-                <option key={value} value={value}>
-                  {t(PLAN_LABEL_KEYS[value])}
+              {PLAN_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
@@ -313,6 +305,9 @@ export function AdminCompanyDetailClient({
               ? t("adminDetail.saving")
               : t("adminDetail.updatePlan")}
           </button>
+          <p className="basis-full text-xs text-muted-foreground">
+            {PLAN_PRICING_NOTE}
+          </p>
         </div>
 
         <div className="flex flex-wrap items-end gap-2">

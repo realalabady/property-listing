@@ -4,8 +4,8 @@ import { ROLES } from "@/constants/roles";
 import { getSessionUser } from "@/lib/auth/session";
 import { adminDb } from "@/lib/firebase/admin";
 import { normalizeCommercialRegistration } from "@/lib/api/partner-requests";
-import type { CompanyStatus, SubscriptionPlanId } from "@/types/company";
-import { limitsForPlan } from "@/constants/plans";
+import type { CompanyStatus } from "@/types/company";
+import { limitsForPlan, parseSubscriptionPlan } from "@/constants/plans";
 import { DEFAULT_COMPANY_THEME } from "@/constants/brand";
 
 export const runtime = "nodejs";
@@ -68,19 +68,6 @@ async function ensureUniqueSlug(baseSlug: string): Promise<string> {
   }
 
   return `${baseSlug}-${Date.now().toString().slice(-6)}`;
-}
-
-function parseSubscriptionPlan(value: unknown): SubscriptionPlanId {
-  const normalized = normalizeText(value);
-  if (
-    normalized === "free" ||
-    normalized === "starter" ||
-    normalized === "pro" ||
-    normalized === "enterprise"
-  ) {
-    return normalized;
-  }
-  return "starter";
 }
 
 function parseCompanyStatus(value: unknown): CompanyStatus {

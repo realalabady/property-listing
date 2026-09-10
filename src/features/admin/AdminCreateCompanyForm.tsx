@@ -5,16 +5,9 @@ import { useRouter } from "next/navigation";
 import { ROUTES } from "@/constants/routes";
 import type { CompanyStatus, SubscriptionPlanId } from "@/types/company";
 import { t } from "@/lib/i18n";
+import { PLAN_OPTIONS, PLAN_PRICING_NOTE } from "@/features/plans/plan-labels";
 
-const PLANS: SubscriptionPlanId[] = ["free", "starter", "pro", "enterprise"];
 const STATUSES: CompanyStatus[] = ["trial", "active", "suspended", "cancelled"];
-
-const PLAN_LABEL_KEYS: Record<SubscriptionPlanId, string> = {
-  free: "adminForm.planFree",
-  starter: "adminForm.planStarter",
-  pro: "adminForm.planPro",
-  enterprise: "adminForm.planEnterprise",
-};
 
 const STATUS_LABEL_KEYS: Record<CompanyStatus, string> = {
   trial: "adminForm.statusTrial",
@@ -147,10 +140,8 @@ export function AdminCreateCompanyForm({
           label={t("adminForm.plan")}
           value={plan}
           onChange={(value) => setPlan(value as SubscriptionPlanId)}
-          options={PLANS.map((value) => ({
-            value,
-            label: t(PLAN_LABEL_KEYS[value]),
-          }))}
+          options={PLAN_OPTIONS}
+          hint={PLAN_PRICING_NOTE}
         />
         <SelectField
           label={t("adminForm.status")}
@@ -264,9 +255,16 @@ interface SelectFieldProps {
   value: string;
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string }>;
+  hint?: string;
 }
 
-function SelectField({ label, value, onChange, options }: SelectFieldProps) {
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  hint,
+}: SelectFieldProps) {
   return (
     <label>
       <span className="mb-1.5 block text-sm font-medium">{label}</span>
@@ -281,6 +279,9 @@ function SelectField({ label, value, onChange, options }: SelectFieldProps) {
           </option>
         ))}
       </select>
+      {hint && (
+        <span className="mt-1 block text-xs text-muted-foreground">{hint}</span>
+      )}
     </label>
   );
 }

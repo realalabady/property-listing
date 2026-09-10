@@ -8,10 +8,12 @@ import { Menu, X } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { t } from "@/lib/i18n";
 import { DashboardSidebar } from "./DashboardSidebar";
+import type { SubscriptionPlanId } from "@/types/company";
 
 interface DashboardMobileNavProps {
   companyName: string;
   companyLogo: string;
+  plan: SubscriptionPlanId;
 }
 
 /**
@@ -23,6 +25,7 @@ interface DashboardMobileNavProps {
 export function DashboardMobileNav({
   companyName,
   companyLogo,
+  plan,
 }: DashboardMobileNavProps) {
   const [open, setOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
@@ -114,7 +117,7 @@ export function DashboardMobileNav({
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <DashboardSidebar />
+              <DashboardSidebar plan={plan} />
             </div>
           </div>
         </div>,

@@ -5,8 +5,12 @@ import { adminDb } from "@/lib/firebase/admin";
 import { ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/roles";
 import { AdminCompanyDetailClient } from "@/features/admin/AdminCompanyDetailClient";
-import type { CompanyStatus, SubscriptionPlanId } from "@/types/company";
-import { limitsForPlan, isUnlimited } from "@/constants/plans";
+import type { CompanyStatus } from "@/types/company";
+import {
+  limitsForPlan,
+  isUnlimited,
+  parseSubscriptionPlan,
+} from "@/constants/plans";
 import { ROLE_LABELS, type Role, isValidRole } from "@/constants/roles";
 import { LISTING_STATUS_LABELS } from "@/constants/listing-categories";
 import { t } from "@/lib/i18n";
@@ -22,7 +26,6 @@ const STATUS_KEYS: Record<string, string> = {
   cancelled: "adminForm.statusCancelled",
 };
 const PLAN_KEYS: Record<string, string> = {
-  free: "adminForm.planFree",
   starter: "adminForm.planStarter",
   pro: "adminForm.planPro",
   enterprise: "adminForm.planEnterprise",
@@ -80,18 +83,6 @@ function parseStatus(value: unknown): CompanyStatus {
     return value;
   }
   return "trial";
-}
-
-function parsePlan(value: unknown): SubscriptionPlanId {
-  if (
-    value === "free" ||
-    value === "starter" ||
-    value === "pro" ||
-    value === "enterprise"
-  ) {
-    return value;
-  }
-  return "starter";
 }
 
 export default async function AdminCompanyDetailPage(context: RouteContext) {
@@ -175,7 +166,7 @@ export default async function AdminCompanyDetailPage(context: RouteContext) {
         : t("adminDetail.untitled"),
     slug: typeof companyData.slug === "string" ? companyData.slug : "",
     status: parseStatus(companyData.status),
-    subscriptionPlan: parsePlan(companyData.subscriptionPlan),
+    subscriptionPlan: parseSubscriptionPlan(companyData.subscriptionPlan),
     isDeleted: companyData.isDeleted === true || Boolean(companyData.deletedAt),
     owner,
     metrics: {

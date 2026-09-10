@@ -1,6 +1,7 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
+import { companyHasFeature, planFeatureForbidden } from "@/lib/auth/plan";
 import {
   canActOnAnyLead,
   canViewAssignedLeads,
@@ -43,6 +44,9 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
   }
   if (!canViewAssignedLeads(user, companyId)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+  if (!(await companyHasFeature(companyId, "pipeline"))) {
+    return planFeatureForbidden();
   }
   const membership = await assertActiveMember(user, companyId);
   if (!membership.ok) {

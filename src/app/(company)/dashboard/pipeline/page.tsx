@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { requireCompanyMember } from "@/lib/auth/guards";
+import { getCompanyPlan } from "@/lib/auth/plan";
 import { PERMISSIONS, hasAnyPermission } from "@/constants/permissions";
+import { planHasFeature } from "@/constants/plans";
+import { PlanLockedNotice } from "@/components/dashboard/PlanLockedNotice";
 import { ROUTES } from "@/constants/routes";
 import { PipelineBoardClient } from "@/features/pipeline/PipelineBoardClient";
 import { t } from "@/lib/i18n";
@@ -19,6 +22,11 @@ export default async function DashboardPipelinePage() {
   ]);
   if (!canAccessBoard || !user.companyId) {
     redirect(`${ROUTES.DASHBOARD}?denied=permission`);
+  }
+
+  const plan = await getCompanyPlan(user.companyId as string);
+  if (!planHasFeature(plan, "pipeline")) {
+    return <PlanLockedNotice feature="pipeline" currentPlan={plan} />;
   }
 
   const canManagePipeline = hasAnyPermission(user.permissions, [

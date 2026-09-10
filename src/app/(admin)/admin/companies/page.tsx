@@ -64,8 +64,15 @@ async function fetchCompanies(): Promise<CompanyListRow[]> {
     .limit(100)
     .get();
 
+  // Soft-deleted companies stay restorable from their detail page, but are
+  // hidden from the list.
+  const liveDocs = snap.docs.filter((doc) => {
+    const data = doc.data();
+    return data.isDeleted !== true && !data.deletedAt;
+  });
+
   const rows = await Promise.all(
-    snap.docs.map(async (doc) => {
+    liveDocs.map(async (doc) => {
       const data = doc.data() as Record<string, unknown>;
       const kpiSnap = await adminDb()
         .doc(`companies/${doc.id}/kpi/current`)

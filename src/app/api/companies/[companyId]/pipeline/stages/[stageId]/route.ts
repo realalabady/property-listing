@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
+import { companyHasFeature, planFeatureForbidden } from "@/lib/auth/plan";
 import { normalizeText } from "@/lib/api/company-leads";
 import { assertActiveMember } from "@/lib/api/guards";
 import {
@@ -36,6 +37,9 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
   }
   if (!canManagePipeline(user, companyId)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+  if (!(await companyHasFeature(companyId, "pipeline"))) {
+    return planFeatureForbidden();
   }
   const membership = await assertActiveMember(user, companyId);
   if (!membership.ok) {
@@ -121,6 +125,9 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
   }
   if (!canManagePipeline(user, companyId)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+  if (!(await companyHasFeature(companyId, "pipeline"))) {
+    return planFeatureForbidden();
   }
   const membership = await assertActiveMember(user, companyId);
   if (!membership.ok) {
