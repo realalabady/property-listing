@@ -28,6 +28,8 @@ interface RaeiSiteHeaderProps {
   onToggleLocale: () => void;
   /** Homepage-only: opens the property request modal. Hidden when omitted. */
   onRequestProperty?: () => void;
+  /** Link to /pricing — off while the admin keeps the page hidden. */
+  showPricing: boolean;
 }
 
 /** Public-site header shared by the homepage and the pricing page. */
@@ -35,8 +37,12 @@ export function RaeiSiteHeader({
   locale,
   onToggleLocale,
   onRequestProperty,
+  showPricing,
 }: RaeiSiteHeaderProps) {
   const isArabic = locale === "ar";
+  const links = showPricing
+    ? navLinks
+    : navLinks.filter((item) => item.href !== ROUTES.PRICING);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-lg">
@@ -56,7 +62,7 @@ export function RaeiSiteHeader({
         </Link>
 
         <nav className="hidden items-center gap-7 text-sm font-medium md:flex">
-          {navLinks.map((item) => (
+          {links.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -115,7 +121,13 @@ export function RaeiSiteHeader({
   );
 }
 
-export function RaeiSiteFooter({ locale }: { locale: Locale }) {
+export function RaeiSiteFooter({
+  locale,
+  showPricing,
+}: {
+  locale: Locale;
+  showPricing: boolean;
+}) {
   const isArabic = locale === "ar";
 
   return (
@@ -144,9 +156,11 @@ export function RaeiSiteFooter({ locale }: { locale: Locale }) {
           <Link href={ROUTES.MARKETPLACE} className="hover:text-foreground">
             {isArabic ? "العقارات" : "Properties"}
           </Link>
-          <Link href={ROUTES.PRICING} className="hover:text-foreground">
-            {isArabic ? "الباقات" : "Plans"}
-          </Link>
+          {showPricing && (
+            <Link href={ROUTES.PRICING} className="hover:text-foreground">
+              {isArabic ? "الباقات" : "Plans"}
+            </Link>
+          )}
           <Link href={ROUTES.PARTNER} className="hover:text-foreground">
             {isArabic ? "انضم كشريك" : "Become a partner"}
           </Link>

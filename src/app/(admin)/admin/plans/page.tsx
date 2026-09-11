@@ -1,40 +1,49 @@
-import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth/guards";
-import { getPlanCatalog } from "@/lib/plans/catalog";
-import { ROUTES } from "@/constants/routes";
+import { adminDb } from "@/lib/firebase/admin";
+import { getPlans, getPricingVisible } from "@/lib/plans/catalog";
+import { resolvePlan } from "@/constants/plans";
 import { AdminPlansClient } from "@/features/admin/AdminPlansClient";
 
 export const metadata = {
   title: "الباقات",
 };
 
-// Prices and offer status must reflect the latest save.
+// Plans, counts and the visibility switch must reflect the latest save.
 export const dynamic = "force-dynamic";
 
 export default async function AdminPlansPage() {
   await requireSuperAdmin();
-  const catalog = await getPlanCatalog();
+  const [plans, pricingVisible, companiesSnap] = await Promise.all([
+    getPlans(),
+    getPricingVisible(),
+    adminDb().collection("companies").select("subscriptionPlan", "isDeleted", "deletedAt").get(),
+  ]);
+
+  // Live companies per plan (unknown ids count toward the plan they fall back to).
+  const companyCounts: Record<string, number> = {};
+  for (const doc of companiesSnap.docs) {
+    const data = doc.data();
+    if (data.isDeleted === true || data.deletedAt) continue;
+    const id = resolvePlan(plans, data.subscriptionPlan).id;
+    companyCounts[id] = (companyCounts[id] ?? 0) + 1;
+  }
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">الباقات</h2>
-          <p className="text-sm text-muted-foreground">
-            عدّل سعر كل باقة وأضف عروضًا تظهر أسفل السعر في صفحة الباقات. حدود
-            العقارات والموظفين والمزايا ثابتة.
-          </p>
-        </div>
-        <Link
-          href={ROUTES.PRICING}
-          target="_blank"
-          className="rounded-md border border-border px-3 py-2 text-sm font-semibold transition hover:bg-secondary"
-        >
-          فتح صفحة الباقات
-        </Link>
+      <header>
+        <h2 className="text-2xl font-semibold tracking-tight">الباقات</h2>
+        <p className="text-sm text-muted-foreground">
+          أظهر أو أخفِ صفحة الباقات، وعدّل كل باقة: الاسم والوصف والسعر والحدود
+          والمزايا والعروض. التغييرات تُطبَّق فورًا.
+        </p>
       </header>
 
-      <AdminPlansClient catalog={catalog} nowMs={Date.now()} />
+      <AdminPlansClient
+        plans={plans}
+        companyCounts={companyCounts}
+        pricingVisible={pricingVisible}
+        nowMs={Date.now()}
+      />
     </div>
   );
 }

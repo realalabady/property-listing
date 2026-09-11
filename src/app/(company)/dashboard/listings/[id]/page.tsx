@@ -3,6 +3,8 @@ import { ArrowRight } from "lucide-react";
 import { requireCompanyMember } from "@/lib/auth/guards";
 import { getCompanyPlan } from "@/lib/auth/plan";
 import { planHasFeature } from "@/constants/plans";
+import { getPricingVisible } from "@/lib/plans/catalog";
+import { requiredPlanName } from "@/lib/plans/locks";
 import {
   PERMISSIONS,
   hasAnyPermission,
@@ -37,6 +39,12 @@ export default async function DashboardListingDetailPage({
     await getCompanyPlan(user.companyId as string),
     "auctions",
   );
+  const auctionsLock = auctionsEnabled
+    ? null
+    : {
+        requiredPlan: await requiredPlanName("auctions"),
+        showPricingLink: await getPricingVisible(),
+      };
 
   return (
     <div className="space-y-6">
@@ -54,7 +62,7 @@ export default async function DashboardListingDetailPage({
         canEdit={canEdit}
         canDelete={canDelete}
         canPublish={canPublish}
-        auctionsEnabled={auctionsEnabled}
+        auctionsLock={auctionsLock}
       />
     </div>
   );

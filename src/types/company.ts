@@ -1,6 +1,7 @@
 import type { Timestamp } from "firebase/firestore";
 
-export type SubscriptionPlanId = "starter" | "pro" | "enterprise";
+/** Id of a `plans/{id}` doc. Plans are admin-managed, so any string. */
+export type SubscriptionPlanId = string;
 
 export type CompanyStatus = "active" | "suspended" | "trial" | "cancelled";
 

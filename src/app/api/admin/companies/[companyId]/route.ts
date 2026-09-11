@@ -8,11 +8,8 @@ import type { EmailResult } from "@/lib/email/send";
 import { resolveAppBaseUrl } from "@/lib/url/app-base-url";
 import { adminDb } from "@/lib/firebase/admin";
 import type { CompanyStatus } from "@/types/company";
-import {
-  isSubscriptionPlanId,
-  limitsForPlan,
-  parseSubscriptionPlan,
-} from "@/constants/plans";
+import { normalizePlanId } from "@/constants/plans";
+import { getPlan, getPlans } from "@/lib/plans/catalog";
 
 export const runtime = "nodejs";
 
@@ -151,7 +148,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       name: typeof company.name === "string" ? company.name : "Untitled",
       slug: typeof company.slug === "string" ? company.slug : "",
       status: parseCompanyStatus(company.status),
-      subscriptionPlan: parseSubscriptionPlan(company.subscriptionPlan),
+      subscriptionPlan: (await getPlan(company.subscriptionPlan)).id,
       ownerId: typeof company.ownerId === "string" ? company.ownerId : null,
       description:
         typeof company.description === "string" ? company.description : "",
@@ -238,15 +235,19 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       break;
     }
     case "set_plan": {
-      const plan = normalizeText(body.plan).toLowerCase();
-      if (!isSubscriptionPlanId(plan)) {
+      const planId = normalizePlanId(body.plan);
+      const plan = (await getPlans()).find((p) => p.id === planId);
+      if (!plan) {
         return NextResponse.json(
           { error: "A valid subscription plan is required." },
           { status: 400 },
         );
       }
-      updates.subscriptionPlan = plan;
-      updates.limits = limitsForPlan(plan);
+      updates.subscriptionPlan = plan.id;
+      updates.limits = {
+        maxListings: plan.maxListings,
+        maxEmployees: plan.maxEmployees,
+      };
       break;
     }
     case "set_trial": {

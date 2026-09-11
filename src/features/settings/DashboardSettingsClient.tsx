@@ -5,11 +5,8 @@ import { Button } from "@/components/ui/button";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseStorage } from "@/lib/firebase/client";
 import { t } from "@/lib/i18n";
-import type { SubscriptionPlanId } from "@/types/company";
 
 export type LeadAssignStrategy = "round_robin" | "least_busy" | "manual";
-
-export type PlanId = SubscriptionPlanId;
 
 export interface PlanUsageMetric {
   used: number;
@@ -17,7 +14,8 @@ export interface PlanUsageMetric {
 }
 
 export interface PlanUsage {
-  planId: PlanId;
+  /** Display name of the company's current plan. */
+  planName: string;
   employees: PlanUsageMetric;
   listings: PlanUsageMetric;
 }
@@ -421,12 +419,6 @@ export function DashboardSettingsClient({
   );
 }
 
-const PLAN_LABELS: Record<PlanId, string> = {
-  starter: "settings.planStarter",
-  pro: "settings.planPro",
-  enterprise: "settings.planEnterprise",
-};
-
 function isUnlimited(limit: number): boolean {
   return limit < 0;
 }
@@ -437,7 +429,7 @@ function PlanUsageCard({ planUsage }: { planUsage: PlanUsage }) {
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-base font-semibold">{t("settings.planUsage")}</h3>
         <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          {t(PLAN_LABELS[planUsage.planId])}
+          {planUsage.planName}
         </span>
       </div>
 

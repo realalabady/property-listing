@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth/guards";
 import { adminDb } from "@/lib/firebase/admin";
+import { getPlans } from "@/lib/plans/catalog";
+import { resolvePlan } from "@/constants/plans";
+import { planName } from "@/features/plans/plan-labels";
 import { ROUTES } from "@/constants/routes";
 import { t } from "@/lib/i18n";
 
@@ -58,11 +61,10 @@ function formatDate(value: string | null): string {
 }
 
 async function fetchCompanies(): Promise<CompanyListRow[]> {
-  const snap = await adminDb()
-    .collection("companies")
-    .orderBy("createdAt", "desc")
-    .limit(100)
-    .get();
+  const [snap, plans] = await Promise.all([
+    adminDb().collection("companies").orderBy("createdAt", "desc").limit(100).get(),
+    getPlans(),
+  ]);
 
   // Soft-deleted companies stay restorable from their detail page, but are
   // hidden from the list.
@@ -96,10 +98,7 @@ async function fetchCompanies(): Promise<CompanyListRow[]> {
             : t("admin.untitledCompany"),
         slug: typeof data.slug === "string" ? data.slug : "",
         status: typeof data.status === "string" ? data.status : "trial",
-        subscriptionPlan:
-          typeof data.subscriptionPlan === "string"
-            ? data.subscriptionPlan
-            : "starter",
+        subscriptionPlan: planName(resolvePlan(plans, data.subscriptionPlan)),
         activeEmployees:
           asNumber(kpi.totalEmployees) ||
           (typeof data.activeEmployeesCount === "number"

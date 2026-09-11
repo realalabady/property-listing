@@ -5,7 +5,8 @@ import { getSessionUser } from "@/lib/auth/session";
 import { adminDb } from "@/lib/firebase/admin";
 import { normalizeCommercialRegistration } from "@/lib/api/partner-requests";
 import type { CompanyStatus } from "@/types/company";
-import { limitsForPlan, parseSubscriptionPlan } from "@/constants/plans";
+import { resolvePlan } from "@/constants/plans";
+import { getPlan, getPlans } from "@/lib/plans/catalog";
 import { DEFAULT_COMPANY_THEME } from "@/constants/brand";
 
 export const runtime = "nodejs";
@@ -122,11 +123,10 @@ export async function GET(req: NextRequest) {
 
   const includeDeleted = req.nextUrl.searchParams.get("includeDeleted") === "1";
 
-  const companiesSnap = await adminDb()
-    .collection("companies")
-    .orderBy("createdAt", "desc")
-    .limit(100)
-    .get();
+  const [companiesSnap, plans] = await Promise.all([
+    adminDb().collection("companies").orderBy("createdAt", "desc").limit(100).get(),
+    getPlans(),
+  ]);
 
   const companiesRaw = await Promise.all(
     companiesSnap.docs.map(async (doc) => {
@@ -156,7 +156,7 @@ export async function GET(req: NextRequest) {
         id: doc.id,
         name: typeof data.name === "string" ? data.name : "Untitled company",
         slug: typeof data.slug === "string" ? data.slug : "",
-        subscriptionPlan: parseSubscriptionPlan(data.subscriptionPlan),
+        subscriptionPlan: resolvePlan(plans, data.subscriptionPlan).id,
         status,
         ownerId: typeof data.ownerId === "string" ? data.ownerId : null,
         isDeleted,
@@ -213,7 +213,8 @@ export async function POST(req: NextRequest) {
 
   const slugInput = normalizeText(body.slug);
   const slug = await ensureUniqueSlug(slugify(slugInput || companyName));
-  const subscriptionPlan = parseSubscriptionPlan(body.subscriptionPlan);
+  const plan = await getPlan(body.subscriptionPlan);
+  const subscriptionPlan = plan.id;
   const status = parseCompanyStatus(body.status);
   const description = normalizeOptionalText(body.description) ?? "";
   const contactEmail = normalizeOptionalText(body.contactEmail);
@@ -251,7 +252,7 @@ export async function POST(req: NextRequest) {
       darkMode: false,
     },
     subscriptionPlan,
-    limits: limitsForPlan(subscriptionPlan),
+    limits: { maxListings: plan.maxListings, maxEmployees: plan.maxEmployees },
     ownerId: "",
     status,
     ...(commercialRegistrationNumber ? { commercialRegistrationNumber } : {}),

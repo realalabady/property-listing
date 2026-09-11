@@ -131,7 +131,7 @@ const steps: Array<{ title: Localized; body: Localized }> = [
   },
 ];
 
-export function RaeiHomepage() {
+export function RaeiHomepage({ pricingVisible }: { pricingVisible: boolean }) {
   const router = useRouter();
   const { user } = useAuth();
   const [locale, setLocale] = useState<Locale>("ar");
@@ -200,6 +200,7 @@ export function RaeiHomepage() {
           setLocale((prev) => (prev === "ar" ? "en" : "ar"))
         }
         onRequestProperty={() => setRequestOpen(true)}
+        showPricing={pricingVisible}
       />
 
       <PropertyRequestModal
@@ -501,9 +502,15 @@ export function RaeiHomepage() {
             </p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <Button asChild size="lg" variant="secondary">
-                <Link href={ROUTES.PRICING}>
-                  {isArabic ? "عرض الباقات" : "View plans"}
-                </Link>
+                {pricingVisible ? (
+                  <Link href={ROUTES.PRICING}>
+                    {isArabic ? "عرض الباقات" : "View plans"}
+                  </Link>
+                ) : (
+                  <Link href={ROUTES.PARTNER}>
+                    {isArabic ? "انضم كشريك" : "Become a partner"}
+                  </Link>
+                )}
               </Button>
               <Button
                 asChild
@@ -520,7 +527,7 @@ export function RaeiHomepage() {
         </section>
       </main>
 
-      <RaeiSiteFooter locale={locale} />
+      <RaeiSiteFooter locale={locale} showPricing={pricingVisible} />
     </div>
   );
 }

@@ -1,9 +1,15 @@
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 import { ROLES } from "@/constants/roles";
-import { isSubscriptionPlanId } from "@/constants/plans";
+import { normalizePlanId } from "@/constants/plans";
 import { getSessionUser } from "@/lib/auth/session";
 import { adminDb } from "@/lib/firebase/admin";
+import {
+  PLANS_COLLECTION,
+  ensurePlansSeeded,
+  planToDoc,
+} from "@/lib/plans/catalog";
+import { parsePlanInput } from "@/lib/plans/validate";
 
 export const runtime = "nodejs";
 
@@ -11,104 +17,89 @@ interface RouteContext {
   params: Promise<{ planId: string }>;
 }
 
-const MAX_PRICE_SAR = 1_000_000;
-const MAX_LABEL_LENGTH = 80;
-
-function parsePrice(value: unknown): number | null {
-  const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n) || n <= 0 || n > MAX_PRICE_SAR) return null;
-  return Math.round(n);
-}
-
-function cleanLabel(value: unknown): string {
-  return typeof value === "string"
-    ? value.replace(/\s+/g, " ").trim().slice(0, MAX_LABEL_LENGTH)
-    : "";
-}
-
-/** `YYYY-MM-DD` → end of that day in Riyadh (UTC+3), as epoch ms. */
-function parseEndDate(value: unknown): number | null | "invalid" {
-  if (value === undefined || value === null || value === "") return null;
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return "invalid";
-  }
-  const ms = new Date(`${value}T23:59:59+03:00`).getTime();
-  return Number.isFinite(ms) ? ms : "invalid";
-}
-
-const bad = (error: string) => NextResponse.json({ error }, { status: 400 });
-
-/** PUT — replace one plan's price and offer (super admin only). */
-export async function PUT(req: NextRequest, context: RouteContext) {
-  const { planId } = await context.params;
+async function requireSuperAdmin() {
   const user = await getSessionUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    return {
+      user: null,
+      response: NextResponse.json({ error: "Unauthenticated." }, { status: 401 }),
+    };
   }
   if (user.role !== ROLES.SUPER_ADMIN) {
-    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    return {
+      user: null,
+      response: NextResponse.json({ error: "Forbidden." }, { status: 403 }),
+    };
   }
-  if (!isSubscriptionPlanId(planId)) {
+  return { user, response: null };
+}
+
+/** PUT — replace one plan's full definition (super admin only). */
+export async function PUT(req: NextRequest, context: RouteContext) {
+  const { user, response } = await requireSuperAdmin();
+  if (!user) return response;
+
+  const planId = normalizePlanId((await context.params).planId);
+  const db = adminDb();
+  await ensurePlansSeeded(db);
+
+  const ref = db.doc(`${PLANS_COLLECTION}/${planId}`);
+  if (!(await ref.get()).exists) {
     return NextResponse.json({ error: "Unknown plan." }, { status: 404 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as {
-    priceSar?: unknown;
-    offer?: {
-      enabled?: unknown;
-      type?: unknown;
-      priceSar?: unknown;
-      labelAr?: unknown;
-      labelEn?: unknown;
-      endsAt?: unknown;
-    } | null;
-  };
-
-  const priceSar = parsePrice(body.priceSar);
-  if (priceSar === null) return bad("سعر الباقة غير صالح.");
-
-  let offer: Record<string, unknown> | null = null;
-  if (body.offer) {
-    const enabled = body.offer.enabled === true;
-    const type = body.offer.type === "text" ? "text" : "discount";
-    const labelAr = cleanLabel(body.offer.labelAr);
-    const labelEn = cleanLabel(body.offer.labelEn);
-    const offerPrice =
-      type === "discount" ? parsePrice(body.offer.priceSar) : null;
-    const endsAtMs = parseEndDate(body.offer.endsAt);
-
-    if (endsAtMs === "invalid") return bad("تاريخ انتهاء العرض غير صالح.");
-    if (enabled) {
-      if (!labelAr) return bad("اكتب نص العرض بالعربية.");
-      if (type === "discount") {
-        if (offerPrice === null) return bad("سعر العرض غير صالح.");
-        if (offerPrice >= priceSar) {
-          return bad("سعر العرض يجب أن يكون أقل من سعر الباقة.");
-        }
-      }
-      if (endsAtMs !== null && endsAtMs <= Date.now()) {
-        return bad("تاريخ انتهاء العرض يجب أن يكون في المستقبل.");
-      }
-    }
-
-    offer = {
-      enabled,
-      type,
-      priceSar: offerPrice,
-      labelAr,
-      labelEn,
-      endsAt: endsAtMs === null ? null : Timestamp.fromMillis(endsAtMs),
-    };
+  const parsed = parsePlanInput(planId, await req.json().catch(() => ({})));
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  await adminDb()
-    .doc(`plans/${planId}`)
-    .set({
-      priceSar,
-      offer,
-      updatedAt: FieldValue.serverTimestamp(),
-      updatedBy: user.uid,
-    });
+  await ref.set({
+    ...planToDoc(parsed.value),
+    updatedAt: FieldValue.serverTimestamp(),
+    updatedBy: user.uid,
+  });
+  return NextResponse.json({ ok: true });
+}
 
+/**
+ * DELETE — remove a plan. Refused while any company is on it (move them
+ * first) and for the last remaining plan.
+ */
+export async function DELETE(_req: NextRequest, context: RouteContext) {
+  const { user, response } = await requireSuperAdmin();
+  if (!user) return response;
+
+  const planId = normalizePlanId((await context.params).planId);
+  const db = adminDb();
+  await ensurePlansSeeded(db);
+
+  const [planSnap, allPlans, companiesSnap] = await Promise.all([
+    db.doc(`${PLANS_COLLECTION}/${planId}`).get(),
+    db.collection(PLANS_COLLECTION).count().get(),
+    db.collection("companies").where("subscriptionPlan", "==", planId).get(),
+  ]);
+  if (!planSnap.exists) {
+    return NextResponse.json({ error: "Unknown plan." }, { status: 404 });
+  }
+  if (allPlans.data().count <= 1) {
+    return NextResponse.json(
+      { error: "لا يمكن حذف آخر باقة." },
+      { status: 409 },
+    );
+  }
+  const inUse = companiesSnap.docs.filter((doc) => {
+    const data = doc.data();
+    return data.isDeleted !== true && !data.deletedAt;
+  }).length;
+  if (inUse > 0) {
+    return NextResponse.json(
+      {
+        error: `لا يمكن حذف الباقة: ${inUse} شركة مشتركة فيها. انقلها إلى باقة أخرى أولًا.`,
+      },
+      { status: 409 },
+    );
+  }
+
+  await planSnap.ref.delete();
   return NextResponse.json({ ok: true });
 }

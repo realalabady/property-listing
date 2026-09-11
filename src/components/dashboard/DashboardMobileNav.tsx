@@ -7,13 +7,12 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { t } from "@/lib/i18n";
-import { DashboardSidebar } from "./DashboardSidebar";
-import type { SubscriptionPlanId } from "@/types/company";
+import { DashboardSidebar, type LockedFeatureHints } from "./DashboardSidebar";
 
 interface DashboardMobileNavProps {
   companyName: string;
   companyLogo: string;
-  plan: SubscriptionPlanId;
+  lockedHints: LockedFeatureHints;
 }
 
 /**
@@ -25,7 +24,7 @@ interface DashboardMobileNavProps {
 export function DashboardMobileNav({
   companyName,
   companyLogo,
-  plan,
+  lockedHints,
 }: DashboardMobileNavProps) {
   const [open, setOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
@@ -117,7 +116,7 @@ export function DashboardMobileNav({
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <DashboardSidebar plan={plan} />
+              <DashboardSidebar lockedHints={lockedHints} />
             </div>
           </div>
         </div>,

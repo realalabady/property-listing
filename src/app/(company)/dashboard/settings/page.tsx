@@ -7,8 +7,8 @@ import {
   type LeadAssignStrategy,
 } from "@/features/settings/DashboardSettingsClient";
 import { requireCompanyMember } from "@/lib/auth/guards";
-import { limitsForPlan, parseSubscriptionPlan } from "@/constants/plans";
-import type { SubscriptionPlanId } from "@/types/company";
+import { getPlan } from "@/lib/plans/catalog";
+import { planName } from "@/features/plans/plan-labels";
 import { adminDb } from "@/lib/firebase/admin";
 import { DEFAULT_COMPANY_THEME } from "@/constants/brand";
 import {
@@ -132,14 +132,10 @@ export default async function DashboardSettingsPage() {
         ? (company["theme.accentColor"] as string)
         : DEFAULT_COMPANY_THEME.accentColor;
 
-  const planId: SubscriptionPlanId = parseSubscriptionPlan(
-    company.subscriptionPlan,
-  );
-
-  const limits = limitsForPlan(planId);
+  const limits = await getPlan(company.subscriptionPlan);
 
   const planUsage = {
-    planId,
+    planName: planName(limits),
     employees: {
       used:
         typeof company.activeEmployeesCount === "number"

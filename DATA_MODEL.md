@@ -115,7 +115,7 @@ Legend — Type: `str`, `num`, `bool`, `ts` (timestamp), `map` (nested object), 
 | description / descriptionAr | str? | |
 | logo | str? | logo URL |
 | theme | map | `{primaryColor, secondaryColor, accentColor?, fontFamily?, logoUrl?, heroImageUrl?, darkMode?}` |
-| subscriptionPlan | str enum | → plans (`starter`/`pro`/`enterprise`; catalog in `src/constants/plans.ts`, legacy `free` reads as `starter`) |
+| subscriptionPlan | str | → plans/{id} (admin-managed; unknown/legacy ids such as `free` resolve to the lowest plan) |
 | ownerId | str | → employees.id (company_owner) |
 | status | str enum | `active` / `suspended` / `trial` / `cancelled` |
 | contact | map | phone, whatsapp, email, address, city, country, mapUrl, website, socials{…} — **PII (business)** |
@@ -315,7 +315,8 @@ Legend — Type: `str`, `num`, `bool`, `ts` (timestamp), `map` (nested object), 
 | Collection | Key fields |
 |------------|-----------|
 | platform_admins | `{ email, createdAt }` — registry of super admins (uid = Auth uid) |
-| plans | subscription catalog (public read); referenced by `companies.subscriptionPlan`. Doc id = plan id; `{priceSar, offer: {enabled, type: discount\|text, priceSar?, labelAr, labelEn, endsAt?}}`, edited at `/admin/plans`. Missing doc → price from `src/constants/plans.ts` |
+| plans | subscription catalog (public read); referenced by `companies.subscriptionPlan`. Doc id = plan id; full definition `{order, name{ar,en}, tagline, priceSar, maxListings, maxEmployees (-1 = unlimited), features[], highlightsIntro, highlights[], icon, badge, offer}` — created/edited/deleted at `/admin/plans` and enforced at runtime. Empty collection → `DEFAULT_PLANS` in `src/constants/plans.ts` (seeded on first admin write). Unknown company plan ids fall back to the lowest plan |
+| platform_settings/pricing | `{visible}` — whether `/pricing` is public (hidden → 404 + links removed; super admins can preview) |
 | audit_logs | platform-level audit trail (super-admin only) |
 
 ---

@@ -325,8 +325,12 @@ interface DashboardListingDetailClientProps {
   canEdit: boolean;
   canDelete: boolean;
   canPublish: boolean;
-  /** Company plan includes auctions (Pro and up). */
-  auctionsEnabled: boolean;
+  /** Set when the company's plan lacks auctions; null = auctions available. */
+  auctionsLock: {
+    /** Lowest plan that includes auctions, or null if none does. */
+    requiredPlan: string | null;
+    showPricingLink: boolean;
+  } | null;
 }
 
 export function DashboardListingDetailClient({
@@ -335,7 +339,7 @@ export function DashboardListingDetailClient({
   canEdit,
   canDelete,
   canPublish,
-  auctionsEnabled,
+  auctionsLock,
 }: DashboardListingDetailClientProps) {
   const router = useRouter();
   const [listing, setListing] = useState<ListingDetail | null>(null);
@@ -1068,7 +1072,7 @@ export function DashboardListingDetailClient({
           the listing snapshot above; the panel adds a bids listener + controls. */}
       {listing.type === LISTING_TYPES.SALE && (
         <Section title="المزايدة">
-          {auctionsEnabled ? (
+          {!auctionsLock ? (
             <AuctionPanel
               companyId={companyId}
               listingId={listingId}
@@ -1081,14 +1085,18 @@ export function DashboardListingDetailClient({
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-4 py-3 text-sm">
               <span className="flex items-center gap-2 text-muted-foreground">
                 <Lock className="h-4 w-4 shrink-0" aria-hidden />
-                إدارة المزادات متاحة من باقة احترافي فما فوق.
+                {auctionsLock.requiredPlan
+                  ? `إدارة المزادات متاحة من باقة ${auctionsLock.requiredPlan}.`
+                  : "إدارة المزادات غير متاحة في باقتك الحالية."}
               </span>
-              <Link
-                href={ROUTES.PRICING}
-                className="font-semibold text-primary hover:underline"
-              >
-                عرض الباقات
-              </Link>
+              {auctionsLock.showPricingLink && (
+                <Link
+                  href={ROUTES.PRICING}
+                  className="font-semibold text-primary hover:underline"
+                >
+                  عرض الباقات
+                </Link>
+              )}
             </div>
           )}
         </Section>

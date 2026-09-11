@@ -1,17 +1,5 @@
-import {
-  PLAN_IDS,
-  PLAN_PRICES_SAR,
-  isUnlimited,
-  limitsForPlan,
-} from "@/constants/plans";
-import type { SubscriptionPlanId } from "@/types/company";
-import { t } from "@/lib/i18n";
-
-export const PLAN_LABEL_KEYS: Record<SubscriptionPlanId, string> = {
-  starter: "adminForm.planStarter",
-  pro: "adminForm.planPro",
-  enterprise: "adminForm.planEnterprise",
-};
+import { isUnlimited } from "@/constants/plans";
+import type { PlanDefinition } from "@/types/plan";
 
 const formatSar = (value: number) => value.toLocaleString("en-US");
 
@@ -19,27 +7,23 @@ function limitLabel(limit: number, noun: string): string {
   return isUnlimited(limit) ? `${noun} غير محدود` : `${limit} ${noun}`;
 }
 
-export type PlanPrices = Record<SubscriptionPlanId, number>;
+/** Arabic display name (falls back to the id for unnamed plans). */
+export function planName(plan: Pick<PlanDefinition, "id" | "name">): string {
+  return plan.name.ar || plan.name.en || plan.id;
+}
 
 /** e.g. "مبتدئ — 2,499 ر.س/سنة · 20 عقار · 2 موظف" */
-export function planOptionLabel(
-  plan: SubscriptionPlanId,
-  priceSar: number = PLAN_PRICES_SAR[plan],
-): string {
-  const { maxListings, maxEmployees } = limitsForPlan(plan);
+export function planOptionLabel(plan: PlanDefinition): string {
   return [
-    `${t(PLAN_LABEL_KEYS[plan])} — ${formatSar(priceSar)} ر.س/سنة`,
-    limitLabel(maxListings, "عقار"),
-    limitLabel(maxEmployees, "موظف"),
+    `${planName(plan)} — ${formatSar(plan.priceSar)} ر.س/سنة`,
+    limitLabel(plan.maxListings, "عقار"),
+    limitLabel(plan.maxEmployees, "موظف"),
   ].join(" · ");
 }
 
-/** Plan picker options, labelled with the live (admin-edited) prices. */
-export function planOptions(prices: PlanPrices) {
-  return PLAN_IDS.map((value) => ({
-    value,
-    label: planOptionLabel(value, prices[value]),
-  }));
+/** Plan picker options, labelled with the live plan data. */
+export function planOptions(plans: readonly PlanDefinition[]) {
+  return plans.map((plan) => ({ value: plan.id, label: planOptionLabel(plan) }));
 }
 
 export const PLAN_PRICING_NOTE =

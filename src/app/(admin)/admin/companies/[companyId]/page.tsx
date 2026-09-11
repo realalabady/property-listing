@@ -1,17 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSuperAdmin } from "@/lib/auth/guards";
-import { getPlanPrices } from "@/lib/plans/catalog";
+import { getPlans } from "@/lib/plans/catalog";
+import { planName } from "@/features/plans/plan-labels";
 import { adminDb } from "@/lib/firebase/admin";
 import { ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/roles";
 import { AdminCompanyDetailClient } from "@/features/admin/AdminCompanyDetailClient";
 import type { CompanyStatus } from "@/types/company";
-import {
-  limitsForPlan,
-  isUnlimited,
-  parseSubscriptionPlan,
-} from "@/constants/plans";
+import { isUnlimited, resolvePlan } from "@/constants/plans";
 import { ROLE_LABELS, type Role, isValidRole } from "@/constants/roles";
 import { LISTING_STATUS_LABELS } from "@/constants/listing-categories";
 import { t } from "@/lib/i18n";
@@ -25,11 +22,6 @@ const STATUS_KEYS: Record<string, string> = {
   trial: "adminForm.statusTrial",
   suspended: "adminForm.statusSuspended",
   cancelled: "adminForm.statusCancelled",
-};
-const PLAN_KEYS: Record<string, string> = {
-  starter: "adminForm.planStarter",
-  pro: "adminForm.planPro",
-  enterprise: "adminForm.planEnterprise",
 };
 
 interface RouteContext {
@@ -91,7 +83,10 @@ export default async function AdminCompanyDetailPage(context: RouteContext) {
   const { companyId } = await context.params;
 
   const companyRef = adminDb().doc(`companies/${companyId}`);
-  const companySnap = await companyRef.get();
+  const [companySnap, plans] = await Promise.all([
+    companyRef.get(),
+    getPlans(),
+  ]);
   if (!companySnap.exists) {
     notFound();
   }
@@ -167,7 +162,7 @@ export default async function AdminCompanyDetailPage(context: RouteContext) {
         : t("adminDetail.untitled"),
     slug: typeof companyData.slug === "string" ? companyData.slug : "",
     status: parseStatus(companyData.status),
-    subscriptionPlan: parseSubscriptionPlan(companyData.subscriptionPlan),
+    subscriptionPlan: resolvePlan(plans, companyData.subscriptionPlan).id,
     isDeleted: companyData.isDeleted === true || Boolean(companyData.deletedAt),
     owner,
     metrics: {
@@ -186,7 +181,7 @@ export default async function AdminCompanyDetailPage(context: RouteContext) {
     updatedAt: serializeDate(companyData.updatedAt),
   };
 
-  const planLimits = limitsForPlan(summary.subscriptionPlan);
+  const planLimits = resolvePlan(plans, summary.subscriptionPlan);
 
   const recentEmployees = employeesSnap.docs.map((doc) => ({
     id: doc.id,
@@ -243,7 +238,7 @@ export default async function AdminCompanyDetailPage(context: RouteContext) {
         />
         <Card
           label={t("adminDetail.plan")}
-          value={t(PLAN_KEYS[summary.subscriptionPlan] ?? summary.subscriptionPlan)}
+          value={planName(planLimits)}
         />
         <Card
           label={t("adminDetail.activeEmployees")}
@@ -313,7 +308,7 @@ export default async function AdminCompanyDetailPage(context: RouteContext) {
           owner: summary.owner,
           trialEndsAt: summary.trialEndsAt,
         }}
-        planPrices={await getPlanPrices()}
+        plans={plans}
       />
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">

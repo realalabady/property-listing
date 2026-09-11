@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getSessionUser } from "@/lib/auth/session";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { getPlan } from "@/lib/plans/catalog";
 import { ROLES } from "@/constants/roles";
 import { ROLE_PERMISSIONS } from "@/constants/permissions";
 import { DEFAULT_COMPANY_THEME } from "@/constants/brand";
@@ -158,7 +159,8 @@ export async function POST(req: NextRequest) {
           ...DEFAULT_COMPANY_THEME,
           darkMode: false,
         },
-        subscriptionPlan: "starter",
+        // Self-serve signups start on the lowest plan.
+        subscriptionPlan: (await getPlan(undefined)).id,
         ownerId: sessionUser.uid,
         status: "trial",
         contact: {

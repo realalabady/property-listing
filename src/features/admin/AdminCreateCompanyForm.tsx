@@ -8,8 +8,8 @@ import { t } from "@/lib/i18n";
 import {
   PLAN_PRICING_NOTE,
   planOptions,
-  type PlanPrices,
 } from "@/features/plans/plan-labels";
+import type { PlanDefinition } from "@/types/plan";
 
 const STATUSES: CompanyStatus[] = ["trial", "active", "suspended", "cancelled"];
 
@@ -33,8 +33,8 @@ interface CreateCompanyResponse {
 }
 
 interface AdminCreateCompanyFormProps {
-  /** Live yearly prices for the plan picker labels. */
-  planPrices: PlanPrices;
+  /** Live plans for the picker, lowest first. */
+  plans: PlanDefinition[];
   initialName?: string;
   initialContactEmail?: string;
   initialContactPhone?: string;
@@ -45,7 +45,7 @@ interface AdminCreateCompanyFormProps {
 }
 
 export function AdminCreateCompanyForm({
-  planPrices,
+  plans,
   initialName = "",
   initialContactEmail = "",
   initialContactPhone = "",
@@ -56,7 +56,7 @@ export function AdminCreateCompanyForm({
   const router = useRouter();
   const [name, setName] = useState(initialName);
   const [slug, setSlug] = useState("");
-  const [plan, setPlan] = useState<SubscriptionPlanId>("starter");
+  const [plan, setPlan] = useState<SubscriptionPlanId>(plans[0]?.id ?? "");
   const [status, setStatus] = useState<CompanyStatus>("trial");
   const [trialDays, setTrialDays] = useState("14");
   const [description, setDescription] = useState(initialDescription);
@@ -147,7 +147,7 @@ export function AdminCreateCompanyForm({
           label={t("adminForm.plan")}
           value={plan}
           onChange={(value) => setPlan(value as SubscriptionPlanId)}
-          options={planOptions(planPrices)}
+          options={planOptions(plans)}
           hint={PLAN_PRICING_NOTE}
         />
         <SelectField

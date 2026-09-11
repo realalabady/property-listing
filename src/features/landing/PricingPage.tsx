@@ -7,11 +7,15 @@ import {
   Check,
   ChevronDown,
   CreditCard,
+  Crown,
+  EyeOff,
   Landmark,
   ListChecks,
   Minus,
+  Rocket,
   ShieldCheck,
   Sprout,
+  Star,
   Tag,
   Users,
   type LucideIcon,
@@ -19,16 +23,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/constants/routes";
 import {
-  PLAN_IDS,
   VAT_RATE,
   isUnlimited,
-  limitsForPlan,
   planHasFeature,
-  type PlanFeature,
 } from "@/constants/plans";
 import { cn } from "@/lib/utils/cn";
-import type { SubscriptionPlanId } from "@/types/company";
-import type { PlanDisplayPrice } from "@/types/plan";
+import type { PlanIconKey, PublicPlan } from "@/types/plan";
 import {
   RaeiSiteFooter,
   RaeiSiteHeader,
@@ -39,17 +39,24 @@ import {
 
 const formatNumber = (value: number) => value.toLocaleString("en-US");
 
-type PlanPrices = Record<SubscriptionPlanId, PlanDisplayPrice>;
+const PLAN_ICONS: Record<PlanIconKey, LucideIcon> = {
+  sprout: Sprout,
+  building: Building2,
+  landmark: Landmark,
+  rocket: Rocket,
+  star: Star,
+  crown: Crown,
+};
 
 /** What the customer pays per year: the offer price when a discount is on. */
-function effectivePrice(price: PlanDisplayPrice): number {
-  return price.offer?.type === "discount" && price.offer.priceSar !== null
-    ? price.offer.priceSar
-    : price.priceSar;
+function effectivePrice(plan: PublicPlan): number {
+  return plan.offer?.type === "discount" && plan.offer.priceSar !== null
+    ? plan.offer.priceSar
+    : plan.priceSar;
 }
 
-function discountPercent(price: PlanDisplayPrice): number {
-  return Math.round((1 - effectivePrice(price) / price.priceSar) * 100);
+function discountPercent(plan: PublicPlan): number {
+  return Math.round((1 - effectivePrice(plan) / plan.priceSar) * 100);
 }
 
 function formatOfferEnd(ms: number, locale: Locale): string {
@@ -61,120 +68,35 @@ function formatOfferEnd(ms: number, locale: Locale): string {
 const currency: Localized = { ar: "ر.س", en: "SAR" };
 const vatPercent = Math.round(VAT_RATE * 100);
 
-interface PlanCopy {
-  icon: LucideIcon;
-  name: Localized;
-  tagline: Localized;
-  /** "Everything in X, plus:" — null for the entry plan. */
-  includesPrevious: Localized | null;
-  highlights: Localized[];
+/** Admin text with an English fallback to Arabic when left empty. */
+function text(value: Localized, locale: Locale): string {
+  return locale === "en" ? value.en || value.ar : value.ar || value.en;
 }
 
-function listingsLabel(plan: SubscriptionPlanId): Localized {
-  const { maxListings } = limitsForPlan(plan);
-  return isUnlimited(maxListings)
+function listingsLabel(plan: PublicPlan): Localized {
+  return isUnlimited(plan.maxListings)
     ? { ar: "عقارات بلا حدود", en: "Unlimited listings" }
     : {
-        ar: `حتى ${formatNumber(maxListings)} عقار`,
-        en: `Up to ${formatNumber(maxListings)} listings`,
+        ar: `حتى ${formatNumber(plan.maxListings)} عقار`,
+        en: `Up to ${formatNumber(plan.maxListings)} listings`,
       };
 }
 
-function employeesLabel(plan: SubscriptionPlanId): Localized {
-  const { maxEmployees } = limitsForPlan(plan);
-  return isUnlimited(maxEmployees)
+function employeesLabel(plan: PublicPlan): Localized {
+  return isUnlimited(plan.maxEmployees)
     ? { ar: "موظفون بلا حدود", en: "Unlimited employees" }
     : {
-        ar: `حتى ${formatNumber(maxEmployees)} موظف`,
-        en: `Up to ${formatNumber(maxEmployees)} employees`,
+        ar: `حتى ${formatNumber(plan.maxEmployees)} موظف`,
+        en: `Up to ${formatNumber(plan.maxEmployees)} employees`,
       };
 }
-
-const FEATURE_COPY: Record<PlanFeature, Localized> = {
-  auctions: {
-    ar: "إدارة المزادات على عقارات البيع",
-    en: "Auctions on for-sale listings",
-  },
-  kpi: {
-    ar: "مؤشرات الأداء للشركة والموظفين",
-    en: "Company and employee KPIs",
-  },
-  pipeline: {
-    ar: "مسار المبيعات بلوحة مراحل قابلة للسحب والإفلات",
-    en: "Sales pipeline with a drag-and-drop stage board",
-  },
-  matched_leads: {
-    ar: "العملاء المطابقون: عملاء يبحثون عن عقارات تطابق عقاراتك",
-    en: "Matched leads: buyers searching for listings like yours",
-  },
-};
-
-const PLAN_COPY: Record<SubscriptionPlanId, PlanCopy> = {
-  starter: {
-    icon: Sprout,
-    name: { ar: "مبتدئ", en: "Starter" },
-    tagline: {
-      ar: "للمكاتب العقارية في بدايتها",
-      en: "For agencies getting started",
-    },
-    includesPrevious: null,
-    highlights: [
-      listingsLabel("starter"),
-      employeesLabel("starter"),
-      { ar: "صفحة شركة عامة بهويتك", en: "Public company page with your brand" },
-      { ar: "إدارة العملاء المحتملين", en: "Lead management" },
-      { ar: "استقبال طلبات العقارات", en: "Incoming property requests" },
-      { ar: "إدارة المهام", en: "Task management" },
-      { ar: "مجموعات الصلاحيات للفريق", en: "Team permission groups" },
-    ],
-  },
-  pro: {
-    icon: Building2,
-    name: { ar: "احترافي", en: "Pro" },
-    tagline: {
-      ar: "للمكاتب المتنامية وفرق المبيعات",
-      en: "For growing agencies and sales teams",
-    },
-    includesPrevious: {
-      ar: "كل مزايا مبتدئ، بالإضافة إلى:",
-      en: "Everything in Starter, plus:",
-    },
-    highlights: [
-      listingsLabel("pro"),
-      employeesLabel("pro"),
-      FEATURE_COPY.auctions,
-      FEATURE_COPY.kpi,
-    ],
-  },
-  enterprise: {
-    icon: Landmark,
-    name: { ar: "مؤسسات", en: "Enterprise" },
-    tagline: {
-      ar: "كل المزايا بلا حدود",
-      en: "Every feature, no limits",
-    },
-    includesPrevious: {
-      ar: "كل مزايا احترافي، بالإضافة إلى:",
-      en: "Everything in Pro, plus:",
-    },
-    highlights: [
-      listingsLabel("enterprise"),
-      employeesLabel("enterprise"),
-      FEATURE_COPY.pipeline,
-      FEATURE_COPY.matched_leads,
-    ],
-  },
-};
 
 type Cell = boolean | Localized;
 
 interface CompareGroup {
   title: Localized;
   icon: LucideIcon;
-  rows: Array<{
-    label: Localized;
-    value: (plan: SubscriptionPlanId, prices: PlanPrices) => Cell;
-  }>;
+  rows: Array<{ label: Localized; value: (plan: PublicPlan) => Cell }>;
 }
 
 const always = () => true;
@@ -257,8 +179,8 @@ const COMPARE_GROUPS: CompareGroup[] = [
     rows: [
       {
         label: { ar: "السعر السنوي", en: "Yearly price" },
-        value: (plan, prices) => {
-          const amount = formatNumber(effectivePrice(prices[plan]));
+        value: (plan) => {
+          const amount = formatNumber(effectivePrice(plan));
           return { ar: `${amount} ر.س`, en: `SAR ${amount}` };
         },
       },
@@ -321,7 +243,15 @@ const FAQS: Array<{ q: Localized; a: Localized }> = [
   },
 ];
 
-export function PricingPage({ prices }: { prices: PlanPrices }) {
+export function PricingPage({
+  plans,
+  preview,
+}: {
+  /** Live plans, lowest first, with only currently-active offers. */
+  plans: PublicPlan[];
+  /** Super-admin preview of a page that is hidden from visitors. */
+  preview: boolean;
+}) {
   const [locale, setLocale] = useState<Locale>("ar");
   const isArabic = locale === "ar";
 
@@ -334,11 +264,20 @@ export function PricingPage({ prices }: { prices: PlanPrices }) {
       }}
       className="raei-light min-h-screen bg-background text-foreground"
     >
+      {preview && (
+        <div className="flex items-center justify-center gap-2 bg-amber-500/15 px-4 py-2 text-center text-sm font-medium text-amber-700">
+          <EyeOff className="h-4 w-4 shrink-0" aria-hidden />
+          {isArabic
+            ? "هذه الصفحة مخفية عن الزوار — تظهر لك لأنك مدير المنصة."
+            : "This page is hidden from visitors — you see it because you're a platform admin."}
+        </div>
+      )}
       <RaeiSiteHeader
         locale={locale}
         onToggleLocale={() =>
           setLocale((prev) => (prev === "ar" ? "en" : "ar"))
         }
+        showPricing
       />
 
       <main>
@@ -356,25 +295,24 @@ export function PricingPage({ prices }: { prices: PlanPrices }) {
 
         {/* Plan cards */}
         <section className="container-tight">
-          <div className="grid gap-5 lg:grid-cols-3">
-            {PLAN_IDS.map((plan) => (
-              <PlanCard
-                key={plan}
-                plan={plan}
-                price={prices[plan]}
-                locale={locale}
-              />
+          <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))]">
+            {plans.map((plan) => (
+              <PlanCard key={plan.id} plan={plan} locale={locale} />
             ))}
           </div>
         </section>
 
         {/* Compare table */}
-        <section className="container-tight py-20">
-          <h2 className="mb-8 text-center text-2xl font-bold tracking-tight md:text-3xl">
-            {isArabic ? "قارن المزايا بين الباقات" : "Compare features across plans"}
-          </h2>
-          <CompareTable locale={locale} prices={prices} />
-        </section>
+        {plans.length > 0 && (
+          <section className="container-tight py-20">
+            <h2 className="mb-8 text-center text-2xl font-bold tracking-tight md:text-3xl">
+              {isArabic
+                ? "قارن المزايا بين الباقات"
+                : "Compare features across plans"}
+            </h2>
+            <CompareTable locale={locale} plans={plans} />
+          </section>
+        )}
 
         {/* FAQ */}
         <section className="container-tight pb-20">
@@ -410,31 +348,30 @@ export function PricingPage({ prices }: { prices: PlanPrices }) {
         </section>
       </main>
 
-      <RaeiSiteFooter locale={locale} />
+      <RaeiSiteFooter locale={locale} showPricing />
     </div>
   );
 }
 
-function PlanCard({
-  plan,
-  price,
-  locale,
-}: {
-  plan: SubscriptionPlanId;
-  price: PlanDisplayPrice;
-  locale: Locale;
-}) {
+function PlanCard({ plan, locale }: { plan: PublicPlan; locale: Locale }) {
   const isArabic = locale === "ar";
-  const copy = PLAN_COPY[plan];
-  const Icon = copy.icon;
-  const featured = plan === "enterprise";
-  const offer = price.offer;
+  const Icon = PLAN_ICONS[plan.icon] ?? Sprout;
+  const badge = text(plan.badge, locale);
+  const featured = badge.length > 0;
+  const offer = plan.offer;
   const discounted = offer?.type === "discount" && offer.priceSar !== null;
   const offerLabel = offer
     ? isArabic
       ? offer.labelAr
       : offer.labelEn || offer.labelAr
     : "";
+  const intro = text(plan.highlightsIntro, locale);
+  // Limits always lead the bullet list so they can't drift from enforcement.
+  const bullets: Localized[] = [
+    listingsLabel(plan),
+    employeesLabel(plan),
+    ...plan.highlights,
+  ];
 
   return (
     <article
@@ -447,23 +384,25 @@ function PlanCard({
     >
       {featured && (
         <span className="absolute -top-3 start-7 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-          {isArabic ? "كل المزايا" : "All features"}
+          {badge}
         </span>
       )}
 
       <Icon className="h-9 w-9 text-primary" strokeWidth={1.5} aria-hidden />
-      <h3 className="mt-5 text-2xl font-bold">{tr(copy.name, locale)}</h3>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {tr(copy.tagline, locale)}
-      </p>
+      <h3 className="mt-5 text-2xl font-bold">{text(plan.name, locale)}</h3>
+      {text(plan.tagline, locale) && (
+        <p className="mt-1 text-sm text-muted-foreground">
+          {text(plan.tagline, locale)}
+        </p>
+      )}
 
       {discounted ? (
         <div className="mt-6 flex items-center gap-2 text-sm">
           <span className="text-muted-foreground line-through">
-            {formatNumber(price.priceSar)} {tr(currency, locale)}
+            {formatNumber(plan.priceSar)} {tr(currency, locale)}
           </span>
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
-            -{discountPercent(price)}%
+            -{discountPercent(plan)}%
           </span>
         </div>
       ) : null}
@@ -471,7 +410,7 @@ function PlanCard({
         className={cn("flex items-baseline gap-1.5", discounted ? "mt-1" : "mt-6")}
       >
         <span className="text-4xl font-extrabold tracking-tight">
-          {formatNumber(effectivePrice(price))}
+          {formatNumber(effectivePrice(plan))}
         </span>
         <span className="text-base font-semibold">{tr(currency, locale)}</span>
         <span className="text-sm text-muted-foreground">
@@ -511,19 +450,15 @@ function PlanCard({
 
       <div className="my-6 border-t border-border" />
 
-      {copy.includesPrevious && (
-        <p className="mb-3 text-sm font-semibold">
-          {tr(copy.includesPrevious, locale)}
-        </p>
-      )}
+      {intro && <p className="mb-3 text-sm font-semibold">{intro}</p>}
       <ul className="space-y-2.5 text-sm">
-        {copy.highlights.map((item) => (
-          <li key={item.en} className="flex items-start gap-2.5">
+        {bullets.map((item, index) => (
+          <li key={`${index}-${item.ar}`} className="flex items-start gap-2.5">
             <Check
               className="mt-0.5 h-4 w-4 shrink-0 text-primary"
               aria-hidden
             />
-            <span>{tr(item, locale)}</span>
+            <span>{text(item, locale)}</span>
           </li>
         ))}
       </ul>
@@ -533,10 +468,10 @@ function PlanCard({
 
 function CompareTable({
   locale,
-  prices,
+  plans,
 }: {
   locale: Locale;
-  prices: PlanPrices;
+  plans: PublicPlan[];
 }) {
   const isArabic = locale === "ar";
   // Every card uses the same fixed column widths so the plan columns line up
@@ -544,16 +479,14 @@ function CompareTable({
   const columns = (
     <colgroup>
       <col className="w-2/5" />
-      {PLAN_IDS.map((plan) => (
-        <col key={plan} />
+      {plans.map((plan) => (
+        <col key={plan.id} />
       ))}
     </colgroup>
   );
-  const planHeaderCells = PLAN_IDS.map((plan) => (
-    <th key={plan} scope="col" className="p-5 text-center align-top">
-      <span className="block text-base font-bold">
-        {tr(PLAN_COPY[plan].name, locale)}
-      </span>
+  const planHeaderCells = plans.map((plan) => (
+    <th key={plan.id} scope="col" className="p-5 text-center align-top">
+      <span className="block text-base font-bold">{text(plan.name, locale)}</span>
       <Link
         href={ROUTES.PARTNER}
         className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
@@ -567,7 +500,10 @@ function CompareTable({
     // Padding gives the cards' shadows and hover lift room inside the
     // horizontal scroller on small screens.
     <div className="-mx-2 overflow-x-auto px-2 pb-3 pt-1">
-      <div className="min-w-[640px] space-y-4">
+      <div
+        className="space-y-4"
+        style={{ minWidth: `${260 + plans.length * 150}px` }}
+      >
         <div className="rounded-2xl border border-border bg-card shadow-sm">
           <table className="w-full table-fixed text-sm">
             {columns}
@@ -591,9 +527,9 @@ function CompareTable({
               <thead className="sr-only">
                 <tr>
                   <th scope="col">{isArabic ? "الميزة" : "Feature"}</th>
-                  {PLAN_IDS.map((plan) => (
-                    <th key={plan} scope="col">
-                      {tr(PLAN_COPY[plan].name, locale)}
+                  {plans.map((plan) => (
+                    <th key={plan.id} scope="col">
+                      {text(plan.name, locale)}
                     </th>
                   ))}
                 </tr>
@@ -610,12 +546,9 @@ function CompareTable({
                     >
                       {tr(row.label, locale)}
                     </th>
-                    {PLAN_IDS.map((plan) => (
-                      <td key={plan} className="px-5 py-3.5 text-center">
-                        <CompareCell
-                          value={row.value(plan, prices)}
-                          locale={locale}
-                        />
+                    {plans.map((plan) => (
+                      <td key={plan.id} className="px-5 py-3.5 text-center">
+                        <CompareCell value={row.value(plan)} locale={locale} />
                       </td>
                     ))}
                   </tr>

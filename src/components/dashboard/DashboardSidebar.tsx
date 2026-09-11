@@ -22,13 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
-import {
-  lowestPlanWithFeature,
-  planHasFeature,
-  type PlanFeature,
-} from "@/constants/plans";
-import { PLAN_LABEL_KEYS } from "@/features/plans/plan-labels";
-import type { SubscriptionPlanId } from "@/types/company";
+import type { PlanFeature } from "@/constants/plans";
 import { cn } from "@/lib/utils/cn";
 import { t } from "@/lib/i18n";
 import { useAuthStore } from "@/store/auth.store";
@@ -193,7 +187,14 @@ function itemClasses(active: boolean): string {
   );
 }
 
-export function DashboardSidebar({ plan }: { plan: SubscriptionPlanId }) {
+/** Locked feature → hint shown on its nav item (e.g. "يتطلب باقة احترافي"). */
+export type LockedFeatureHints = Partial<Record<PlanFeature, string>>;
+
+export function DashboardSidebar({
+  lockedHints,
+}: {
+  lockedHints: LockedFeatureHints;
+}) {
   const pathname = usePathname() || "";
   const permissions = useAuthStore((s) => s.user?.permissions);
   const role = useAuthStore((s) => s.user?.role);
@@ -230,17 +231,9 @@ export function DashboardSidebar({ plan }: { plan: SubscriptionPlanId }) {
             const active = matches(pathname, item);
 
             if (!item.children) {
-              const lockedHint =
-                item.requiredFeature &&
-                !planHasFeature(plan, item.requiredFeature)
-                  ? t("planLock.lockedHint", {
-                      plan: t(
-                        PLAN_LABEL_KEYS[
-                          lowestPlanWithFeature(item.requiredFeature)
-                        ],
-                      ),
-                    })
-                  : null;
+              const lockedHint = item.requiredFeature
+                ? (lockedHints[item.requiredFeature] ?? null)
+                : null;
               return (
                 <Link
                   key={item.href}

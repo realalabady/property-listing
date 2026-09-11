@@ -1,21 +1,16 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { getCompanyDoc } from "./guards";
-import {
-  parseSubscriptionPlan,
-  planHasFeature,
-  type PlanFeature,
-} from "@/constants/plans";
-import type { SubscriptionPlanId } from "@/types/company";
+import { planHasFeature, type PlanFeature } from "@/constants/plans";
+import { getPlan } from "@/lib/plans/catalog";
+import type { PlanDefinition } from "@/types/plan";
 
 /** The company's current plan, read through the per-request cached doc. */
 export async function getCompanyPlan(
   companyId: string,
-): Promise<SubscriptionPlanId> {
+): Promise<PlanDefinition> {
   const snap = await getCompanyDoc(companyId);
-  return parseSubscriptionPlan(
-    snap.exists ? snap.get("subscriptionPlan") : undefined,
-  );
+  return getPlan(snap.exists ? snap.get("subscriptionPlan") : undefined);
 }
 
 export async function companyHasFeature(

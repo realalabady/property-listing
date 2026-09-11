@@ -26,11 +26,8 @@ import { assertActiveMember } from "@/lib/api/guards";
 import { isFieldValueTaken } from "@/lib/api/uniqueness";
 import { isValidNationalId, normalizeSaudiPhone } from "@/lib/utils/validation";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import {
-  limitsForPlan,
-  isUnlimited,
-  parseSubscriptionPlan,
-} from "@/constants/plans";
+import { isUnlimited } from "@/constants/plans";
+import { getPlan } from "@/lib/plans/catalog";
 
 export const runtime = "nodejs";
 
@@ -325,8 +322,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
   // Read once and reuse for both the quota check and the welcome email.
   const companySnap = await adminDb().doc(`companies/${companyId}`).get();
   if (isNewActiveMember) {
-    const plan = parseSubscriptionPlan(companySnap.get("subscriptionPlan"));
-    const { maxEmployees } = limitsForPlan(plan);
+    const { maxEmployees } = await getPlan(companySnap.get("subscriptionPlan"));
     if (!isUnlimited(maxEmployees)) {
       const activeAgg = await adminDb()
         .collection(`companies/${companyId}/employees`)

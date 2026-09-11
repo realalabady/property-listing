@@ -1,10 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
-import {
-  limitsForPlan,
-  isUnlimited,
-  parseSubscriptionPlan,
-} from "@/constants/plans";
+import { isUnlimited } from "@/constants/plans";
+import { getPlan } from "@/lib/plans/catalog";
 import {
   LISTING_STATUSES,
   type ListingStatus,
@@ -201,10 +198,9 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Company not found." }, { status: 404 });
   }
 
-  const plan = parseSubscriptionPlan(
+  const { id: plan, maxListings } = await getPlan(
     (companySnap.data() as Record<string, unknown>).subscriptionPlan,
   );
-  const { maxListings } = limitsForPlan(plan);
   const countSnap = await adminDb()
     .collection(`companies/${companyId}/listings`)
     .count()
@@ -429,8 +425,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       const snap = await tx.get(companyRef);
       const company = (snap.data() ?? {}) as Record<string, unknown>;
 
-      const plan = parseSubscriptionPlan(company.subscriptionPlan);
-      const { maxListings } = limitsForPlan(plan);
+      const { maxListings } = await getPlan(company.subscriptionPlan);
       const current =
         typeof company.listingsCount === "number" ? company.listingsCount : 0;
       if (!isUnlimited(maxListings) && current >= maxListings) {

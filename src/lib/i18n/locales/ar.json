@@ -473,7 +473,10 @@
     "viewPlans": "عرض الباقات",
     "contactWhatsapp": "تواصل معنا للترقية عبر واتساب",
     "contactEmail": "راسلنا للترقية",
-    "lockedHint": "يتطلب باقة {plan}"
+    "lockedHint": "يتطلب باقة {plan}",
+    "unavailableHint": "غير متاح في باقتك",
+    "titleUnavailable": "{feature} غير متاح في باقتك الحالية",
+    "bodyUnavailable": "باقتك الحالية ({current}) لا تشمل هذه الميزة. تواصل معنا لمعرفة خيارات الترقية."
   },
   "onboarding": {
     "title": "أهلاً بك في راعي",
