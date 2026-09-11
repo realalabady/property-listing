@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import {
   Building2,
   Check,
   ChevronDown,
+  CreditCard,
   Landmark,
+  ListChecks,
   Minus,
+  ShieldCheck,
   Sprout,
   Tag,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -166,6 +170,7 @@ type Cell = boolean | Localized;
 
 interface CompareGroup {
   title: Localized;
+  icon: LucideIcon;
   rows: Array<{
     label: Localized;
     value: (plan: SubscriptionPlanId, prices: PlanPrices) => Cell;
@@ -177,6 +182,7 @@ const always = () => true;
 const COMPARE_GROUPS: CompareGroup[] = [
   {
     title: { ar: "العقارات", en: "Listings" },
+    icon: Building2,
     rows: [
       { label: { ar: "عدد العقارات", en: "Listings" }, value: listingsLabel },
       {
@@ -195,6 +201,7 @@ const COMPARE_GROUPS: CompareGroup[] = [
   },
   {
     title: { ar: "العملاء والمبيعات", en: "Leads and sales" },
+    icon: Users,
     rows: [
       {
         label: { ar: "إدارة العملاء المحتملين", en: "Lead management" },
@@ -220,6 +227,7 @@ const COMPARE_GROUPS: CompareGroup[] = [
   },
   {
     title: { ar: "الفريق والصلاحيات", en: "Team and access" },
+    icon: ShieldCheck,
     rows: [
       { label: { ar: "عدد الموظفين", en: "Employees" }, value: employeesLabel },
       {
@@ -230,6 +238,7 @@ const COMPARE_GROUPS: CompareGroup[] = [
   },
   {
     title: { ar: "العمليات والتقارير", en: "Operations and reporting" },
+    icon: ListChecks,
     rows: [
       { label: { ar: "المهام", en: "Tasks" }, value: always },
       {
@@ -244,6 +253,7 @@ const COMPARE_GROUPS: CompareGroup[] = [
   },
   {
     title: { ar: "الاشتراك", en: "Billing" },
+    icon: CreditCard,
     rows: [
       {
         label: { ar: "السعر السنوي", en: "Yearly price" },
@@ -373,18 +383,7 @@ export function PricingPage({ prices }: { prices: PlanPrices }) {
           </h2>
           <div className="mx-auto max-w-3xl divide-y divide-border border-y border-border">
             {FAQS.map((item) => (
-              <details key={item.q.en} className="group py-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-start text-base font-semibold [&::-webkit-details-marker]:hidden">
-                  {tr(item.q, locale)}
-                  <ChevronDown
-                    className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-                    aria-hidden
-                  />
-                </summary>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  {tr(item.a, locale)}
-                </p>
-              </details>
+              <FaqItem key={item.q.en} item={item} locale={locale} />
             ))}
           </div>
         </section>
@@ -540,64 +539,215 @@ function CompareTable({
   prices: PlanPrices;
 }) {
   const isArabic = locale === "ar";
+  // Every card uses the same fixed column widths so the plan columns line up
+  // from the header card down through each section.
+  const columns = (
+    <colgroup>
+      <col className="w-2/5" />
+      {PLAN_IDS.map((plan) => (
+        <col key={plan} />
+      ))}
+    </colgroup>
+  );
+  const planHeaderCells = PLAN_IDS.map((plan) => (
+    <th key={plan} scope="col" className="p-5 text-center align-top">
+      <span className="block text-base font-bold">
+        {tr(PLAN_COPY[plan].name, locale)}
+      </span>
+      <Link
+        href={ROUTES.PARTNER}
+        className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
+      >
+        {isArabic ? "ابدأ الآن" : "Get started"}
+      </Link>
+    </th>
+  ));
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-border bg-card">
-      <table className="w-full min-w-[640px] border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-border">
-            <th scope="col" className="w-2/5 p-5 text-start font-semibold">
-              <span className="sr-only">
-                {isArabic ? "الميزة" : "Feature"}
-              </span>
-            </th>
-            {PLAN_IDS.map((plan) => (
-              <th key={plan} scope="col" className="p-5 text-center align-top">
-                <span className="block text-base font-bold">
-                  {tr(PLAN_COPY[plan].name, locale)}
-                </span>
-                <Link
-                  href={ROUTES.PARTNER}
-                  className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
-                >
-                  {isArabic ? "ابدأ الآن" : "Get started"}
-                </Link>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        {COMPARE_GROUPS.map((group) => (
-          <tbody key={group.title.en}>
-            <tr className="bg-muted/50">
-              <th
-                scope="colgroup"
-                colSpan={PLAN_IDS.length + 1}
-                className="px-5 py-3 text-start text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-              >
-                {tr(group.title, locale)}
-              </th>
-            </tr>
-            {group.rows.map((row) => (
-              <tr
-                key={row.label.en}
-                className="border-t border-border first:border-t-0"
-              >
-                <th scope="row" className="px-5 py-3.5 text-start font-medium">
-                  {tr(row.label, locale)}
+    // Padding gives the cards' shadows and hover lift room inside the
+    // horizontal scroller on small screens.
+    <div className="-mx-2 overflow-x-auto px-2 pb-3 pt-1">
+      <div className="min-w-[640px] space-y-4">
+        <div className="rounded-2xl border border-border bg-card shadow-sm">
+          <table className="w-full table-fixed text-sm">
+            {columns}
+            <thead>
+              <tr>
+                <th scope="col" className="p-5 text-start">
+                  <span className="sr-only">
+                    {isArabic ? "الميزة" : "Feature"}
+                  </span>
                 </th>
-                {PLAN_IDS.map((plan) => (
-                  <td key={plan} className="px-5 py-3.5 text-center">
-                    <CompareCell
-                      value={row.value(plan, prices)}
-                      locale={locale}
-                    />
-                  </td>
-                ))}
+                {planHeaderCells}
               </tr>
-            ))}
-          </tbody>
+            </thead>
+          </table>
+        </div>
+
+        {COMPARE_GROUPS.map((group) => (
+          <CompareGroupCard key={group.title.en} group={group} locale={locale}>
+            <table className="w-full table-fixed border-t border-border text-sm">
+              {columns}
+              <thead className="sr-only">
+                <tr>
+                  <th scope="col">{isArabic ? "الميزة" : "Feature"}</th>
+                  {PLAN_IDS.map((plan) => (
+                    <th key={plan} scope="col">
+                      {tr(PLAN_COPY[plan].name, locale)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {group.rows.map((row) => (
+                  <tr
+                    key={row.label.en}
+                    className="border-t border-border transition-colors first:border-t-0 hover:bg-muted/50"
+                  >
+                    <th
+                      scope="row"
+                      className="px-5 py-3.5 text-start font-medium"
+                    >
+                      {tr(row.label, locale)}
+                    </th>
+                    {PLAN_IDS.map((plan) => (
+                      <td key={plan} className="px-5 py-3.5 text-center">
+                        <CompareCell
+                          value={row.value(plan, prices)}
+                          locale={locale}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CompareGroupCard>
         ))}
-      </table>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Smooth expand/collapse panel. Native <details> snaps open, so this animates
+ * grid rows 0fr → 1fr (works for any content height) and fades the content in.
+ * Closed panels are inert so their contents stay out of the tab order.
+ */
+function Collapsible({
+  open,
+  id,
+  children,
+}: {
+  open: boolean;
+  id: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      id={id}
+      inert={!open}
+      className={cn(
+        "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
+        open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+      )}
+    >
+      <div className="min-h-0 overflow-hidden">
+        <div
+          className={cn(
+            "transition duration-300 ease-out motion-reduce:transform-none motion-reduce:transition-none",
+            open ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
+          )}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FaqItem({
+  item,
+  locale,
+}: {
+  item: { q: Localized; a: Localized };
+  locale: Locale;
+}) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+
+  return (
+    <div className="py-2">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className={cn(
+          "group flex w-full cursor-pointer items-center justify-between gap-4 py-3 text-start text-base font-semibold transition-colors duration-200 hover:text-primary",
+          open && "text-primary",
+        )}
+      >
+        {tr(item.q, locale)}
+        <ChevronDown
+          className={cn(
+            "h-5 w-5 shrink-0 text-muted-foreground transition duration-300 ease-out group-hover:text-primary motion-reduce:transition-none",
+            open && "rotate-180 text-primary",
+          )}
+          aria-hidden
+        />
+      </button>
+      <Collapsible open={open} id={panelId}>
+        <p className="pb-3 text-sm leading-relaxed text-muted-foreground">
+          {tr(item.a, locale)}
+        </p>
+      </Collapsible>
+    </div>
+  );
+}
+
+/** One comparison section; every section starts collapsed. */
+function CompareGroupCard({
+  group,
+  locale,
+  children,
+}: {
+  group: CompareGroup;
+  locale: Locale;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const GroupIcon = group.icon;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg motion-reduce:transform-none motion-reduce:transition-none">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 px-5 py-4 text-start"
+      >
+        <span className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <GroupIcon className="h-[18px] w-[18px]" aria-hidden />
+          </span>
+          <span className="text-base font-semibold">
+            {tr(group.title, locale)}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 ease-out motion-reduce:transition-none",
+            open && "rotate-180",
+          )}
+          aria-hidden
+        />
+      </button>
+      <Collapsible open={open} id={panelId}>
+        {children}
+      </Collapsible>
     </div>
   );
 }
