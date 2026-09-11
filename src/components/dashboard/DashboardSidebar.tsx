@@ -156,6 +156,7 @@ function buildGroups(): NavGroup[] {
           href: ROUTES.DASHBOARD_KPI,
           label: t("dashboard.kpi"),
           icon: BarChart3,
+          requiredFeature: "kpi",
         },
         {
           href: ROUTES.DASHBOARD_SETTINGS,

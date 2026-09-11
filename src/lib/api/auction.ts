@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { DocumentReference } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { getSessionUser, type SessionUser } from "@/lib/auth/session";
+import { companyHasFeature, planFeatureForbidden } from "@/lib/auth/plan";
 import { canEditCompanyListing } from "@/lib/api/company-listings";
 import { assertActiveMember } from "@/lib/api/guards";
 import { PERMISSIONS, hasAnyPermission } from "@/constants/permissions";
@@ -34,6 +35,9 @@ export async function guardAuctionWrite(
 
   const user = await getSessionUser();
   if (!user) return err("Unauthenticated.", 401);
+  if (!(await companyHasFeature(companyId, "auctions"))) {
+    return { ok: false, response: planFeatureForbidden() };
+  }
 
   const db = adminDb();
   const listingRef = db.doc(`companies/${companyId}/listings/${listingId}`);

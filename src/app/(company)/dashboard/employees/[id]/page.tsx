@@ -2,7 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Pencil } from "lucide-react";
 import { requireCompanyMember } from "@/lib/auth/guards";
+import { getCompanyPlan } from "@/lib/auth/plan";
 import { PERMISSIONS, hasAnyPermission } from "@/constants/permissions";
+import { planHasFeature } from "@/constants/plans";
 import { ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/roles";
 import { adminDb } from "@/lib/firebase/admin";
@@ -87,10 +89,12 @@ export default async function EmployeeDetailPage({
   const isSelf = id === user.uid;
   // KPI is performance data: company-wide view needs VIEW_KPI; an employee may
   // always see their own (VIEW_OWN_KPI).
+  // …and the company's plan must include KPIs at all.
   const canViewKpi =
-    hasAnyPermission(user.permissions, [PERMISSIONS.VIEW_KPI]) ||
-    (isSelf &&
-      hasAnyPermission(user.permissions, [PERMISSIONS.VIEW_OWN_KPI]));
+    planHasFeature(await getCompanyPlan(user.companyId as string), "kpi") &&
+    (hasAnyPermission(user.permissions, [PERMISSIONS.VIEW_KPI]) ||
+      (isSelf &&
+        hasAnyPermission(user.permissions, [PERMISSIONS.VIEW_OWN_KPI])));
 
   const snap = await adminDb()
     .doc(`companies/${user.companyId}/employees/${id}`)

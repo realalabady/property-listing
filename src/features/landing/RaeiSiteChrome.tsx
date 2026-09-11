@@ -20,7 +20,7 @@ const navLinks: Array<{ href: string; label: Localized }> = [
   { href: ROUTES.MARKETPLACE, label: { ar: "العقارات", en: "Properties" } },
   { href: "/#how", label: { ar: "كيف يعمل", en: "How it works" } },
   { href: "/#companies", label: { ar: "للشركات", en: "For agencies" } },
-  { href: ROUTES.PRICING, label: { ar: "الأسعار", en: "Pricing" } },
+  { href: ROUTES.PRICING, label: { ar: "الباقات", en: "Plans" } },
 ];
 
 interface RaeiSiteHeaderProps {
@@ -145,7 +145,7 @@ export function RaeiSiteFooter({ locale }: { locale: Locale }) {
             {isArabic ? "العقارات" : "Properties"}
           </Link>
           <Link href={ROUTES.PRICING} className="hover:text-foreground">
-            {isArabic ? "الأسعار" : "Pricing"}
+            {isArabic ? "الباقات" : "Plans"}
           </Link>
           <Link href={ROUTES.PARTNER} className="hover:text-foreground">
             {isArabic ? "انضم كشريك" : "Become a partner"}

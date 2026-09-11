@@ -50,6 +50,7 @@ export const ROUTES = {
   ADMIN_LEADS: "/admin/leads",
   ADMIN_EMPLOYEES: "/admin/employees",
   ADMIN_BILLING: "/admin/billing",
+  ADMIN_PLANS: "/admin/plans",
   ADMIN_ANALYTICS: "/admin/analytics",
 } as const;
 

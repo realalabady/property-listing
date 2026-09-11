@@ -9,14 +9,13 @@ import {
   Landmark,
   Minus,
   Sprout,
+  Tag,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/constants/routes";
 import {
   PLAN_IDS,
-  PLAN_PRICES_SAR,
-  SETUP_FEE_SAR,
   VAT_RATE,
   isUnlimited,
   limitsForPlan,
@@ -25,6 +24,7 @@ import {
 } from "@/constants/plans";
 import { cn } from "@/lib/utils/cn";
 import type { SubscriptionPlanId } from "@/types/company";
+import type { PlanDisplayPrice } from "@/types/plan";
 import {
   RaeiSiteFooter,
   RaeiSiteHeader,
@@ -34,6 +34,26 @@ import {
 } from "./RaeiSiteChrome";
 
 const formatNumber = (value: number) => value.toLocaleString("en-US");
+
+type PlanPrices = Record<SubscriptionPlanId, PlanDisplayPrice>;
+
+/** What the customer pays per year: the offer price when a discount is on. */
+function effectivePrice(price: PlanDisplayPrice): number {
+  return price.offer?.type === "discount" && price.offer.priceSar !== null
+    ? price.offer.priceSar
+    : price.priceSar;
+}
+
+function discountPercent(price: PlanDisplayPrice): number {
+  return Math.round((1 - effectivePrice(price) / price.priceSar) * 100);
+}
+
+function formatOfferEnd(ms: number, locale: Locale): string {
+  return new Date(ms).toLocaleDateString(
+    locale === "ar" ? "ar-SA-u-ca-gregory-nu-latn" : "en-GB",
+    { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Riyadh" },
+  );
+}
 const currency: Localized = { ar: "ر.س", en: "SAR" };
 const vatPercent = Math.round(VAT_RATE * 100);
 
@@ -67,6 +87,14 @@ function employeesLabel(plan: SubscriptionPlanId): Localized {
 }
 
 const FEATURE_COPY: Record<PlanFeature, Localized> = {
+  auctions: {
+    ar: "إدارة المزادات على عقارات البيع",
+    en: "Auctions on for-sale listings",
+  },
+  kpi: {
+    ar: "مؤشرات الأداء للشركة والموظفين",
+    en: "Company and employee KPIs",
+  },
   pipeline: {
     ar: "مسار المبيعات بلوحة مراحل قابلة للسحب والإفلات",
     en: "Sales pipeline with a drag-and-drop stage board",
@@ -92,9 +120,8 @@ const PLAN_COPY: Record<SubscriptionPlanId, PlanCopy> = {
       { ar: "صفحة شركة عامة بهويتك", en: "Public company page with your brand" },
       { ar: "إدارة العملاء المحتملين", en: "Lead management" },
       { ar: "استقبال طلبات العقارات", en: "Incoming property requests" },
-      { ar: "المهام ومؤشرات الأداء", en: "Tasks and KPIs" },
+      { ar: "إدارة المهام", en: "Task management" },
       { ar: "مجموعات الصلاحيات للفريق", en: "Team permission groups" },
-      { ar: "إدارة المزادات", en: "Auction management" },
     ],
   },
   pro: {
@@ -108,7 +135,12 @@ const PLAN_COPY: Record<SubscriptionPlanId, PlanCopy> = {
       ar: "كل مزايا مبتدئ، بالإضافة إلى:",
       en: "Everything in Starter, plus:",
     },
-    highlights: [listingsLabel("pro"), employeesLabel("pro")],
+    highlights: [
+      listingsLabel("pro"),
+      employeesLabel("pro"),
+      FEATURE_COPY.auctions,
+      FEATURE_COPY.kpi,
+    ],
   },
   enterprise: {
     icon: Landmark,
@@ -134,7 +166,10 @@ type Cell = boolean | Localized;
 
 interface CompareGroup {
   title: Localized;
-  rows: Array<{ label: Localized; value: (plan: SubscriptionPlanId) => Cell }>;
+  rows: Array<{
+    label: Localized;
+    value: (plan: SubscriptionPlanId, prices: PlanPrices) => Cell;
+  }>;
 }
 
 const always = () => true;
@@ -148,7 +183,10 @@ const COMPARE_GROUPS: CompareGroup[] = [
         label: { ar: "صفحة شركة عامة", en: "Public company page" },
         value: always,
       },
-      { label: { ar: "المزادات", en: "Auctions" }, value: always },
+      {
+        label: { ar: "إدارة المزادات", en: "Auctions" },
+        value: (plan) => planHasFeature(plan, "auctions"),
+      },
       {
         label: { ar: "بيانات المالك والصك", en: "Owner and deed details" },
         value: always,
@@ -194,7 +232,10 @@ const COMPARE_GROUPS: CompareGroup[] = [
     title: { ar: "العمليات والتقارير", en: "Operations and reporting" },
     rows: [
       { label: { ar: "المهام", en: "Tasks" }, value: always },
-      { label: { ar: "مؤشرات الأداء", en: "KPI dashboard" }, value: always },
+      {
+        label: { ar: "مؤشرات الأداء", en: "KPI dashboard" },
+        value: (plan) => planHasFeature(plan, "kpi"),
+      },
       {
         label: { ar: "شعار وألوان الشركة", en: "Company logo and colors" },
         value: always,
@@ -206,17 +247,10 @@ const COMPARE_GROUPS: CompareGroup[] = [
     rows: [
       {
         label: { ar: "السعر السنوي", en: "Yearly price" },
-        value: (plan) => ({
-          ar: `${formatNumber(PLAN_PRICES_SAR[plan])} ر.س`,
-          en: `SAR ${formatNumber(PLAN_PRICES_SAR[plan])}`,
-        }),
-      },
-      {
-        label: { ar: "رسوم التأسيس", en: "Setup fee" },
-        value: () => ({
-          ar: `${formatNumber(SETUP_FEE_SAR)} ر.س لمرة واحدة`,
-          en: `SAR ${formatNumber(SETUP_FEE_SAR)} one-time`,
-        }),
+        value: (plan, prices) => {
+          const amount = formatNumber(effectivePrice(prices[plan]));
+          return { ar: `${amount} ر.س`, en: `SAR ${amount}` };
+        },
       },
       {
         label: { ar: "دورة الفوترة", en: "Billing cycle" },
@@ -240,8 +274,8 @@ const FAQS: Array<{ q: Localized; a: Localized }> = [
   {
     q: { ar: "ما هي رسوم التأسيس؟", en: "What is the setup fee?" },
     a: {
-      ar: `رسوم بقيمة ${formatNumber(SETUP_FEE_SAR)} ر.س تُدفع مرة واحدة عند إنشاء حساب شركتك، ولا تتكرر عند تجديد الاشتراك. تنطبق على جميع الباقات ولا تشمل الضريبة.`,
-      en: `A one-time SAR ${formatNumber(SETUP_FEE_SAR)} fee paid when your company account is created. It doesn't recur on renewal, applies to every plan, and excludes VAT.`,
+      ar: "رسوم تُدفع مرة واحدة عند إنشاء حساب شركتك، ولا تتكرر عند تجديد الاشتراك. تنطبق على جميع الباقات، ويؤكد فريقنا قيمتها عند التواصل معك.",
+      en: "A one-time fee paid when your company account is created. It doesn't recur on renewal, applies to every plan, and our team confirms the amount when we contact you.",
     },
   },
   {
@@ -277,7 +311,7 @@ const FAQS: Array<{ q: Localized; a: Localized }> = [
   },
 ];
 
-export function PricingPage() {
+export function PricingPage({ prices }: { prices: PlanPrices }) {
   const [locale, setLocale] = useState<Locale>("ar");
   const isArabic = locale === "ar";
 
@@ -301,7 +335,7 @@ export function PricingPage() {
         {/* Hero */}
         <section className="container-tight pb-12 pt-16 text-center md:pt-24">
           <h1 className="text-4xl font-extrabold tracking-tight md:text-6xl">
-            {isArabic ? "الباقات والأسعار" : "Pricing"}
+            {isArabic ? "الباقات" : "Plans"}
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground">
             {isArabic
@@ -314,14 +348,14 @@ export function PricingPage() {
         <section className="container-tight">
           <div className="grid gap-5 lg:grid-cols-3">
             {PLAN_IDS.map((plan) => (
-              <PlanCard key={plan} plan={plan} locale={locale} />
+              <PlanCard
+                key={plan}
+                plan={plan}
+                price={prices[plan]}
+                locale={locale}
+              />
             ))}
           </div>
-          <p className="mx-auto mt-6 max-w-2xl text-center text-xs leading-relaxed text-muted-foreground">
-            {isArabic
-              ? `الأسعار سنوية ولا تشمل ضريبة القيمة المضافة (${vatPercent}%). تُضاف رسوم تأسيس لمرة واحدة بقيمة ${formatNumber(SETUP_FEE_SAR)} ر.س عند إنشاء الحساب.`
-              : `Prices are yearly and exclude ${vatPercent}% VAT. A one-time SAR ${formatNumber(SETUP_FEE_SAR)} setup fee applies when the account is created.`}
-          </p>
         </section>
 
         {/* Compare table */}
@@ -329,7 +363,7 @@ export function PricingPage() {
           <h2 className="mb-8 text-center text-2xl font-bold tracking-tight md:text-3xl">
             {isArabic ? "قارن المزايا بين الباقات" : "Compare features across plans"}
           </h2>
-          <CompareTable locale={locale} />
+          <CompareTable locale={locale} prices={prices} />
         </section>
 
         {/* FAQ */}
@@ -384,15 +418,24 @@ export function PricingPage() {
 
 function PlanCard({
   plan,
+  price,
   locale,
 }: {
   plan: SubscriptionPlanId;
+  price: PlanDisplayPrice;
   locale: Locale;
 }) {
   const isArabic = locale === "ar";
   const copy = PLAN_COPY[plan];
   const Icon = copy.icon;
   const featured = plan === "enterprise";
+  const offer = price.offer;
+  const discounted = offer?.type === "discount" && offer.priceSar !== null;
+  const offerLabel = offer
+    ? isArabic
+      ? offer.labelAr
+      : offer.labelEn || offer.labelAr
+    : "";
 
   return (
     <article
@@ -415,9 +458,21 @@ function PlanCard({
         {tr(copy.tagline, locale)}
       </p>
 
-      <div className="mt-6 flex items-baseline gap-1.5">
+      {discounted ? (
+        <div className="mt-6 flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground line-through">
+            {formatNumber(price.priceSar)} {tr(currency, locale)}
+          </span>
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
+            -{discountPercent(price)}%
+          </span>
+        </div>
+      ) : null}
+      <div
+        className={cn("flex items-baseline gap-1.5", discounted ? "mt-1" : "mt-6")}
+      >
         <span className="text-4xl font-extrabold tracking-tight">
-          {formatNumber(PLAN_PRICES_SAR[plan])}
+          {formatNumber(effectivePrice(price))}
         </span>
         <span className="text-base font-semibold">{tr(currency, locale)}</span>
         <span className="text-sm text-muted-foreground">
@@ -429,6 +484,20 @@ function PlanCard({
           ? "السعر لا يشمل الضريبة ورسوم التأسيس"
           : "Excludes VAT and the setup fee"}
       </p>
+      {offer && (
+        <div className="mt-3 rounded-lg bg-primary/10 px-3 py-2 text-sm font-semibold text-primary">
+          <span className="flex items-center gap-1.5">
+            <Tag className="h-4 w-4 shrink-0" aria-hidden />
+            {offerLabel}
+          </span>
+          {offer.endsAtMs !== null && (
+            <span className="mt-0.5 block text-xs font-normal text-primary/80">
+              {isArabic ? "ينتهي العرض في " : "Offer ends "}
+              {formatOfferEnd(offer.endsAtMs, locale)}
+            </span>
+          )}
+        </div>
+      )}
 
       <Button
         asChild
@@ -463,7 +532,13 @@ function PlanCard({
   );
 }
 
-function CompareTable({ locale }: { locale: Locale }) {
+function CompareTable({
+  locale,
+  prices,
+}: {
+  locale: Locale;
+  prices: PlanPrices;
+}) {
   const isArabic = locale === "ar";
 
   return (
@@ -512,7 +587,10 @@ function CompareTable({ locale }: { locale: Locale }) {
                 </th>
                 {PLAN_IDS.map((plan) => (
                   <td key={plan} className="px-5 py-3.5 text-center">
-                    <CompareCell value={row.value(plan)} locale={locale} />
+                    <CompareCell
+                      value={row.value(plan, prices)}
+                      locale={locale}
+                    />
                   </td>
                 ))}
               </tr>

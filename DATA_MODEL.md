@@ -315,7 +315,7 @@ Legend — Type: `str`, `num`, `bool`, `ts` (timestamp), `map` (nested object), 
 | Collection | Key fields |
 |------------|-----------|
 | platform_admins | `{ email, createdAt }` — registry of super admins (uid = Auth uid) |
-| plans | subscription catalog (public read); referenced by `companies.subscriptionPlan` |
+| plans | subscription catalog (public read); referenced by `companies.subscriptionPlan`. Doc id = plan id; `{priceSar, offer: {enabled, type: discount\|text, priceSar?, labelAr, labelEn, endsAt?}}`, edited at `/admin/plans`. Missing doc → price from `src/constants/plans.ts` |
 | audit_logs | platform-level audit trail (super-admin only) |
 
 ---

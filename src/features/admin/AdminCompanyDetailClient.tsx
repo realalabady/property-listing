@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CompanyStatus, SubscriptionPlanId } from "@/types/company";
 import { t } from "@/lib/i18n";
-import { PLAN_OPTIONS, PLAN_PRICING_NOTE } from "@/features/plans/plan-labels";
+import {
+  PLAN_PRICING_NOTE,
+  planOptions,
+  type PlanPrices,
+} from "@/features/plans/plan-labels";
 
 interface OwnerSummary {
   uid: string;
@@ -54,8 +58,11 @@ interface ActionResponse {
 
 export function AdminCompanyDetailClient({
   company,
+  planPrices,
 }: {
   company: CompanySummary;
+  /** Live yearly prices for the plan picker labels. */
+  planPrices: PlanPrices;
 }) {
   const router = useRouter();
 
@@ -287,7 +294,7 @@ export function AdminCompanyDetailClient({
               }
               className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition focus:ring-2 focus:ring-ring"
             >
-              {PLAN_OPTIONS.map((option) => (
+              {planOptions(planPrices).map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

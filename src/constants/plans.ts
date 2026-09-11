@@ -1,4 +1,9 @@
 import type { SubscriptionPlanId } from "@/types/company";
+import type {
+  ActivePlanOffer,
+  PlanDisplayPrice,
+  PlanPricingConfig,
+} from "@/types/plan";
 
 /** Plans in ascending order — drives pickers, the pricing page, and upgrades. */
 export const PLAN_IDS: readonly SubscriptionPlanId[] = [
@@ -22,15 +27,16 @@ export const PLAN_LIMITS: Record<SubscriptionPlanId, PlanLimits> = {
   enterprise: { maxListings: -1, maxEmployees: -1 },
 };
 
-/** Yearly price per plan in SAR, before VAT and the one-time setup fee. */
+/**
+ * Default yearly price per plan in SAR, before VAT and the one-time setup fee.
+ * The live price is admin-editable (`plans/{planId}`); this is the fallback
+ * when no doc exists yet.
+ */
 export const PLAN_PRICES_SAR: Record<SubscriptionPlanId, number> = {
   starter: 2499,
   pro: 4999,
   enterprise: 8999,
 };
-
-/** One-time fee charged when the company account is created (before VAT). */
-export const SETUP_FEE_SAR = 1000;
 
 /** Saudi VAT. Every displayed price excludes it. */
 export const VAT_RATE = 0.15;
@@ -39,13 +45,13 @@ export const VAT_RATE = 0.15;
  * Features that only some plans unlock. Anything not listed here is available
  * on every plan.
  */
-export type PlanFeature = "pipeline" | "matched_leads";
+export type PlanFeature = "auctions" | "kpi" | "pipeline" | "matched_leads";
 
 export const PLAN_FEATURES: Record<SubscriptionPlanId, readonly PlanFeature[]> =
   {
     starter: [],
-    pro: [],
-    enterprise: ["pipeline", "matched_leads"],
+    pro: ["auctions", "kpi"],
+    enterprise: ["auctions", "kpi", "pipeline", "matched_leads"],
   };
 
 export function isSubscriptionPlanId(
@@ -81,6 +87,41 @@ export function planHasFeature(
 /** The cheapest plan that unlocks `feature`. */
 export function lowestPlanWithFeature(feature: PlanFeature): SubscriptionPlanId {
   return PLAN_IDS.find((plan) => planHasFeature(plan, feature)) ?? "enterprise";
+}
+
+/**
+ * The offer to show right now, or `null` when it's off, expired, or a
+ * discount that doesn't actually undercut the price.
+ */
+export function activeOffer(
+  config: PlanPricingConfig,
+  nowMs: number,
+): ActivePlanOffer | null {
+  const offer = config.offer;
+  if (!offer?.enabled || !offer.labelAr.trim()) return null;
+  if (offer.endsAtMs !== null && offer.endsAtMs <= nowMs) return null;
+  if (
+    offer.type === "discount" &&
+    (offer.priceSar === null ||
+      offer.priceSar <= 0 ||
+      offer.priceSar >= config.priceSar)
+  ) {
+    return null;
+  }
+  return {
+    type: offer.type,
+    priceSar: offer.type === "discount" ? offer.priceSar : null,
+    labelAr: offer.labelAr,
+    labelEn: offer.labelEn,
+    endsAtMs: offer.endsAtMs,
+  };
+}
+
+export function displayPrice(
+  config: PlanPricingConfig,
+  nowMs: number,
+): PlanDisplayPrice {
+  return { priceSar: config.priceSar, offer: activeOffer(config, nowMs) };
 }
 
 /** A limit of -1 means "no cap". */

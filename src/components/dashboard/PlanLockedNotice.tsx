@@ -7,6 +7,8 @@ import type { SubscriptionPlanId } from "@/types/company";
 import { t } from "@/lib/i18n";
 
 const FEATURE_LABEL_KEYS: Record<PlanFeature, string> = {
+  auctions: "planLock.featureAuctions",
+  kpi: "planLock.featureKpi",
   pipeline: "planLock.featurePipeline",
   matched_leads: "planLock.featureMatchedLeads",
 };

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSuperAdmin } from "@/lib/auth/guards";
+import { getPlanPrices } from "@/lib/plans/catalog";
 import { adminDb } from "@/lib/firebase/admin";
 import { ROUTES } from "@/constants/routes";
 import { ROLES } from "@/constants/roles";
@@ -312,6 +313,7 @@ export default async function AdminCompanyDetailPage(context: RouteContext) {
           owner: summary.owner,
           trialEndsAt: summary.trialEndsAt,
         }}
+        planPrices={await getPlanPrices()}
       />
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">

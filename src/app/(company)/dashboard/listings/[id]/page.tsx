@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { requireCompanyMember } from "@/lib/auth/guards";
+import { getCompanyPlan } from "@/lib/auth/plan";
+import { planHasFeature } from "@/constants/plans";
 import {
   PERMISSIONS,
   hasAnyPermission,
@@ -31,6 +33,10 @@ export default async function DashboardListingDetailPage({
     user.permissions,
     PERMISSIONS.PUBLISH_LISTING,
   );
+  const auctionsEnabled = planHasFeature(
+    await getCompanyPlan(user.companyId as string),
+    "auctions",
+  );
 
   return (
     <div className="space-y-6">
@@ -48,6 +54,7 @@ export default async function DashboardListingDetailPage({
         canEdit={canEdit}
         canDelete={canDelete}
         canPublish={canPublish}
+        auctionsEnabled={auctionsEnabled}
       />
     </div>
   );

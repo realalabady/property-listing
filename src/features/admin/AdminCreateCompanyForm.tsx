@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { ROUTES } from "@/constants/routes";
 import type { CompanyStatus, SubscriptionPlanId } from "@/types/company";
 import { t } from "@/lib/i18n";
-import { PLAN_OPTIONS, PLAN_PRICING_NOTE } from "@/features/plans/plan-labels";
+import {
+  PLAN_PRICING_NOTE,
+  planOptions,
+  type PlanPrices,
+} from "@/features/plans/plan-labels";
 
 const STATUSES: CompanyStatus[] = ["trial", "active", "suspended", "cancelled"];
 
@@ -29,6 +33,8 @@ interface CreateCompanyResponse {
 }
 
 interface AdminCreateCompanyFormProps {
+  /** Live yearly prices for the plan picker labels. */
+  planPrices: PlanPrices;
   initialName?: string;
   initialContactEmail?: string;
   initialContactPhone?: string;
@@ -39,13 +45,14 @@ interface AdminCreateCompanyFormProps {
 }
 
 export function AdminCreateCompanyForm({
+  planPrices,
   initialName = "",
   initialContactEmail = "",
   initialContactPhone = "",
   initialDescription = "",
   initialCommercialRegistration = "",
   partnerRequestId = "",
-}: AdminCreateCompanyFormProps = {}) {
+}: AdminCreateCompanyFormProps) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
   const [slug, setSlug] = useState("");
@@ -140,7 +147,7 @@ export function AdminCreateCompanyForm({
           label={t("adminForm.plan")}
           value={plan}
           onChange={(value) => setPlan(value as SubscriptionPlanId)}
-          options={PLAN_OPTIONS}
+          options={planOptions(planPrices)}
           hint={PLAN_PRICING_NOTE}
         />
         <SelectField

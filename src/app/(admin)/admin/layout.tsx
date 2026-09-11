@@ -71,6 +71,12 @@ export default async function AdminLayout({
             {t("admin.allEmployees")}
           </Link>
           <Link
+            href={ROUTES.ADMIN_PLANS}
+            className="rounded-md px-3 py-2 hover:bg-secondary"
+          >
+            {t("admin.plans")}
+          </Link>
+          <Link
             href={ROUTES.ADMIN_BILLING}
             className="rounded-md px-3 py-2 hover:bg-secondary"
           >

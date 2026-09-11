@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, Send } from "lucide-react";
+import { Lock, MapPin, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ListingUnitsManager } from "./ListingUnitsManager";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -325,6 +325,8 @@ interface DashboardListingDetailClientProps {
   canEdit: boolean;
   canDelete: boolean;
   canPublish: boolean;
+  /** Company plan includes auctions (Pro and up). */
+  auctionsEnabled: boolean;
 }
 
 export function DashboardListingDetailClient({
@@ -333,6 +335,7 @@ export function DashboardListingDetailClient({
   canEdit,
   canDelete,
   canPublish,
+  auctionsEnabled,
 }: DashboardListingDetailClientProps) {
   const router = useRouter();
   const [listing, setListing] = useState<ListingDetail | null>(null);
@@ -1065,14 +1068,29 @@ export function DashboardListingDetailClient({
           the listing snapshot above; the panel adds a bids listener + controls. */}
       {listing.type === LISTING_TYPES.SALE && (
         <Section title="المزايدة">
-          <AuctionPanel
-            companyId={companyId}
-            listingId={listingId}
-            auction={listing.auction}
-            askingPrice={listing.price}
-            canManage={canManageBids}
-            authReady={authReady}
-          />
+          {auctionsEnabled ? (
+            <AuctionPanel
+              companyId={companyId}
+              listingId={listingId}
+              auction={listing.auction}
+              askingPrice={listing.price}
+              canManage={canManageBids}
+              authReady={authReady}
+            />
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-4 py-3 text-sm">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Lock className="h-4 w-4 shrink-0" aria-hidden />
+                إدارة المزادات متاحة من باقة احترافي فما فوق.
+              </span>
+              <Link
+                href={ROUTES.PRICING}
+                className="font-semibold text-primary hover:underline"
+              >
+                عرض الباقات
+              </Link>
+            </div>
+          )}
         </Section>
       )}
 

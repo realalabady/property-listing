@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth/guards";
+import { getPlanPrices } from "@/lib/plans/catalog";
 import { ROUTES } from "@/constants/routes";
 import { AdminCreateCompanyForm } from "@/features/admin/AdminCreateCompanyForm";
 import { t } from "@/lib/i18n";
@@ -42,6 +43,7 @@ export default async function AdminCreateCompanyPage({
       </header>
 
       <AdminCreateCompanyForm
+        planPrices={await getPlanPrices()}
         initialName={firstParam(params.name)}
         initialContactEmail={firstParam(params.email)}
         initialContactPhone={firstParam(params.phone)}

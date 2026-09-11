@@ -1,5 +1,8 @@
 import { unstable_cache } from "next/cache";
 import { requireCompanyMember } from "@/lib/auth/guards";
+import { getCompanyPlan } from "@/lib/auth/plan";
+import { planHasFeature } from "@/constants/plans";
+import { PlanLockedNotice } from "@/components/dashboard/PlanLockedNotice";
 import { adminDb } from "@/lib/firebase/admin";
 import { formatDate } from "@/lib/utils/format";
 import { t } from "@/lib/i18n";
@@ -120,6 +123,11 @@ const getCachedKpi = unstable_cache(
 export default async function DashboardKPIPage() {
   const user = await requireCompanyMember();
   const companyId = user.companyId as string;
+
+  const plan = await getCompanyPlan(companyId);
+  if (!planHasFeature(plan, "kpi")) {
+    return <PlanLockedNotice feature="kpi" currentPlan={plan} />;
+  }
 
   const { overview, rows } = await getCachedKpi(companyId);
 
